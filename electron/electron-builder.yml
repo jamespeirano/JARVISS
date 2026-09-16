@@ -8,6 +8,7 @@ files:
   - "*.css"
   - "*.js"
   - "main.cjs"
+  - "startup.cjs"
   - "preload.cjs"
   - "atlas-protocol.cjs"
   - "package.json"

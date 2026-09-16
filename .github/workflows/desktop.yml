@@ -34,11 +34,23 @@ jobs:
       - run: npm ci
         working-directory: electron
       - run: python -m unittest discover -s tests -p "test_*.py"
+      - run: node --test electron/tests/startup.cjs
       - name: Build without signing credentials
         run: python scripts/build_electron.py
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
           JARVIS_BUILD_GITHUB_TOKEN: ${{ github.token }}
+      - name: Check packaged Windows first launch
+        if: runner.os == 'Windows'
+        run: node scripts/check_installed_ui.cjs dist/win-unpacked/JARVISS.exe
+      - name: Save failed startup screenshot
+        if: failure() && runner.os == 'Windows'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-startup-failure
+          retention-days: 7
+          if-no-files-found: ignore
+          path: ${{ runner.temp }}/jarvis-signed-startup.png
       - name: Archive unpacked Windows app
         if: runner.os == 'Windows'
         shell: pwsh
