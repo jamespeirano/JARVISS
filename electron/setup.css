@@ -1,4 +1,7 @@
 #setup{max-width:680px;margin:48px auto;padding-bottom:30px}
+#startup{max-width:680px;margin:48px auto}
+.setup-screen>aside,.setup-screen #panel-toggle{display:none}
+.setup-screen header{justify-content:flex-end}
 .setup-heading h2{font-size:30px;letter-spacing:-.7px;margin:0 0 8px}
 .setup-heading p,#hardware-summary,#setup-size{color:#aaaab4;line-height:1.6}
 #hardware-summary{font-size:12px;margin:26px 0 18px}

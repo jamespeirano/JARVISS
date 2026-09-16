@@ -59,6 +59,18 @@ class RoutingTests(unittest.TestCase):
         self.assertTrue(matches_place({'kind':'untreated water','category':'stream','name':'Creek'},'water'))
         self.assertFalse(matches_place({'kind':'medical','category':'pharmacy','name':'Drugstore'},'hospital'))
 
+    def test_resource_names_do_not_override_recorded_categories(self):
+        for query,category,name in [
+            ('hospital','pet','LiveWell Animal Hospital'),
+            ('hospital','memorial','Former Hospital'),
+            ('pharmacy','restaurant','Old Pharmacy Cafe'),
+            ('river','restaurant','River Cafe'),
+        ]:
+            with self.subTest(query=query,category=category):
+                place={'kind':category,'category':category,'name':name}
+                self.assertFalse(matches_place(place,query))
+                self.assertTrue(matches_place(place,name))
+
 
 class QuestionTests(unittest.TestCase):
     def setUp(self):
@@ -80,6 +92,42 @@ class QuestionTests(unittest.TestCase):
     def test_find_drinking_water(self):
         self.assertEqual(parse_question('Where can I find drinking water?')['target'],'drinking water')
         self.assertIsNotNone(self.answer('Where can I find drinking water?')[1])
+
+    def test_running_water_finds_a_waterway_and_routes_offline(self):
+        pack=fixture()
+        pack['places'] += [
+            {'id':'pond','name':'Nearby pond','kind':'untreated water','category':'pond','point':[40,-73.999]},
+            {'id':'stream','name':'Recorded creek','kind':'untreated water','category':'stream','point':[40.001,-73.999]}]
+        self.area=OfflineMap(pack)
+        for question in ['Hey, how do I get to the closest running water?',
+                         "I'm on Park Path. Where is the nearest flowing water?"]:
+            with self.subTest(question=question):
+                text,route=self.answer(question)
+                self.assertIsNotNone(route,text)
+                self.assertEqual(route['destination'],'Recorded creek')
+                self.assertIn('Park Path',text)
+                self.assertIn('miles',text)
+                self.assertIn('Current flow is unknown',text)
+                self.assertNotIn('Nearby pond',text)
+                self.assertNotIn('Recorded fountain',text)
+
+    def test_running_water_does_not_substitute_a_tap(self):
+        text,route=self.answer('Where is the closest running water?')
+        self.assertIsNone(route)
+        self.assertIn('No “running water” records',text)
+
+    def test_nearest_hospital_routes_to_human_hospital(self):
+        pack=fixture()
+        pack['places'] += [
+            {'id':'vet','name':'Animal Hospital','kind':'veterinary','category':'veterinary','point':[40,-73.9995]},
+            {'id':'memorial','name':'Former Hospital','kind':'memorial','category':'memorial','point':[40,-73.999]},
+            {'id':'hospital','name':'Recorded General Hospital','kind':'medical','category':'hospital','point':[40.001,-73.999]}]
+        self.area=OfflineMap(pack)
+        text,route=self.answer('Where is the nearest hospital?')
+        self.assertIsNotNone(route,text)
+        self.assertEqual(route['destination'],'Recorded General Hospital')
+        self.assertNotIn('Animal Hospital',text)
+        self.assertNotIn('Former Hospital',text)
 
     def test_arbitrary_category_does_not_fall_through_to_model(self):
         text,route=self.answer('Where is the nearest bicycle repair shop?')
@@ -135,6 +183,9 @@ class RealArchiveTests(unittest.TestCase):
             rows=archive.nearest([30.2672,-97.7431],'water',3)
             self.assertTrue(rows)
             self.assertTrue(all(r['distance_m']<=5000 for r in rows))
+            waterways=archive.nearest([30.2672,-97.7431],'running water',3)
+            self.assertTrue(waterways)
+            self.assertTrue(all(r['category'] in ('river','stream','spring') for r in waterways))
             self.assertTrue(all(r['source']=='offline basemap' for r in rows))
             pharmacy=archive.nearest([30.2672,-97.7431],'pharmacy',3)
             self.assertTrue(pharmacy)

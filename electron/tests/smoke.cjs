@@ -108,6 +108,7 @@ const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),asse
   assert.equal(saved.voice_prompt,'Use short spoken answers.');
   await page.reload();
   await page.waitForFunction(()=>document.querySelector('#voice-max-sentences').value==='2');
+  await page.locator('#setup-later').click();
   await page.locator('[data-page="settings"]').click();
   await page.locator('#reset-prompts').click();
   assert.equal(await page.locator('#voice-max-sentences').inputValue(),'3');

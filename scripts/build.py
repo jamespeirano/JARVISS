@@ -6,8 +6,8 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parent.parent
 args = [sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', '--onefile', '--windowed',
-        '--name', 'JARVISS', '--distpath', str(root), '--add-data', f'{root / "resources"}:resources',
-        '--collect-all', 'vosk', '--collect-all', 'sounddevice', '--hidden-import', 'jarviss.library']
+        '--name', 'JARVISS', '--distpath', str(root / 'dist'), '--add-data', f'{root / "resources"}:resources',
+        '--collect-all', 'vosk', '--collect-all', 'sounddevice', '--collect-data', 'certifi', '--hidden-import', 'jarviss.library']
 if platform.system() == 'Windows':
     args += ['--hidden-import', 'win32com.client', '--hidden-import', 'pythoncom']
 args += [str(root / 'launch.py')]

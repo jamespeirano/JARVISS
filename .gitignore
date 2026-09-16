@@ -27,7 +27,6 @@ build/
 *.spec
 JARVISS.exe
 JARVISS.app/
-JARVISS
 electron/backend/
 service.log
 *.zip
