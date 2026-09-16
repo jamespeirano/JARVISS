@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "reviewed": "2026-09-15",
+  "models": [
+    {
+      "id": "compact",
+      "note": "Basic model. Missed safety and planning checks in testing.",
+      "name": "Gemma 4 E2B \u00b7 Abliterated",
+      "repo": "mradermacher/Huihui-gemma-4-E2B-it-abliterated-GGUF",
+      "revision": "5a6514c29dea768a06908b509a5027ec7f084028",
+      "filename": "Huihui-gemma-4-E2B-it-abliterated.Q4_K_M.gguf",
+      "bytes": 3427874272,
+      "sha256": "55044454df35c2e3b9f4ca7a52b27cc7b057b3b3547cd114183196c31f5062a8",
+      "license": "apache-2.0",
+      "memory_gib": 5,
+      "context": 4096,
+      "url": "https://huggingface.co/mradermacher/Huihui-gemma-4-E2B-it-abliterated-GGUF/resolve/5a6514c29dea768a06908b509a5027ec7f084028/Huihui-gemma-4-E2B-it-abliterated.Q4_K_M.gguf"
+    },
+    {
+      "id": "balanced",
+      "note": "Missed some equipment and planning checks in testing.",
+      "name": "Gemma 4 E4B \u00b7 Abliterated",
+      "repo": "mradermacher/Huihui-gemma-4-E4B-it-abliterated-GGUF",
+      "revision": "8cf05b48c08d09b5f5601169fc639e8b7425bddf",
+      "filename": "Huihui-gemma-4-E4B-it-abliterated.Q4_K_M.gguf",
+      "bytes": 5335286272,
+      "sha256": "d793116ec11cacac0228e7c907a40e9765969d76dd45708f0f638df008718f87",
+      "license": "apache-2.0",
+      "memory_gib": 8,
+      "context": 4096,
+      "url": "https://huggingface.co/mradermacher/Huihui-gemma-4-E4B-it-abliterated-GGUF/resolve/8cf05b48c08d09b5f5601169fc639e8b7425bddf/Huihui-gemma-4-E4B-it-abliterated.Q4_K_M.gguf"
+    },
+    {
+      "id": "advanced",
+      "name": "Qwen 3.8 27B \u00b7 Abliterated",
+      "repo": "huihui-ai/Huihui-Qwen3.8-27B-abliterated-GGUF",
+      "revision": "8f1b52408a2f6e317535190c9386f776cacf0079",
+      "filename": "Huihui-Qwen3.8-27B-abliterated-UD-DW-Q4_K_M.gguf",
+      "bytes": 16551316384,
+      "sha256": "0c7cfe3060493485bb9a6a51195897b0c1d347a49929206adb9a52170183ea03",
+      "license": "apache-2.0",
+      "memory_gib": 21,
+      "context": 8192,
+      "url": "https://huggingface.co/huihui-ai/Huihui-Qwen3.8-27B-abliterated-GGUF/resolve/8f1b52408a2f6e317535190c9386f776cacf0079/Huihui-Qwen3.8-27B-abliterated-UD-DW-Q4_K_M.gguf"
+    }
+  ]
+}

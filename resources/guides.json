@@ -1,0 +1,186 @@
+[
+  {
+    "id": "water",
+    "title": "Water",
+    "keywords": "water stream well rain barrel boil contamination treatment",
+    "url": "https://www.cdc.gov/water-emergency/about/index.html",
+    "checked": "2026-09-15",
+    "text": "1. Prefer sealed drinking water.\n2. Fuel, chemicals or floodwater suspected? Find another source. Boiling does not remove those contaminants.\n3. For germ risk: settle cloudy water, filter through a clean cloth, then bring to a rolling boil for 1 minute; 3 minutes above 6,500 feet. Cool in a clean, covered container.\n4. Treatment tablets: follow that product’s label.\nA clear stream or mapped well is not proof of safe water.",
+    "question": "What source is the water from, and could fuel, chemicals or floodwater have reached it?",
+    "prompt": "Can I use this water? Source: ",
+    "plan": null
+  },
+  {
+    "id": "food",
+    "title": "Food after a power cut",
+    "keywords": "food refrigerator fridge freezer eat milk meat power outage smell",
+    "url": "https://www.cdc.gov/food-safety/foods/keep-food-safe-after-emergency.html",
+    "checked": "2026-09-15",
+    "text": "1. Keep fridge and freezer doors closed.\n2. Without power or another cold source: a fridge keeps food cold for about 4 hours; a full freezer about 48 hours, half-full about 24.\n3. Discard refrigerated perishables after 4 hours without cooling. Never taste food to test safety.\n4. Frozen food can be refrozen if it still has ice crystals or is 40°F or colder.\nUse measured temperature and elapsed time, not smell.",
+    "question": "What food is it, how long was cooling lost, and do you have a temperature reading?",
+    "prompt": "Can I eat this food? Food and time without cooling: ",
+    "plan": null
+  },
+  {
+    "id": "sanitation",
+    "title": "Toilets without water",
+    "keywords": "toilet toilets sanitation sewage waste running water hygiene bucket handwashing hands soap wash",
+    "url": "https://stacks.cdc.gov/view/cdc/39018/cdc_39018_DS1.pdf",
+    "checked": "2026-09-15",
+    "text": "1. Do not flush if sewage is backing up or the sewer/septic system may be damaged.\n2. Use a stable, lidded bucket lined with a heavy plastic bag as a temporary toilet.\n3. Keep waste sealed, away from food, children and water sources. Use a designated disposal point when available; never empty it into a drain or stream.\n4. Keep soap and safe handwashing water beside the toilet. Assign someone to restock and check it.\nScrub all hand surfaces with soap for 20 seconds, then rinse and dry.",
+    "question": "How many people need it, and what containers, bags and handwashing supplies do you have?",
+    "prompt": "Help us set up a toilet without running water. We have: ",
+    "plan": null,
+    "sources": [
+      "https://stacks.cdc.gov/view/cdc/39018/cdc_39018_DS1.pdf",
+      "https://www.cdc.gov/water-emergency/safety/guidelines-for-personal-hygiene-during-an-emergency.html"
+    ]
+  },
+  {
+    "id": "shelter",
+    "title": "Check a building",
+    "keywords": "building shelter stay house gas leak fire flood cracks damage evacuation",
+    "url": "https://www.epa.gov/natural-disasters/dealing-debris-and-damaged-buildings",
+    "checked": "2026-09-15",
+    "text": "Leave if you smell gas, see fire, hear structural movement, or see major leaning or collapse. Move clear of power lines and floodwater.\nDo not operate switches or make flames where gas may be leaking.\nDo not enter a damaged building until a qualified person has checked it. A photo or description cannot establish structural safety.\nFrom outside, record the damage, location and time in Plan → Log.",
+    "question": "What damage or warning signs can you see from a safe place?",
+    "prompt": "Can we stay in this building? I can see: ",
+    "plan": "log"
+  },
+  {
+    "id": "equipment",
+    "title": "Read an equipment warning",
+    "keywords": "equipment warning fault code generator inverter manual model troubleshooting",
+    "url": "https://www.victronenergy.com/media/pg/Manual_SmartSolar_MPPT_150-60_up_to_250-70/en/troubleshooting.html",
+    "checked": "2026-09-15",
+    "text": "1. Write down the exact brand, model and warning code.\n2. Add its manual in Docs, or paste the warning text into Chat.\n3. Ask Jarvis to find that code in that manual and explain the listed checks.\n4. Stop using equipment that is smoking, leaking, sparking or overheating. Follow the manual’s shutdown procedure if safe.\nA code from a different model may mean something else. Do not bypass a protection device.\nRun generators outdoors, at least 20 feet from doors, windows and vents.",
+    "question": "What is the exact model and warning code?",
+    "prompt": "Explain this warning. Model and code: ",
+    "plan": null,
+    "sources": [
+      "https://www.victronenergy.com/media/pg/Manual_SmartSolar_MPPT_150-60_up_to_250-70/en/troubleshooting.html",
+      "https://www.cdc.gov/natural-disasters/response/what-to-do-protect-yourself-during-a-power-outage.html"
+    ]
+  },
+  {
+    "id": "parts",
+    "title": "Check power parts",
+    "keywords": "solar panel battery batteries charger cable voltage volts amps compatibility compatible parts inverter",
+    "url": "https://www.victronenergy.com/media/pg/Manual_SmartSolar_MPPT_75-10_up_to_100-20/en/installation.html",
+    "checked": "2026-09-15",
+    "text": "Copy the labels and manuals for every part before connecting anything.\nCheck battery chemistry and voltage; charger battery settings; panel open-circuit voltage, including cold-weather rise; controller input limits; and cable, connector and fuse ratings.\nEvery limit must match the actual equipment and configuration. A matching plug alone proves nothing.\nJarvis can compare supplied ratings. Missing ratings mean compatibility is not established.",
+    "question": "What are the model numbers and the voltage/current ratings on each label?",
+    "prompt": "Will these power parts work together? Labels: ",
+    "plan": null
+  },
+  {
+    "id": "repair",
+    "title": "Fix something",
+    "keywords": "fix repair bicycle bike tire pump filter broken tools parts",
+    "url": "https://www.parktool.com/en-us/blog/repair-help/inner-tube-repair",
+    "checked": "2026-09-15",
+    "text": "1. Name the item, exact model, symptom and tools you have.\n2. Add its manual in Docs. Ask for one check at a time.\n3. Isolate its energy or pressure as its manual requires before work.\nFor a bicycle puncture: locate the leak and the object that caused it; use the correct tube patch or replacement tube. Follow the patch maker’s instructions. Check tire seating and brakes before riding.\nFor a drinking-water filter, use its approved parts and cleaning method; a repair does not prove filtration performance.",
+    "question": "What broke, and which tools or replacement parts do you have?",
+    "prompt": "Help me fix this. Item, problem and tools: ",
+    "plan": null
+  },
+  {
+    "id": "garden",
+    "title": "Plant and grow",
+    "keywords": "grow planting garden seeds crop harvest frost soil vegetables calendar",
+    "url": "https://extension.umn.edu/garden-and-home/yard-and-garden/gardening-in-minnesota/planting-the-vegetable-garden",
+    "checked": "2026-09-15",
+    "text": "1. List your seeds in Plan → Garden.\n2. Check each seed packet for temperature, depth, spacing, light and time to harvest.\n3. Use your local frost history, soil temperature and current observations. A date for another state is not your planting date.\n4. Add a regional growing guide in Docs. Save your planting date and next check in Garden.\nRecord watering, damage and harvests. The calculated harvest date is an estimate from your packet, not a promise.",
+    "question": "Where are you growing, what seeds do you have, and what are the current soil or weather conditions?",
+    "prompt": "What can I grow here? Place, seeds and conditions: ",
+    "plan": "garden"
+  },
+  {
+    "id": "preserve",
+    "title": "Preserve food",
+    "keywords": "preserve preservation canning canned pressure canner recipe jars harvest shelf storage low acid",
+    "url": "https://nchfp.uga.edu/how/can/general-information/ensuring-safe-canned-foods/",
+    "checked": "2026-09-15",
+    "text": "Use a tested recipe from USDA or the National Center for Home Food Preservation.\nMatch the exact food, preparation, jar size, processing method and elevation adjustment. Do not invent shorter times or ingredient substitutions.\nLow-acid foods need an appropriate pressure-canning process. A pressure cooker is not automatically a suitable pressure canner.\nAdd the exact recipe to Docs before starting. If the recipe or required equipment is missing, choose another storage method.",
+    "question": "What food, tested recipe and preserving equipment do you have?",
+    "prompt": "Help me follow this tested preservation recipe: ",
+    "plan": null
+  },
+  {
+    "id": "meet",
+    "title": "Find each other",
+    "keywords": "find each other radio meet meeting communication channel schedule check in",
+    "url": "",
+    "checked": "2026-09-15",
+    "text": "1. Choose a familiar meeting point and a backup. Save them in Plan → People.\n2. Agree on check-in times and what to do if someone misses one.\n3. For radios, use the same channel and settings; check the actual manual. Test nearby before relying on range.\n4. Keep messages short: who, where, need, next check-in.\n5. If local Wi-Fi still works, start Plan → Messages. Share its address and code with your group. Internet and satellites are not needed.",
+    "question": "What radios or local network do you have, and which meeting point can everyone recognize?",
+    "prompt": "Help us choose meeting points and check-in times. We have: ",
+    "plan": "messages"
+  },
+  {
+    "id": "today",
+    "title": "Choose what comes first",
+    "keywords": "task priority first daylight daily plan time water energy needs urgent",
+    "url": "",
+    "checked": "2026-09-15",
+    "text": "1. Address immediate danger and urgent care.\n2. Check drinking water, shelter, temperature and food.\n3. List the work in Plan → Today. Mark Now, Today or Later.\n4. Assign one person, a deadline and anything needed first.\n5. Use Plan → Supplies and Power to see constraints. Recheck after conditions change.\nPlan with observed weather and available daylight; Jarvis has no live forecast.",
+    "question": "What is the most urgent need, and how much daylight, water and battery power remain?",
+    "prompt": "Using my saved situation and tasks, what should we do first?",
+    "plan": "tasks"
+  },
+  {
+    "id": "supplies",
+    "title": "Make supplies last",
+    "keywords": "supply supplies inventory lasts food water fuel medication stock ration amount daily",
+    "url": "",
+    "checked": "2026-09-15",
+    "text": "In Plan → Supplies, enter the amount left, its unit and how much your group uses each day.\nDays left = amount left ÷ daily use. Keep both amounts in the same unit.\nUpdate the amount after use, losses or resupply. Estimates do not verify quality or availability.\nFor medication, record only an existing prescribed schedule. Do not change a dose to make stock last.\nAsk Jarvis which recorded supply will run out first.",
+    "question": "What amount is left, and how much is used per day?",
+    "prompt": "Using my saved supplies, what will run out first?",
+    "plan": "supplies"
+  },
+  {
+    "id": "power",
+    "title": "Budget power",
+    "keywords": "power budget watts watt-hours wh energy solar charge device battery days",
+    "url": "https://www1.eere.energy.gov/solar/pdfs/31689.pdf",
+    "checked": "2026-09-15",
+    "text": "In Plan → Power, list each device’s running watts and hours per day.\nDaily energy = watts × hours. Battery watt-hours = volts × amp-hours, before usable-capacity limits and losses.\nEnter usable battery energy and a solar estimate based on panel watts, equivalent full-sun hours and charging efficiency.\nThe app shows daily demand, estimated generation and shortfall. Battery-only days assume no charging.\nKeep reserve for essential devices. Nameplate solar output is not guaranteed daily production.",
+    "question": "What battery capacity and device wattages are shown on the labels?",
+    "prompt": "Using my saved power budget, how can we keep essentials running longer?",
+    "plan": "power"
+  },
+  {
+    "id": "first-aid",
+    "title": "First aid basics",
+    "keywords": "first aid bleeding injured injury medical care wound",
+    "url": "https://www.redcross.org/take-a-class/resources/learn-first-aid/bleeding-life-threatening-external",
+    "checked": "2026-09-15",
+    "text": "Make the scene safe before approaching.\nFor severe external bleeding, apply firm, steady direct pressure with a dressing or clean cloth; use a barrier against blood if available. Seek reachable trained help.\nFor other injuries, tell Jarvis what happened, symptoms, age group and available supplies. Use downloaded first-aid references.\nJarvis cannot examine someone, diagnose an injury or choose medication doses. Hands-free answers do not replace practical first-aid training.",
+    "question": "What happened, and what symptoms can you observe?",
+    "prompt": "Help me find first-aid guidance. What happened: ",
+    "plan": null
+  },
+  {
+    "id": "learn",
+    "title": "Learn or translate",
+    "keywords": "translate translation label language lesson teach learn training education instructions",
+    "url": "",
+    "checked": "2026-09-15",
+    "text": "For translation, type or paste the exact label and say the target language. Keep numbers, units and warnings with the text. Mark unreadable words instead of guessing them.\nFor a lesson, name the skill and your experience. Ask for one small step, an example and a check question.\nFor hands-free help, use Chat → Start voice mode after the voice and language models are ready.\nVerify safety-critical labels against the original before acting.",
+    "question": "What text should I translate, or what skill would you like to learn?",
+    "prompt": "Translate this label into English: ",
+    "plan": null
+  },
+  {
+    "id": "community",
+    "title": "Work as a group",
+    "keywords": "community people skills resources responsibility request help rebuild project maintenance dependencies",
+    "url": "",
+    "checked": "2026-09-15",
+    "text": "Use Plan → People for skills, needs, shared supplies and responsibilities.\nUse Today for repair projects: name the job, owner, due date, materials needed first and next maintenance check.\nUse Log to separate direct observations, reports, assumptions and decisions.\nReview unfinished work at a regular check-in. Keep a paper copy of meeting points and essential tasks in case the device loses power.",
+    "question": "Who is available, what needs doing, and what materials are on hand?",
+    "prompt": "Using my people and task records, help us organize the work.",
+    "plan": "people"
+  }
+]

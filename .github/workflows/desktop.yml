@@ -1,0 +1,47 @@
+name: Build desktop (unsigned)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.10'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: electron/package-lock.json
+      - run: python -m pip install -r requirements.txt pyinstaller==6.22.3 -c constraints.txt
+      - run: npm ci
+        working-directory: electron
+      - run: python -m unittest discover -s tests -p "test_*.py"
+      - name: Build without signing credentials
+        run: python scripts/build_electron.py
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          JARVIS_BUILD_GITHUB_TOKEN: ${{ github.token }}
+      - name: Archive unpacked Windows app
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path dist/win-unpacked/* -DestinationPath dist/JARVIS-windows-x64-unpacked.zip
+      - name: Record exact build dependencies
+        run: python -m pip freeze > dist/python-build-dependencies.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: JARVIS-${{ runner.os }}-${{ runner.arch }}-unsigned
+          retention-days: 7
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.zip
+            dist/*dependencies.txt

@@ -1,0 +1,54 @@
+{
+  "note": "Windows build environment supplement. Colorama is a Windows runtime dependency; the other entries preserve preinstalled build-tool sources.",
+  "components": [
+    {
+      "name": "argcomplete",
+      "version": "3.7.2",
+      "file": "argcomplete-3.7.2.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/87/6f/5a73f04007ca950701765949209f068da628bd11f9c2da287278ce91e0ee/argcomplete-3.7.2.tar.gz",
+      "sha256": "aad8b69a0b9969edb62db0d1752354c0d50717b10e0cbb00e2a958381b9fc6b9"
+    },
+    {
+      "name": "click",
+      "version": "8.5.0",
+      "file": "click-8.5.0.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/c7/0e/7fa0ef50764b67090eca4114772a2abf8b6148198475e54c660b97caeee6/click-8.5.0.tar.gz",
+      "sha256": "ba0d2089de75ea0310e2dde03160e6ca10009947fb95a182f9b54021bb272e34"
+    },
+    {
+      "name": "colorama",
+      "version": "0.4.6",
+      "file": "colorama-0.4.6.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/d8/53/6f443c9a4a8358a93a6792e2acffb9d9d5cb0a5cfd8802644b7b1c9a02e4/colorama-0.4.6.tar.gz",
+      "sha256": "08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"
+    },
+    {
+      "name": "filelock",
+      "version": "3.32.5",
+      "file": "filelock-3.32.5.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/0a/a0/50c2c0ce5e74d7721bbb1b19a26ebd339aac5878553a6e35308c2f31f935/filelock-3.32.5.tar.gz",
+      "sha256": "f6a6a28f743f9b95ce19db5abe0f376f75eb56517dff21e1a4751e2657d3e83d"
+    },
+    {
+      "name": "pipx",
+      "version": "1.17.2",
+      "file": "pipx-1.17.2.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/42/93/06d1b5899ecd84cb952b21418939db6518ccb681881c1d1e3f1cb75fa213/pipx-1.17.2.tar.gz",
+      "sha256": "e29d68d05f5b4707d3d3dbddb0adfc4ca4ddcd77052dbb8f4e1b5ad31629a07c"
+    },
+    {
+      "name": "platformdirs",
+      "version": "4.11.7",
+      "file": "platformdirs-4.11.7.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/69/b7/802a56eca9f2fac455b8bab5375a2647b0f0e14a2cd63ef077de3c4a7658/platformdirs-4.11.7.tar.gz",
+      "sha256": "4f41487eeeeeb07f3a6625e61d9bc0ae6809f92d3386dbd74392fbb76108104d"
+    },
+    {
+      "name": "userpath",
+      "version": "1.9.2",
+      "file": "userpath-1.9.2.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/d5/b7/30753098208505d7ff9be5b3a32112fb8a4cb3ddfccbbb7ba9973f2e29ff/userpath-1.9.2.tar.gz",
+      "sha256": "6c52288dab069257cc831846d15d48133522455d4677ee69a9781f11dbefd815"
+    }
+  ]
+}

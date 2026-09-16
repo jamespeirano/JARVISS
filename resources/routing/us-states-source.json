@@ -1,0 +1,5 @@
+{
+  "source": "https://www2.census.gov/geo/tiger/GENZ2025/shp/cb_2025_us_state_5m.zip",
+  "description": "US Census 2025 cartographic state boundaries, 1:5,000,000. Used for offline city-state filtering and test coverage, not navigation geometry.",
+  "count": 51
+}

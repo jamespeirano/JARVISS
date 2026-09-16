@@ -1,0 +1,56 @@
+appId: org.jarviss.desktop
+productName: JARVISS
+asar: true
+directories:
+  output: ../dist
+files:
+  - "*.html"
+  - "*.css"
+  - "*.js"
+  - "main.cjs"
+  - "preload.cjs"
+  - "atlas-protocol.cjs"
+  - "package.json"
+  - "map-assets/**/*"
+  - "!node_modules/**/*"
+extraResources:
+  - from: backend
+    to: backend
+    filter: ["jarviss-service", "jarviss-service.exe"]
+  - from: bundled-runtime
+    to: runtime
+  - from: ../LICENSE
+    to: LICENSE.txt
+  - from: ../docs/distribution-notices.md
+    to: distribution-notices.md
+  - from: ../COPYING
+    to: COPYING
+  - from: ../third_party
+    to: third_party
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-category.productivity
+  icon: icons/icon.icns
+  identity: null
+  notarize: false
+  extendInfo:
+    NSMicrophoneUsageDescription: JARVISS transcribes speech locally for hands-free conversation.
+dmg:
+  sign: false
+win:
+  target: nsis
+  icon: icons/icon.ico
+  signAndEditExecutable: true
+nsis:
+  oneClick: true
+  perMachine: false
+  deleteAppDataOnUninstall: false
+  installerIcon: icons/icon.ico
+  uninstallerIcon: icons/icon.ico
+linux:
+  target: AppImage
+  category: Utility
+publish: null
+artifactName: "JARVISS-${version}-${os}-${arch}.${ext}"

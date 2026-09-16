@@ -1,0 +1,26 @@
+# JARVIS walking. BRouter 1.7.10 expression profile, metres-based route cost.
+# Stay on recorded ways. Never create direct lines across missing connections.
+---context:global
+assign validForFoot = true
+assign validForBikes = false
+assign turnInstructionMode = 2
+assign turnInstructionCatchingRange = 20
+assign processUnusedTags = true
+assign pass1coefficient = 1.5
+assign pass2coefficient = 0
+assign maxSpeed = 5
+assign add_beeline = false
+---context:way
+assign defaultaccess = not access=private|no|permit|military
+assign footaccess = if foot= then defaultaccess else foot=yes|designated|permissive|destination
+assign forbidden = or not footaccess or route=ferry or not ford= or highway=motorway|motorway_link|trunk|trunk_link|construction|proposed|abandoned|raceway|via_ferrata or sac_scale=mountain_hiking|demanding_mountain_hiking|alpine_hiking|demanding_alpine_hiking|difficult_alpine_hiking highway=
+assign costfactor = if forbidden then 100000 else if highway=primary|primary_link then 6 else if highway=secondary|secondary_link then 3 else if highway=tertiary|tertiary_link then 2 else 1
+assign turncost = 0
+assign initialcost = 0
+assign priorityclassifier = if highway=primary|primary_link then 26 else if highway=secondary|secondary_link then 24 else if highway=tertiary|tertiary_link then 22 else if highway=residential|living_street|unclassified then 18 else if highway=service then 14 else 6
+assign classifiermask = if junction=roundabout then 4 else 0
+---context:node
+assign defaultaccess = not access=private|no|permit
+assign footaccess = if foot= then defaultaccess else not foot=private|no
+assign blocked = or not footaccess or not ford= barrier=fence|wall|hedge|guard_rail
+assign initialcost = if blocked then 1000000 else 0

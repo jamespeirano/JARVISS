@@ -1,0 +1,53 @@
+name: Verify published Windows installer
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag (for example v0.2.1)
+        required: true
+        type: string
+      sha256:
+        description: Expected installer SHA-256
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.10'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Download public installer
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          EXPECTED_SHA256: ${{ inputs.sha256 }}
+          RELEASE_REPOSITORY: ${{ github.repository }}
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') { throw 'Expected a version tag' }
+          if ($env:EXPECTED_SHA256 -notmatch '^[a-f0-9]{64}$') { throw 'Expected a SHA-256 checksum' }
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP/signed" | Out-Null
+          Invoke-WebRequest -Uri "https://github.com/$env:RELEASE_REPOSITORY/releases/download/$env:RELEASE_TAG/JARVISS-Windows-x64.exe" -OutFile "$env:RUNNER_TEMP/signed/JARVISS-Windows-x64.exe"
+      - name: Check signature and install
+        shell: pwsh
+        env:
+          EXPECTED_SHA256: ${{ inputs.sha256 }}
+        run: ./scripts/verify_windows_release.ps1
+      - name: Install UI test driver
+        run: npm install --prefix .verify --ignore-scripts --no-package-lock playwright@1.63.0
+      - name: Check installed app
+        shell: pwsh
+        run: node scripts/check_installed_ui.cjs "$env:RUNNER_TEMP/JarvisSignedTest/JARVISS.exe"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: windows-installed-startup
+          retention-days: 7
+          path: ${{ runner.temp }}/jarvis-signed-startup.png

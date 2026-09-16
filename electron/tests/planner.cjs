@@ -1,0 +1,32 @@
+const {_electron:electron}=require('playwright');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),assert=require('node:assert/strict');
+(async()=>{const root=path.resolve(__dirname,'../..'),data=fs.mkdtempSync(path.join(os.tmpdir(),'jarvis-planner-'));let app;
+try{const env={...process.env,JARVISS_DATA:data,JARVISS_APP_DATA:data};delete env.ELECTRON_RUN_AS_NODE;
+app=await electron.launch({args:[path.join(root,'electron')],env});const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.waitForFunction(()=>document.querySelector('#status').textContent==='Model not started');
+assert.equal(await page.locator('[name="lat"], [name="lon"]').count(),0);
+await page.locator('[data-page="docs"]').click();await page.locator('#situation-document summary').click();await page.locator('[name="location_text"]').fill('123 Congress Ave, Austin, TX');await page.locator('#situation-find').click();
+assert.equal(await page.locator('#atlas').isVisible(),true);assert.equal(await page.locator('#city-search').inputValue(),'Austin, TX');assert.equal(await page.locator('#landmark-search').inputValue(),'123 Congress Ave');
+assert.equal(await page.evaluate(async()=>(await window.jarviss.command('state')).profile.lat),'');
+await page.locator('[data-page="plan"]').click();
+async function tab(name){await page.locator('#plan-tabs button').filter({hasText:new RegExp('^'+name+'$')}).click();}
+async function add(values){for(const [key,value] of Object.entries(values)){const input=page.locator('#plan-form [name="'+key+'"]');if(await input.evaluate(e=>e.tagName)==='SELECT')await input.selectOption(value);else await input.fill(String(value));}await page.locator('#plan-form button[type="submit"]').click();await page.waitForFunction(name=>[...document.querySelectorAll('#plan-list .plan-record strong')].some(e=>e.textContent===name),values.name).catch(async e=>{console.error('Plan failure:',await page.locator('#error').textContent(),await page.locator('#plan-form').innerText(),await page.locator('#plan-form').evaluate(f=>Object.fromEntries(new FormData(f))));throw e;});}
+await add({name:'Water',quantity:30,unit:'liters',daily:10});await page.waitForFunction(()=>document.querySelector('#plan-list').textContent.includes('3 days left'));
+await page.locator('#plan-list button').filter({hasText:'Edit'}).click();await page.locator('#plan-form [name="quantity"]').fill('20');await page.locator('#plan-form button[type="submit"]').click();await page.waitForFunction(()=>document.querySelector('#plan-list').textContent.includes('2 days left'));
+await tab('Today');await add({name:'Paint storage shelf',priority:'Later'});await add({name:'Collect safe water',priority:'Now',owner:'Alex',needs:'Clean containers',due:'2026-09-16',check:'2026-09-17'});
+await page.waitForFunction(()=>document.querySelector('#plan-list .plan-record strong').textContent==='Collect safe water');
+await tab('Power');await add({name:'Radio',watts:12,hours:2});for(const [k,v] of Object.entries({battery_wh:120,solar_watts:20,sun_hours:3,efficiency:80}))await page.locator('#energy-form [name="'+k+'"]').fill(String(v));await page.locator('#energy-form button').click();await page.waitForFunction(()=>document.querySelector('#power-summary').textContent.includes('Battery alone: 5 days'));
+await tab('Garden');await add({name:'Beans',quantity:20,plant_on:'2026-05-01',days:60,next_check:'2026-05-08',notes:'South bed'});await page.waitForFunction(()=>document.querySelector('#plan-list').textContent.includes('2026-06-30'));
+await tab('People');await add({name:'Alex',skills:'Bicycle repair',needs:'Water',responsibility:'Repair pump',contact:'Library at noon'});
+await tab('Log');await add({name:'Bridge damaged',status:'Reported',observer:'Neighbor',place:'River road'});assert.match(await page.locator('#plan-list').innerText(),/Reported/);
+await tab('Messages');await page.locator('#board-form [name="name"]').fill('Alex');await page.locator('#board-form [name="text"]').fill('Meet at the library at noon.');await page.locator('#board-form button').click();await page.waitForFunction(()=>document.querySelector('#board-messages').textContent.includes('Meet at the library'));
+await page.reload();await page.waitForFunction(()=>document.querySelector('#status').textContent==='Model not started');await page.locator('[data-page="plan"]').click();assert.match(await page.locator('#plan-list').innerText(),/2 days left/);
+await page.locator('[data-page="docs"]').click();assert.equal(await page.locator('#guides details').count(),16);await page.locator('.recovery-entry summary').click();const recovery=await page.locator('#recovery-document').innerText();assert.ok(recovery.split(/\s+/).length<150);
+await page.locator('#paste-document').click();await page.locator('#note-form [name="title"]').fill('Pump TP1 manual');await page.locator('#note-form [name="text"]').fill('E04: Intake obstruction. Switch off and check the filter.');await page.locator('#note-form button').filter({hasText:'Save document'}).click();await page.waitForFunction(()=>document.querySelector('#documents').textContent.includes('Pump TP1 manual'));
+await page.locator('#docs-search').fill('E04');assert.equal(await page.locator('#documents .doc-entry:visible').count(),1);assert.equal(await page.locator('#guides .doc-entry:visible').count(),0);
+await page.locator('#documents summary').click();assert.match(await page.locator('#documents').innerText(),/Intake obstruction/);await page.locator('#docs-search').fill('');
+await page.locator('#guides details').filter({hasText:'Make supplies last'}).locator('summary').click();await page.locator('#guides details').filter({hasText:'Make supplies last'}).getByRole('button',{name:'Open Supplies'}).click();assert.equal(await page.locator('#plan').isVisible(),true);
+await page.locator('#plan-ask').click();assert.match(await page.locator('#question').inputValue(),/saved supplies/);
+await page.locator('[data-page="plan"]').click();await page.screenshot({path:path.join(root,'local-data/planner.png')});
+assert.deepEqual(errors,[]);console.log('PASS: no coordinate fields; street/address discovery without assumed position; supply edits; daily priorities; power budget; garden dates; people; evidence labels; messages; restart persistence; short guides; direct actions');
+}finally{if(app)await app.close();fs.rmSync(data,{recursive:true,force:true});}})().catch(e=>{console.error(e);process.exitCode=1;});

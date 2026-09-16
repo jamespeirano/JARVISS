@@ -1,0 +1,12 @@
+# Release and access-sensitive changes require the owner's review.
+/.github/ @jamespeirano
+/scripts/ @jamespeirano
+/electron/electron-builder.yml @jamespeirano
+/electron/package*.json @jamespeirano
+/requirements.txt @jamespeirano
+/constraints.txt @jamespeirano
+/third_party/ @jamespeirano
+/LICENSE @jamespeirano
+/COPYING @jamespeirano
+/SECURITY.md @jamespeirano
+/docs/distribution-notices.md @jamespeirano

@@ -1,0 +1,47 @@
+# Private working material
+private/
+local-notes/
+conversation-exports/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Generated files and local tools
+node_modules/
+__pycache__/
+.venv/
+dist/
+.DS_Store
+Thumbs.db
+models/
+runtime/
+local-data/
+local-maps/*.pmtiles
+local-maps/*.partial
+electron/map-bundle.js
+electron/map-bundle.js.LEGAL.txt
+electron/map-assets/maplibre-*
+build/
+*.spec
+JARVISS.exe
+JARVISS.app/
+JARVISS
+electron/backend/
+service.log
+*.zip
+
+local-maps/routing-us/
+
+electron/bundled-runtime/
+
+# Private signing material and local data
+*.p12
+*.pfx
+*.mobileprovision
+.azure/
+.signing/
+local-maps/
+third-party-sources/
+release-work/

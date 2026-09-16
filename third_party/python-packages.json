@@ -1,0 +1,524 @@
+[
+  {
+    "name": "numpy",
+    "version": "2.5.3",
+    "license": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
+    "urls": [
+      "homepage, https://numpy.org",
+      "documentation, https://numpy.org/doc/",
+      "source, https://github.com/numpy/numpy",
+      "download, https://pypi.org/project/numpy/#files",
+      "tracker, https://github.com/numpy/numpy/issues",
+      "release notes, https://numpy.org/doc/stable/release"
+    ]
+  },
+  {
+    "name": "termcolor",
+    "version": "3.3.0",
+    "license": "MIT",
+    "urls": [
+      "Changelog, https://github.com/termcolor/termcolor/releases",
+      "Homepage, https://github.com/termcolor/termcolor",
+      "Source, https://github.com/termcolor/termcolor"
+    ]
+  },
+  {
+    "name": "cloudpickle",
+    "version": "3.1.2",
+    "license": "BSD-3-Clause",
+    "urls": []
+  },
+  {
+    "name": "language-tags",
+    "version": "1.3.1",
+    "license": "MIT",
+    "urls": [
+      "History, https://github.com/OnroerendErfgoed/language-tags/blob/master/HISTORY.rst",
+      "Tracker, https://github.com/OnroerendErfgoed/language-tags/issues",
+      "Source, https://github.com/OnroerendErfgoed/language-tags",
+      "Documentation, https://language-tags.readthedocs.io/en/latest/"
+    ]
+  },
+  {
+    "name": "rpds-py",
+    "version": "2026.6.3",
+    "license": "MIT",
+    "urls": [
+      "Documentation, https://rpds.readthedocs.io/",
+      "Funding, https://github.com/sponsors/Julian",
+      "Homepage, https://github.com/crate-py/rpds",
+      "Issues, https://github.com/crate-py/rpds/issues/",
+      "Source, https://github.com/crate-py/rpds",
+      "Tidelift, https://tidelift.com/subscription/pkg/pypi-rpds-py?utm_source=pypi-rpds-py&utm_medium=referral&utm_campaign=pypi-link",
+      "Upstream, https://github.com/orium/rpds"
+    ]
+  },
+  {
+    "name": "colorlog",
+    "version": "6.12.0",
+    "license": "MIT License",
+    "urls": []
+  },
+  {
+    "name": "rfc3986",
+    "version": "1.5.0",
+    "license": "Apache 2.0",
+    "urls": []
+  },
+  {
+    "name": "pmtiles",
+    "version": "3.8.0",
+    "license": "BSD-3-Clause",
+    "urls": []
+  },
+  {
+    "name": "mapbox-vector-tile",
+    "version": "2.2.0",
+    "license": "MIT",
+    "urls": [
+      "Repository, https://github.com/tilezen/mapbox-vector-tile"
+    ]
+  },
+  {
+    "name": "packaging",
+    "version": "26.3",
+    "license": "Apache-2.0 OR BSD-2-Clause",
+    "urls": [
+      "Documentation, https://packaging.pypa.io/",
+      "Source, https://github.com/pypa/packaging"
+    ]
+  },
+  {
+    "name": "joblib",
+    "version": "1.6.0",
+    "license": "BSD-3-Clause",
+    "urls": [
+      "Homepage, https://joblib.readthedocs.io",
+      "Source, https://github.com/joblib/joblib"
+    ]
+  },
+  {
+    "name": "altgraph",
+    "version": "0.17.5",
+    "license": "MIT",
+    "urls": [
+      "Documentation, https://altgraph.readthedocs.io/en/latest/",
+      "Issue tracker, https://github.com/ronaldoussoren/altgraph/issues",
+      "Repository, https://github.com/ronaldoussoren/altgraph"
+    ]
+  },
+  {
+    "name": "charset-normalizer",
+    "version": "3.5.1",
+    "license": "MIT",
+    "urls": [
+      "Changelog, https://github.com/jawah/charset_normalizer/blob/master/CHANGELOG.md",
+      "Documentation, https://charset-normalizer.readthedocs.io/",
+      "Code, https://github.com/jawah/charset_normalizer",
+      "Issue tracker, https://github.com/jawah/charset_normalizer/issues"
+    ]
+  },
+  {
+    "name": "soxr",
+    "version": "1.0.0",
+    "license": "LGPL-2.1-or-later",
+    "urls": [
+      "Homepage, https://github.com/dofuuz/python-soxr",
+      "Documentation, https://python-soxr.readthedocs.io",
+      "Source, https://github.com/dofuuz/python-soxr",
+      "Bug Tracker, https://github.com/dofuuz/python-soxr/issues"
+    ]
+  },
+  {
+    "name": "segments",
+    "version": "2.4.0",
+    "license": "Apache 2.0",
+    "urls": [
+      "Bug Tracker, https://github.com/cldf/segments/issues"
+    ]
+  },
+  {
+    "name": "jsonschema-specifications",
+    "version": "2025.9.1",
+    "license": "MIT",
+    "urls": [
+      "Documentation, https://jsonschema-specifications.readthedocs.io/",
+      "Homepage, https://github.com/python-jsonschema/jsonschema-specifications",
+      "Issues, https://github.com/python-jsonschema/jsonschema-specifications/issues/",
+      "Funding, https://github.com/sponsors/Julian",
+      "Tidelift, https://tidelift.com/subscription/pkg/pypi-jsonschema-specifications?utm_source=pypi-jsonschema-specifications&utm_medium=referral&utm_campaign=pypi-link",
+      "Source, https://github.com/python-jsonschema/jsonschema-specifications"
+    ]
+  },
+  {
+    "name": "requests",
+    "version": "2.34.2",
+    "license": "Apache-2.0",
+    "urls": [
+      "Documentation, https://requests.readthedocs.io",
+      "Source, https://github.com/psf/requests"
+    ]
+  },
+  {
+    "name": "vosk",
+    "version": "0.3.44",
+    "license": "UNKNOWN",
+    "urls": []
+  },
+  {
+    "name": "csvw",
+    "version": "4.1.0",
+    "license": "Apache 2.0",
+    "urls": [
+      "Bug Tracker, https://github.com/cldf/csvw/issues"
+    ]
+  },
+  {
+    "name": "jsonschema",
+    "version": "4.26.0",
+    "license": "MIT",
+    "urls": [
+      "Homepage, https://github.com/python-jsonschema/jsonschema",
+      "Documentation, https://python-jsonschema.readthedocs.io/",
+      "Issues, https://github.com/python-jsonschema/jsonschema/issues/",
+      "Funding, https://github.com/sponsors/Julian",
+      "Tidelift, https://tidelift.com/subscription/pkg/pypi-jsonschema?utm_source=pypi-jsonschema&utm_medium=referral&utm_campaign=pypi-link",
+      "Changelog, https://github.com/python-jsonschema/jsonschema/blob/main/CHANGELOG.rst",
+      "Source, https://github.com/python-jsonschema/jsonschema"
+    ]
+  },
+  {
+    "name": "babel",
+    "version": "2.18.0",
+    "license": "BSD-3-Clause",
+    "urls": [
+      "Source, https://github.com/python-babel/babel"
+    ]
+  },
+  {
+    "name": "shapely",
+    "version": "2.1.2",
+    "license": "BSD 3-Clause",
+    "urls": [
+      "Documentation, https://shapely.readthedocs.io/",
+      "Repository, https://github.com/shapely/shapely"
+    ]
+  },
+  {
+    "name": "srt",
+    "version": "3.5.3",
+    "license": "MIT",
+    "urls": []
+  },
+  {
+    "name": "uritemplate",
+    "version": "4.2.0",
+    "license": "BSD 3-Clause OR Apache-2.0",
+    "urls": [
+      "Source, https://github.com/python-hyper/uritemplate"
+    ]
+  },
+  {
+    "name": "kokoro-onnx",
+    "version": "0.4.9",
+    "license": "",
+    "urls": [
+      "Homepage, https://github.com/thewh1teagle/kokoro-onnx",
+      "Repository, https://github.com/thewh1teagle/kokoro-onnx",
+      "Issues, https://github.com/thewh1teagle/kokoro-onnx/issues"
+    ]
+  },
+  {
+    "name": "isodate",
+    "version": "0.7.2",
+    "license": "Copyright (c) 2021, Hugo van Kemenade and contributors",
+    "urls": [
+      "Homepage, https://github.com/gweis/isodate/"
+    ]
+  },
+  {
+    "name": "tqdm",
+    "version": "4.70.1",
+    "license": "MPL-2.0 AND MIT",
+    "urls": [
+      "homepage, https://tqdm.github.io",
+      "repository, https://github.com/tqdm/tqdm",
+      "changelog, https://tqdm.github.io/releases",
+      "wiki, https://github.com/tqdm/tqdm/wiki"
+    ]
+  },
+  {
+    "name": "setuptools",
+    "version": "84.0.0",
+    "license": "MIT",
+    "urls": [
+      "Source, https://github.com/pypa/setuptools",
+      "Documentation, https://setuptools.pypa.io/",
+      "Changelog, https://setuptools.pypa.io/en/stable/history.html"
+    ]
+  },
+  {
+    "name": "protobuf",
+    "version": "6.33.6",
+    "license": "3-Clause BSD License",
+    "urls": []
+  },
+  {
+    "name": "pycparser",
+    "version": "3.0",
+    "license": "BSD-3-Clause",
+    "urls": [
+      "Homepage, https://github.com/eliben/pycparser"
+    ]
+  },
+  {
+    "name": "pyinstaller",
+    "version": "6.22.3",
+    "license": "GPLv2-or-later with a special exception which allows to use PyInstaller to build and distribute non-free programs (including commercial ones)",
+    "urls": [
+      "Homepage, https://pyinstaller.org",
+      "Documentation, https://pyinstaller.org",
+      "Source Code, https://github.com/pyinstaller/pyinstaller",
+      "Release Notes, https://pyinstaller.org/en/stable/CHANGES.html"
+    ]
+  },
+  {
+    "name": "python-dateutil",
+    "version": "2.9.0.post0",
+    "license": "Dual License",
+    "urls": [
+      "Documentation, https://dateutil.readthedocs.io/en/stable/",
+      "Source, https://github.com/dateutil/dateutil"
+    ]
+  },
+  {
+    "name": "macholib",
+    "version": "1.16.4",
+    "license": "MIT",
+    "urls": [
+      "Documentation, https://macholib.readthedocs.io/en/latest/",
+      "Issue tracker, https://github.com/ronaldoussoren/macholib/issues",
+      "Repository, https://github.com/ronaldoussoren/macholib"
+    ]
+  },
+  {
+    "name": "idna",
+    "version": "3.19",
+    "license": "BSD-3-Clause",
+    "urls": [
+      "Changelog, https://github.com/kjd/idna/blob/master/HISTORY.md",
+      "Issue tracker, https://github.com/kjd/idna/issues",
+      "Source, https://github.com/kjd/idna"
+    ]
+  },
+  {
+    "name": "cffi",
+    "version": "2.1.1",
+    "license": "MIT-0",
+    "urls": [
+      "Documentation, https://cffi.readthedocs.io/",
+      "Changelog, https://cffi.readthedocs.io/en/latest/whatsnew.html",
+      "Download, https://github.com/python-cffi/cffi/releases",
+      "Contact, https://groups.google.com/forum/#!forum/python-cffi",
+      "Source Code, https://github.com/python-cffi/cffi",
+      "Issue Tracker, https://github.com/python-cffi/cffi/issues"
+    ]
+  },
+  {
+    "name": "onnxruntime",
+    "version": "1.30.0",
+    "license": "MIT License",
+    "urls": []
+  },
+  {
+    "name": "certifi",
+    "version": "2026.7.22",
+    "license": "MPL-2.0",
+    "urls": [
+      "Source, https://github.com/certifi/python-certifi"
+    ]
+  },
+  {
+    "name": "espeakng-loader",
+    "version": "0.2.4",
+    "license": "",
+    "urls": []
+  },
+  {
+    "name": "phonemizer-fork",
+    "version": "3.3.2",
+    "license": "GNU GENERAL PUBLIC LICENSE",
+    "urls": [
+      "Documentation, https://bootphon.github.io/phonemizer/",
+      "Repository, https://github.com/bootphon/phonemizer",
+      "Issues, https://github.com/bootphon/phonemizer",
+      "Changelog, https://github.com/bootphon/phonemizer/blob/master/docs/source/changelog.rst"
+    ]
+  },
+  {
+    "name": "referencing",
+    "version": "0.37.0",
+    "license": "MIT",
+    "urls": [
+      "Documentation, https://referencing.readthedocs.io/",
+      "Homepage, https://github.com/python-jsonschema/referencing",
+      "Issues, https://github.com/python-jsonschema/referencing/issues/",
+      "Funding, https://github.com/sponsors/Julian",
+      "Tidelift, https://tidelift.com/subscription/pkg/pypi-referencing?utm_source=pypi-referencing&utm_medium=referral&utm_campaign=pypi-link",
+      "Changelog, https://referencing.readthedocs.io/en/stable/changes/",
+      "Source, https://github.com/python-jsonschema/referencing"
+    ]
+  },
+  {
+    "name": "pyparsing",
+    "version": "3.3.2",
+    "license": "MIT",
+    "urls": [
+      "Documentation, https://pyparsing-docs.readthedocs.io/en/latest/",
+      "Homepage, https://github.com/pyparsing/pyparsing/",
+      "Source, https://github.com/pyparsing/pyparsing.git"
+    ]
+  },
+  {
+    "name": "pyshp",
+    "version": "3.1.6",
+    "license": "MIT",
+    "urls": [
+      "Repository, https://github.com/GeospatialPython/pyshp"
+    ]
+  },
+  {
+    "name": "pyclipper",
+    "version": "1.4.0",
+    "license": "MIT",
+    "urls": []
+  },
+  {
+    "name": "flatbuffers",
+    "version": "25.12.19",
+    "license": "Apache 2.0",
+    "urls": [
+      "Documentation, https://google.github.io/flatbuffers/",
+      "Source, https://github.com/google/flatbuffers"
+    ]
+  },
+  {
+    "name": "attrs",
+    "version": "26.1.0",
+    "license": "MIT",
+    "urls": [
+      "Documentation, https://www.attrs.org/",
+      "Changelog, https://www.attrs.org/en/stable/changelog.html",
+      "GitHub, https://github.com/python-attrs/attrs",
+      "Funding, https://github.com/sponsors/hynek",
+      "Tidelift, https://tidelift.com/subscription/pkg/pypi-attrs?utm_source=pypi-attrs&utm_medium=pypi"
+    ]
+  },
+  {
+    "name": "pyinstaller-hooks-contrib",
+    "version": "2026.7",
+    "license": "",
+    "urls": []
+  },
+  {
+    "name": "websockets",
+    "version": "17.1",
+    "license": "BSD-3-Clause",
+    "urls": [
+      "Homepage, https://github.com/python-websockets/websockets",
+      "Changelog, https://websockets.readthedocs.io/en/stable/project/changelog.html",
+      "Documentation, https://websockets.readthedocs.io/",
+      "Funding, https://tidelift.com/subscription/pkg/pypi-websockets?utm_source=pypi-websockets&utm_medium=referral&utm_campaign=readme",
+      "Tracker, https://github.com/python-websockets/websockets/issues"
+    ]
+  },
+  {
+    "name": "urllib3",
+    "version": "2.7.0",
+    "license": "MIT",
+    "urls": [
+      "Changelog, https://github.com/urllib3/urllib3/blob/main/CHANGES.rst",
+      "Documentation, https://urllib3.readthedocs.io",
+      "Code, https://github.com/urllib3/urllib3",
+      "Issue tracker, https://github.com/urllib3/urllib3/issues"
+    ]
+  },
+  {
+    "name": "typing_extensions",
+    "version": "4.16.0",
+    "license": "PSF-2.0",
+    "urls": [
+      "Bug Tracker, https://github.com/python/typing_extensions/issues",
+      "Changes, https://github.com/python/typing_extensions/blob/main/CHANGELOG.md",
+      "Documentation, https://typing-extensions.readthedocs.io/",
+      "Home, https://github.com/python/typing_extensions",
+      "Q & A, https://github.com/python/typing/discussions",
+      "Repository, https://github.com/python/typing_extensions"
+    ]
+  },
+  {
+    "name": "sounddevice",
+    "version": "0.5.3",
+    "license": "MIT",
+    "urls": [
+      "Source, https://github.com/spatialaudio/python-sounddevice"
+    ]
+  },
+  {
+    "name": "psutil",
+    "version": "7.2.2",
+    "license": "BSD-3-Clause",
+    "urls": []
+  },
+  {
+    "name": "pypdf",
+    "version": "6.18.1",
+    "license": "BSD-3-Clause",
+    "urls": [
+      "Bug Reports, https://github.com/py-pdf/pypdf/issues",
+      "Changelog, https://pypdf.readthedocs.io/en/latest/meta/CHANGELOG.html",
+      "Documentation, https://pypdf.readthedocs.io/en/latest/",
+      "Source, https://github.com/py-pdf/pypdf"
+    ]
+  },
+  {
+    "name": "rdflib",
+    "version": "7.6.0",
+    "license": "BSD-3-Clause",
+    "urls": [
+      "Documentation, https://rdflib.readthedocs.org/",
+      "Repository, https://github.com/RDFLib/rdflib"
+    ]
+  },
+  {
+    "name": "regex",
+    "version": "2026.9.10",
+    "license": "Apache-2.0 AND CNRI-Python",
+    "urls": [
+      "Homepage, https://github.com/mrabarnett/mrab-regex"
+    ]
+  },
+  {
+    "name": "six",
+    "version": "1.17.0",
+    "license": "MIT",
+    "urls": []
+  },
+  {
+    "name": "pip",
+    "version": "26.0",
+    "license": "MIT",
+    "urls": [
+      "Changelog, https://pip.pypa.io/en/stable/news/",
+      "Documentation, https://pip.pypa.io",
+      "Homepage, https://pip.pypa.io/",
+      "Source, https://github.com/pypa/pip"
+    ]
+  },
+  {
+    "name": "dlinfo",
+    "version": "2.0.0",
+    "license": "MIT",
+    "urls": []
+  }
+]

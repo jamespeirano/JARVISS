@@ -1,0 +1,36 @@
+{
+  "components": [
+    {
+      "name": "openssl@3",
+      "version": "3.6.1",
+      "license": "Apache-2.0",
+      "url": "https://github.com/openssl/openssl/releases/download/openssl-3.6.1/openssl-3.6.1.tar.gz",
+      "sha256": "b1bfedcd5b289ff22aee87c9d600f515767ebf45f77168cb6d64f231f518a82e",
+      "file": "openssl-3.6.1.tar.gz"
+    },
+    {
+      "name": "xz",
+      "version": "5.8.3",
+      "license": "0BSD and bundled component licenses",
+      "url": "https://github.com/tukaani-project/xz/releases/download/v5.8.3/xz-5.8.3.tar.gz",
+      "sha256": "3d3a1b973af218114f4f889bbaa2f4c037deaae0c8e815eec381c3d546b974a0",
+      "file": "xz-5.8.3.tar.gz"
+    },
+    {
+      "name": "mpdecimal",
+      "version": "4.0.1",
+      "license": "BSD-2-Clause",
+      "url": "https://www.bytereef.org/software/mpdecimal/releases/mpdecimal-4.0.1.tar.gz",
+      "sha256": "96d33abb4bb0070c7be0fed4246cd38416188325f820468214471938545b1ac8",
+      "file": "mpdecimal-4.0.1.tar.gz"
+    },
+    {
+      "name": "python@3.12",
+      "version": "3.12.13",
+      "license": "PSF-2.0",
+      "url": "https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz",
+      "sha256": "0816c4761c97ecdb3f50a3924de0a93fd78cb63ee8e6c04201ddfaedca500b0b",
+      "file": "Python-3.12.13.tgz"
+    }
+  ]
+}

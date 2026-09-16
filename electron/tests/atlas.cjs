@@ -1,0 +1,82 @@
+const {_electron:electron}=require('playwright');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),assert=require('node:assert/strict');
+(async()=>{
+ const data=fs.mkdtempSync(path.join(os.tmpdir(),'jarvis-atlas-'));
+ const cachedIndex=path.resolve(__dirname,'../../local-data/map-index');
+ if(fs.existsSync(cachedIndex))fs.cpSync(cachedIndex,path.join(data,'map-index'),{recursive:true});
+ let app;
+ try{
+  const env={...process.env,JARVISS_DATA:data,JARVISS_APP_DATA:data};delete env.ELECTRON_RUN_AS_NODE;
+  app=await electron.launch({args:[path.resolve(__dirname,'..')],env});
+  await app.evaluate(({session})=>{globalThis.externalRequests=[];session.defaultSession.webRequest.onBeforeRequest((details,done)=>{if(/^https?:/.test(details.url)){globalThis.externalRequests.push(details.url);done({cancel:true});}else done({});});});
+  const page=await app.firstWindow();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  page.on('console',m=>{if(m.type()==='error')console.error('renderer:',m.text());});
+  await page.waitForFunction(()=>document.querySelector('#status').textContent==='Model not started');
+  await page.locator('[data-page="atlas"]').click();
+  await page.waitForFunction(()=>window.jarvisDetailMap?.isStyleLoaded(),{},{timeout:30000});
+  assert.match(await page.locator('#map-local-status').innerText(),/Offline/);
+  // Search by human place names; neither search nor city selection may set a position.
+  assert.equal(await page.evaluate(async()=>(await window.jarviss.command('state')).profile.lat),undefined);
+  await page.locator('#find-location').click();await page.locator('#city-search').fill('Austin, Texas');
+  await page.locator('#city-search-form button').click();
+  await page.waitForFunction(()=>document.querySelectorAll('#location-results button').length>0,{},{timeout:120000});
+  await page.locator('#location-results button').first().click();
+  assert.equal(await page.evaluate(async()=>(await window.jarviss.command('state')).profile.lat),undefined);
+  assert.equal(fs.existsSync(path.join(data,'profile.json')),false);
+  await page.locator('#landmark-search').fill('CVS Pharmacy');await page.locator('#landmark-search-form button').click();
+  await page.waitForFunction(()=>document.querySelector('#location-results')?.textContent.includes('CVS Pharmacy'));
+  await page.locator('#location-results button').first().click();
+  await page.locator('.maplibregl-popup-content button').filter({hasText:'I am here'}).click();
+  await page.waitForFunction(async()=>(await window.jarviss.command('state')).profile.lat!=null);
+  assert.equal(typeof JSON.parse(fs.readFileSync(path.join(data,'profile.json'))).lat,'number');
+  await page.screenshot({path:path.resolve(__dirname,'../../local-data/location-confirmed.png')});
+  await page.evaluate(async()=>{await window.jarviss.command('set_map_position',{lat:30.2672,lon:-97.7431});await refresh();window.offlineAtlas.center();});
+  await page.locator('#map-search').fill('pharmacy');
+  await page.waitForFunction(()=>document.querySelectorAll('#places .place-card').length>0);
+  assert.match(await page.locator('#places').innerText(),/miles.*straight-line/);
+  await page.waitForFunction(()=>window.jarvisDetailMap?.areTilesLoaded(),{},{timeout:30000});
+  fs.mkdirSync(path.resolve(__dirname,'../../local-data'),{recursive:true});
+  await page.screenshot({path:path.resolve(__dirname,'../../local-data/offline-atlas.png')});
+  await page.locator('#set-position').click();
+  await page.locator('#detail-map').click({position:{x:320,y:210}});
+  const stored=JSON.parse(fs.readFileSync(path.join(data,'profile.json')));
+  assert.equal(typeof stored.lat,'number');
+  await page.locator('[data-page="assistant"]').click();
+  await page.locator('#question').fill('Where is the nearest water?');await page.locator('#send').click();
+  await page.waitForFunction(()=>document.querySelectorAll('.message.assistant').length>0);
+  const answer=await page.locator('.message.assistant').last().innerText();
+  assert.match(answer,/miles/);assert.match(answer,/Mapped walk|connected walking route|250 m/);assert.match(answer,/safe to drink/);
+  // Import a prepared pack and exercise chat routes, then ensure a failed request clears the overlay.
+  await page.evaluate(async()=>{await window.jarviss.command('example_map');await window.jarviss.command('set_map_position',{lat:40.7736,lon:-73.9712});await refresh();});
+  await page.locator('#question').fill('Where is the nearest water?');await page.locator('#send').click();
+  await page.waitForFunction(()=>document.querySelectorAll('.message.assistant').length===2);
+  assert.match(await page.locator('.message.assistant').last().innerText(),/Mapped walk/);
+  await page.locator('[data-page="atlas"]').click();
+  const routeStep=page.locator('#route-info > p').first();assert.match(await routeStep.innerText(),/^1 of/);
+  await page.locator('#route-info button').filter({hasText:'Next'}).click();assert.match(await routeStep.innerText(),/^2 of/);
+  await page.locator('#route-info button').filter({hasText:'Back'}).click();assert.match(await routeStep.innerText(),/^1 of/);
+  assert.equal(await page.locator('#route-info details').getAttribute('open'),null);
+  await page.locator('[data-page="assistant"]').click();
+  await page.locator('#question').fill('Give me directions');await page.locator('#send').click();
+  await page.waitForFunction(()=>document.querySelectorAll('.message.assistant').length===3);
+  assert.match(await page.locator('.message.assistant').last().innerText(),/Mapped walk/);
+  await page.locator('#question').fill('How many miles to Atlantis?');await page.locator('#send').click();
+  await page.waitForFunction(()=>document.querySelectorAll('.message.assistant').length===4);
+  assert.equal(await page.evaluate(()=>route),null);
+  assert.equal(await page.locator('#route-info').innerText(),'');
+  const realPack=path.resolve(__dirname,'../../local-data/verification-austin-routing.json');
+  if(fs.existsSync(realPack)){
+   await app.evaluate(({dialog},pack)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[pack]});},realPack);
+   await page.evaluate(async()=>{await window.jarviss.command('use_basemap');await window.jarviss.pick('map');await window.jarviss.command('set_map_position',{lat:30.2672,lon:-97.7431});await refresh();});
+   await page.locator('#question').fill('Where is the nearest pharmacy?');await page.locator('#send').click();
+   await page.waitForFunction(()=>document.querySelectorAll('.message.assistant').length===5);
+   assert.match(await page.locator('.message.assistant').last().innerText(),/Mapped walk/);
+   await page.locator('[data-page="atlas"]').click();
+   await page.waitForFunction(()=>window.jarvisDetailMap.queryRenderedFeatures({layers:['route-line']}).length>0&&!window.jarvisDetailMap.isMoving()&&window.jarvisDetailMap.areTilesLoaded());
+   await page.screenshot({path:path.resolve(__dirname,'../../local-data/offline-walking-route.png')});
+  }
+  assert.deepEqual(await app.evaluate(()=>globalThis.externalRequests),[]);
+  assert.deepEqual(errors,[]);
+  console.log('PASS: no default position, city/landmark discovery and explicit confirmation, real US map render, local fonts/tiles, position selection, feature search, grounded chat, followup directions and stale-route clearing with external HTTP blocked');
+ }finally{if(app)await app.close();fs.rmSync(data,{recursive:true,force:true});}
+})().catch(e=>{console.error(e);process.exitCode=1;});

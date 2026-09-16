@@ -1,0 +1,11 @@
+vosk==0.3.45; sys_platform != 'darwin'
+vosk==0.3.44; sys_platform == 'darwin'
+sounddevice==0.5.3
+kokoro-onnx==0.4.9
+onnxruntime==1.30.0
+soxr==1.0.0
+pywin32==312; sys_platform == 'win32'
+pmtiles==3.8.0
+mapbox-vector-tile==2.2.0
+pypdf==6.18.1
+psutil==7.2.2
