@@ -3,34 +3,122 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Download JARVISS for Mac or Windows.">
+  <meta name="description" content="JARVISS is an offline survival assistant with local AI, US maps and a built-in field library. Download for Mac or Windows. Set up once, then use without internet.">
   <meta name="color-scheme" content="dark">
-  <title>Download JARVISS</title>
+  <title>JARVISS — Offline survival assistant</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
   <style>
+    :root { color-scheme: dark; --bg: #101416; --panel: #182125; --line: #314047; --text: #f2f6f5; --muted: #aebfc3; --accent: #a9e4cf; }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; min-height: 100svh; display: grid; place-items: center; background: #101416; color: #f5f8fa; font-family: system-ui, sans-serif; }
-    main { width: min(720px, 100%); padding: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    a { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 42px 24px; border: 1px solid #38505a; border-radius: 20px; color: inherit; text-align: center; text-decoration: none; background: #192227; }
-    a:hover { background: #22343d; border-color: #78cde6; }
-    a:focus-visible { outline: 3px solid #91def4; outline-offset: 6px; }
-    strong { font-size: 21px; font-weight: 600; }
-    small { font-size: 14px; color: #adc1ca; }
-    svg { width: 32px; height: 32px; margin-bottom: 8px; color: #91def4; }
-    @media (max-width: 540px) { main { max-width: 380px; grid-template-columns: 1fr; } a { padding: 32px 20px; } }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    main { width: min(1000px, 100%); margin: auto; padding: 52px 28px 40px; }
+    h1 { margin: 0; font-size: 32px; font-weight: 650; letter-spacing: -.04em; }
+    .acronym { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+    .intro { margin: 34px 0 26px; display: grid; grid-template-columns: 1fr 1fr; gap: 38px; align-items: end; }
+    h2 { margin: 0 0 12px; font-size: clamp(28px, 4vw, 38px); font-weight: 550; line-height: 1.2; letter-spacing: -.03em; }
+    .intro p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.65; }
+    .offline { padding-left: 18px; border-left: 2px solid var(--accent); }
+    .offline strong { display: block; margin-bottom: 6px; color: var(--accent); font-size: 17px; font-weight: 550; }
+    .downloads { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .download { display: flex; flex-direction: column; gap: 7px; padding: 20px 22px; border: 1px solid #425a60; border-radius: 12px; color: var(--text); text-decoration: none; background: var(--panel); transition: background .15s, border-color .15s; }
+    .download:hover { background: #233238; border-color: var(--accent); }
+    a:focus-visible, .preview input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: 4px; }
+    .download strong { font-size: 20px; font-weight: 600; }
+    .download small { color: var(--muted); font-size: 13px; }
+    .requirements { margin: 12px 0 34px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+    .preview { border: 0; padding: 0; margin: 0; min-width: 0; }
+    .preview legend { float: left; margin: 6px 18px 14px 0; font-size: 14px; color: var(--muted); }
+    .preview input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .preview label { display: inline-block; padding: 7px 14px; margin: 0 4px 14px 0; border-radius: 7px; font-size: 14px; color: var(--muted); cursor: pointer; }
+    .preview input:checked + label { color: var(--text); background: #28363b; }
+    .preview label:hover { color: var(--text); }
+    .shots { clear: both; }
+    figure { display: none; margin: 0; }
+    #screen-chat:checked ~ .shots .chat, #screen-maps:checked ~ .shots .maps, #screen-guides:checked ~ .shots .guides { display: block; }
+    .shots a { display: block; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #181818; }
+    .shots img { display: block; width: 100%; height: auto; }
+    figcaption { margin-top: 10px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .library { margin-top: 32px; border-top: 1px solid var(--line); padding-top: 28px; }
+    .library h2 { font-size: 25px; }
+    .library p { max-width: 780px; margin: 0; color: var(--muted); font-size: 15px; line-height: 1.7; }
+    .flow { margin: 20px 0 16px; padding: 0; display: grid; grid-template-columns: 1fr 1.3fr 1fr; list-style: none; border: 1px solid var(--line); border-radius: 10px; }
+    .flow li { padding: 16px; font-size: 14px; line-height: 1.5; }
+    .flow li + li { border-left: 1px solid var(--line); }
+    .flow span { display: block; margin-bottom: 4px; color: var(--accent); font-size: 12px; }
+    .library .source-note { font-size: 13px; }
+    footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; }
+    footer a { color: var(--muted); text-underline-offset: 4px; }
+    @media (max-width: 600px) {
+      main { padding: 28px 20px; }
+      .intro { grid-template-columns: 1fr; gap: 22px; margin-top: 26px; }
+      .downloads { grid-template-columns: 1fr; gap: 10px; }
+      .requirements { margin-bottom: 28px; }
+      .preview legend { float: none; margin-bottom: 10px; }
+      .flow { grid-template-columns: 1fr; }
+      .flow li + li { border-left: 0; border-top: 1px solid var(--line); }
+      .flow li { padding: 12px 16px; }
+    }
+    @media (prefers-reduced-motion: reduce) { .download { transition: none; } }
   </style>
 </head>
 <body>
-  <main aria-label="Download JARVISS">
-    <a href="https://github.com/jamespeirano/JARVISS/releases/latest/download/JARVISS-Mac-Apple-Silicon.dmg">
-      <svg aria-hidden="true" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="4" width="22" height="18" rx="2"/><path d="M2 27h28M11 22l-1 5m11-5 1 5"/></svg>
-      <strong>Download for Mac</strong>
-      <small>Apple silicon · macOS 13+</small>
-    </a>
-    <a href="https://github.com/jamespeirano/JARVISS/releases/latest/download/JARVISS-Windows-x64.exe">
-      <svg aria-hidden="true" viewBox="0 0 32 32" fill="currentColor"><path d="M3 5h11v10H3zm13 0h13v10H16zM3 17h11v10H3zm13 0h13v10H16z"/></svg>
-      <strong>Download for Windows</strong>
-      <small>Intel / AMD 64-bit · Windows 10+</small>
-    </a>
+  <main>
+    <header>
+      <h1>JARVISS</h1>
+      <p class="acronym">Just A Rather Very Intelligent Survival System</p>
+    </header>
+    <section class="intro" aria-label="About JARVISS">
+      <div>
+        <h2>Offline AI for<br>extended outages.</h2>
+        <p>Ask survival questions by text or voice, find mapped resources and walking routes, and track supplies.</p>
+      </div>
+      <div class="offline">
+        <strong>Download once. Then use offline.</strong>
+        <p>Internet is only needed to download the app and finish setup. After that, AI, voice, US maps and guides work on your computer without internet.</p>
+      </div>
+    </section>
+    <div class="downloads" aria-label="Download JARVISS">
+      <a class="download" href="https://github.com/jamespeirano/JARVISS/releases/latest/download/JARVISS-Mac-Apple-Silicon.dmg">
+        <strong>Download for Mac</strong>
+        <small>Apple silicon · macOS 13+ · 338 MB</small>
+      </a>
+      <a class="download" href="https://github.com/jamespeirano/JARVISS/releases/latest/download/JARVISS-Windows-x64.exe">
+        <strong>Download for Windows</strong>
+        <small>Intel / AMD 64-bit · Windows 10+ · 278 MB</small>
+      </a>
+    </div>
+    <p class="requirements">Setup recommends a model for your computer and downloads the model, voice and maps.<br>16 GB memory recommended · About 35–50 GB free storage · No terminal or separate software installs.</p>
+    <fieldset class="preview">
+      <legend>Inside the app</legend>
+      <input type="radio" name="screen" id="screen-chat" checked><label for="screen-chat">Chat</label>
+      <input type="radio" name="screen" id="screen-maps"><label for="screen-maps">Maps</label>
+      <input type="radio" name="screen" id="screen-guides"><label for="screen-guides">Guides</label>
+      <div class="shots">
+        <figure class="chat">
+          <a href="app-chat.png" target="_blank" rel="noopener" aria-label="Enlarge JARVISS chat screenshot"><img src="app-chat.png" width="1177" height="768" alt="JARVISS chat screen with question shortcuts, a message box and voice controls."></a>
+          <figcaption>Actual app screen. Select a view above; click the image to enlarge.</figcaption>
+        </figure>
+        <figure class="maps">
+          <a href="app-maps.png" target="_blank" rel="noopener" aria-label="Enlarge JARVISS map screenshot"><img src="app-maps.png" width="1177" height="768" alt="JARVISS offline US map with place search and controls for setting your position."></a>
+          <figcaption>US maps and walking directions. Search by street or landmark; coordinates are optional.</figcaption>
+        </figure>
+        <figure class="guides">
+          <a href="app-guides.png" target="_blank" rel="noopener" aria-label="Enlarge JARVISS guides screenshot"><img src="app-guides.png" width="1177" height="768" alt="JARVISS field library with searchable offline guides and illustrated PDFs."></a>
+          <figcaption>Read the built-in library, open illustrated PDFs or add your own manuals.</figcaption>
+        </figure>
+      </div>
+    </fieldset>
+    <section class="library" aria-labelledby="library-title">
+      <h2 id="library-title">Survival references, built in.</h2>
+      <p>38 offline documents cover water, food, shelter, first aid, growing food and more. JARVISS gives the model relevant passages from these guides as context for your question.</p>
+      <ol class="flow" aria-label="How the model uses your guides">
+        <li><span>1. Ask</span>Your question</li>
+        <li><span>2. Find context</span>Relevant guide passages go to the model</li>
+        <li><span>3. Check the source</span>Open those passages from chat</li>
+      </ol>
+      <p class="source-note">AI can make mistakes. Source links let you read the original context yourself.</p>
+    </section>
+    <footer><a href="https://github.com/jamespeirano/JARVISS">Open source on GitHub</a></footer>
   </main>
 </body>
 </html>
