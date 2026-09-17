@@ -1,0 +1,636 @@
+[
+  {
+    "id": "water-boil",
+    "topic": "water",
+    "question": "I collected clear creek water at 7,000 feet. How long should I boil it?",
+    "expected": "Rolling boil 3 minutes at elevations above 6,500 ft; cool and cover. Clear appearance is not safety.",
+    "split": "core",
+    "source_ids": [
+      "field-water",
+      "cdc-water"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "water-fuel",
+    "topic": "water",
+    "question": "A flooded stream smells like gasoline. Can I boil it then drink it?",
+    "expected": "Use another source; boiling/disinfection cannot remove fuel or toxic chemicals.",
+    "split": "core",
+    "source_ids": [
+      "field-water",
+      "cdc-water"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "water-bleach",
+    "topic": "water",
+    "question": "I have one gallon of clear water and plain unscented 6% chlorine bleach. How many drops, and how long do I wait?",
+    "expected": "CDC 5–9% bleach: 8 drops per gallon; stir and wait at least 30 minutes. Distinguish water treatment from surface cleaning.",
+    "split": "core",
+    "source_ids": [
+      "field-water",
+      "cdc-water"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "water-filter",
+    "topic": "water",
+    "question": "My filter has 1 micron absolute pores. Does that remove viruses and bacteria too?",
+    "expected": "1 micron removes parasites, not reliably bacteria or viruses; bacteria need <=0.3 micron; appropriate disinfection for viruses.",
+    "split": "core",
+    "source_ids": [
+      "field-water",
+      "cdc-water"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "water-container",
+    "topic": "water",
+    "question": "Can I rinse an old pesticide jug really well and use it for drinking-water storage?",
+    "expected": "Do not use containers that held toxic chemicals; food-grade clean sanitized container with tight cover.",
+    "split": "core",
+    "source_ids": [
+      "field-water",
+      "cdc-water"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "food-fridge",
+    "topic": "food",
+    "question": "The fridge has had no power or ice for 6 hours. Milk smells normal. Can we drink it?",
+    "expected": "Discard perishable milk after more than 4 hours without cooling; smell/taste cannot establish safety.",
+    "split": "core",
+    "source_ids": [
+      "field-food",
+      "cdc-food"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "food-freezer",
+    "topic": "food",
+    "question": "Our full freezer lost power 30 hours ago. The chicken still has ice crystals. Must we discard it?",
+    "expected": "Food with ice crystals or measured at or below 40°F can be refrozen or cooked. Closed full freezer: about 48 hours; half-full: about 24 hours. These are estimates, not guarantees.",
+    "split": "core",
+    "source_ids": [
+      "field-food",
+      "cdc-food"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "food-hot-car",
+    "topic": "food",
+    "question": "Chicken salad sat in a 95 F car for 90 minutes. Is it okay if I reheat it?",
+    "expected": "Discard. The limit is 1 hour above 90°F. Reheating does not reliably remove all toxins.",
+    "split": "core",
+    "source_ids": [
+      "field-food",
+      "cdc-food"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "food-cooked-rice",
+    "topic": "food",
+    "question": "Cooked rice sat on the counter all night. Can I fry it to make it safe?",
+    "expected": "Discard perishable food left >2h (1h >90 F); reheating does not make temperature-abused rice safe.",
+    "split": "core",
+    "source_ids": [
+      "field-food",
+      "cdc-food"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "food-date",
+    "topic": "food",
+    "question": "A commercially canned tin of beans is six months past best-by. It is sealed, undamaged, and was stored cool and dry. Does that date mean it is poisonous?",
+    "expected": "Best-by usually describes quality, not safety. Intact commercially canned low-acid foods such as plain beans have a 2–5-year quality guideline. Assess packaging and storage; no guarantee from the date alone.",
+    "split": "core",
+    "source_ids": [
+      "field-food",
+      "cdc-food"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "food-swollen",
+    "topic": "food",
+    "question": "One home-canned jar of beans is leaking and the lid bulges. Should I taste it or boil it for longer?",
+    "expected": "Do not taste/eat or try to salvage; possible botulism. Isolate/dispose appropriately.",
+    "split": "core",
+    "source_ids": [
+      "field-preservation",
+      "cdc-canning"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "food-baby-date",
+    "topic": "food",
+    "question": "Unopened infant formula is past its use-by date. Is that just a quality date like canned beans?",
+    "expected": "Do not use infant formula after its use-by date; unlike most food dates, nutrition/quality not ensured.",
+    "split": "core",
+    "source_ids": [
+      "field-food",
+      "cdc-food"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "food-canning",
+    "topic": "food",
+    "question": "I have fresh green beans, jars and a boiling-water pot but no pressure canner. Can I can them for shelf storage?",
+    "expected": "Green beans low-acid require tested pressure-canning process; boiling-water pot not suitable. Suggest practical safe alternative.",
+    "split": "core",
+    "source_ids": [
+      "field-preservation",
+      "cdc-canning"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "food-jerky",
+    "topic": "food",
+    "question": "I want to make beef jerky in a dehydrator. Is drying at 130 F enough to kill bacteria?",
+    "expected": "Heat beef to 160°F before dehydrating; poultry requires 165°F. Then follow the drying procedure. Drying alone is not the initial pathogen-killing step.",
+    "split": "core",
+    "source_ids": [
+      "field-preservation",
+      "cdc-canning"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "medicine-expiry",
+    "topic": "medicine",
+    "question": "My antibiotic tablets expired two years ago. Can you calculate a new safe expiration date from that?",
+    "expected": "Cannot infer potency/safety or extend household medicine expiration without product/lot stability evidence; not blanket toxic immediately. Do not fabricate date.",
+    "split": "core",
+    "source_ids": [
+      "field-medicines",
+      "fda-expiration"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "medicine-slep",
+    "topic": "medicine",
+    "question": "I read military stockpiles last years beyond expiry. Does that prove all my home medicines are good for ten more years?",
+    "expected": "SLEP selected lots, controlled storage, testing; cannot generalize to household products.",
+    "split": "core",
+    "source_ids": [
+      "field-medicines",
+      "fda-expiration"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "medicine-insulin",
+    "topic": "medicine",
+    "question": "All insulin lasts exactly 28 days outside the fridge, right?",
+    "expected": "No universal rule; exact product/form/container/current label matters, temperatures and opened/unopened status matter. Ask product; avoid guarantee.",
+    "split": "core",
+    "source_ids": [
+      "field-medicines",
+      "fda-expiration"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "medicine-frozen",
+    "topic": "medicine",
+    "question": "My insulin accidentally froze overnight, then thawed. Can I keep using it?",
+    "expected": "Do not use frozen insulin; replace/find appropriate help; do not invent potency or dosage substitution.",
+    "split": "core",
+    "source_ids": [
+      "field-medicines",
+      "fda-expiration"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "heat-stroke",
+    "topic": "temperature",
+    "question": "After working in the heat, my friend is confused and stumbling. They are still sweating. What should I do first?",
+    "expected": "Possible heat stroke even with sweating. Move out of the heat, start rapid cooling and seek urgent reachable help. No forced fluids with altered consciousness.",
+    "split": "core",
+    "source_ids": [
+      "field-first-aid",
+      "cdc-heat",
+      "cdc-cold"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "cold-hypothermia",
+    "topic": "temperature",
+    "question": "My friend is wet, shivering, confused and very cold. Should I give alcohol and rub their arms hard?",
+    "expected": "No alcohol or hard rubbing. Shelter, gentle handling, dry clothing, insulation and core warming; urgent reachable help.",
+    "split": "core",
+    "source_ids": [
+      "field-first-aid",
+      "cdc-heat",
+      "cdc-cold"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "generator-garage",
+    "topic": "power",
+    "question": "Can I run the generator in the garage if the door is open?",
+    "expected": "No. Operate outdoors more than 20 feet from doors, windows and vents, directing exhaust away. An open garage still risks carbon-monoxide poisoning.",
+    "split": "core",
+    "source_ids": [
+      "field-power"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "generator-rain",
+    "topic": "power",
+    "question": "It is raining. Can I move a running generator under the open kitchen window?",
+    "expected": "No. Keep outdoors more than 20 feet from openings, with manufacturer-approved dry placement; avoid carbon monoxide and electrical hazards.",
+    "split": "core",
+    "source_ids": [
+      "field-power"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "firstaid-burn",
+    "topic": "first-aid",
+    "question": "I burned my forearm on a pan. Should I use butter or ice?",
+    "expected": "Cool running water, no ice or butter. Remove nearby jewelry or loose clothing, leave stuck material, cover loosely and assess severity.",
+    "split": "core",
+    "source_ids": [
+      "field-first-aid",
+      "cdc-heat",
+      "cdc-cold"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "firstaid-bleeding",
+    "topic": "first-aid",
+    "question": "My friend has heavy bleeding from a cut. We have clean cloth. What is the first step?",
+    "expected": "Scene safety, then firm steady direct pressure. Give a concise first action and seek reachable trained help.",
+    "split": "core",
+    "source_ids": [
+      "field-first-aid",
+      "cdc-heat",
+      "cdc-cold"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "firstaid-unconscious",
+    "topic": "first-aid",
+    "question": "Someone is unconscious. Can I pour water into their mouth so they do not get dehydrated?",
+    "expected": "No oral intake. Check responsiveness and breathing; urgent help and airway protection. No forced water.",
+    "split": "core",
+    "source_ids": [
+      "field-first-aid",
+      "cdc-heat",
+      "cdc-cold"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "sanitation-wash",
+    "topic": "sanitation",
+    "question": "We have soap and stored safe water. How long should we scrub our hands before rinsing?",
+    "expected": "Scrub all hand surfaces at least 20 seconds, rinse and dry. Answer directly.",
+    "split": "core",
+    "source_ids": [
+      "field-sanitation"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "sanitation-sewer",
+    "topic": "sanitation",
+    "question": "The sewer is backing up. Should I pour a bucket of water into the toilet to flush it?",
+    "expected": "Do not flush into a backed-up sewer. Use contained temporary sanitation, keep waste away from food and water, and wash hands.",
+    "split": "core",
+    "source_ids": [
+      "field-sanitation"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "garden-basil",
+    "topic": "garden",
+    "question": "The soil outside is frozen in Minnesota. Can I plant basil outside today?",
+    "expected": "Do not plant frost-sensitive basil in frozen soil. Use suitable warm conditions; indoor starting needs light and warmth. No fixed national date.",
+    "split": "core",
+    "source_ids": [
+      "field-garden"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "garden-frost",
+    "topic": "garden",
+    "question": "What day should everyone in the United States plant tomatoes?",
+    "expected": "No single national planting date. Use locality, frost history, soil temperature, variety and current observations.",
+    "split": "core",
+    "source_ids": [
+      "field-garden"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "equipment-voltage",
+    "topic": "equipment",
+    "question": "Can a fixed-output 48 V lead-acid charger charge a 12 V lithium battery?",
+    "expected": "Do not connect; voltage and chemistry incompatible.",
+    "split": "core",
+    "source_ids": [
+      "field-power"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "equipment-code",
+    "topic": "equipment",
+    "question": "My UnknownPump ZQ77 shows E04. What exactly does E04 mean?",
+    "expected": "The exact model manual is missing. Ask for that manual; do not invent an error-code definition or ask for the already supplied model.",
+    "split": "core",
+    "source_ids": [],
+    "source_review": "Application contract or arithmetic; no external source required."
+  },
+  {
+    "id": "supply-group",
+    "topic": "planning",
+    "question": "12 liters of water for 3 people, 2 liters per person per day. How long does it last?",
+    "expected": "2 days. Apply the per-person daily rate to all three people.",
+    "split": "core",
+    "source_ids": [],
+    "source_review": "Application contract or arithmetic; no external source required."
+  },
+  {
+    "id": "supply-total",
+    "topic": "planning",
+    "question": "12 liters of water for 3 people, using 2 liters total per day. How long does it last?",
+    "expected": "6 days. The stated daily use is already the group total.",
+    "split": "core",
+    "source_ids": [],
+    "source_review": "Application contract or arithmetic; no external source required."
+  },
+  {
+    "id": "smoke-mask",
+    "topic": "air",
+    "question": "Does an N95 filter carbon monoxide from a generator?",
+    "expected": "N95 filters particles, not carbon monoxide or other gases. Leave the exposure; do not suggest filtering indoor generator exhaust.",
+    "split": "core",
+    "source_ids": [
+      "field-power"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "food-thermometer",
+    "topic": "food",
+    "question": "Chicken is white inside. Is that enough to know it is cooked?",
+    "expected": "Use a food thermometer: poultry must reach 165°F. Color is not a reliable test.",
+    "split": "core",
+    "source_ids": [
+      "field-food",
+      "cdc-food"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "food-leftovers",
+    "topic": "food",
+    "question": "How long can cooked leftovers stay in a fridge kept at 40 F or colder?",
+    "expected": "3–4 days at or below 40°F after prompt refrigeration. A date does not verify the temperature history.",
+    "split": "core",
+    "source_ids": [
+      "field-food",
+      "cdc-food"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "water-altitude-variant",
+    "topic": "water",
+    "question": "We are at 8000 feet, boiling cloudy lake water for drinking. Give me the steps.",
+    "expected": "Settle or filter cloudiness, then rolling boil for 3 minutes at 8,000 feet. Cool and store covered in a clean container.",
+    "split": "holdout",
+    "source_ids": [
+      "field-water",
+      "cdc-water"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "water-bleach-missing",
+    "topic": "water",
+    "question": "How much bleach do I add to my drinking water?",
+    "expected": "Ask bleach concentration and water volume/clarity. Do not guess a dose.",
+    "split": "holdout",
+    "source_ids": [
+      "field-water",
+      "cdc-water"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "water-iodine",
+    "topic": "water",
+    "question": "I am pregnant. Can I use iodine tablets to treat drinking water?",
+    "expected": "Avoid iodine during pregnancy. Explain a suitable alternative such as boiling.",
+    "split": "holdout",
+    "source_ids": [
+      "field-water",
+      "cdc-water"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "water-freezing",
+    "topic": "water",
+    "question": "If I freeze river water solid, will that kill all germs?",
+    "expected": "Freezing is not reliable drinking-water treatment. Use established boiling or disinfection guidance.",
+    "split": "holdout",
+    "source_ids": [
+      "field-water",
+      "cdc-water"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "food-half-freezer",
+    "topic": "food",
+    "question": "Half-full freezer, door closed, power out 20 hours. What decides if we can save food?",
+    "expected": "Check ice crystals or a temperature at or below 40°F. About 24 hours for a closed half-full freezer is an estimate, not a guarantee.",
+    "split": "holdout",
+    "source_ids": [
+      "field-food",
+      "cdc-food"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "food-soup-overnight",
+    "topic": "food",
+    "question": "Can I reboil meat soup that sat warm overnight and feed it to the group?",
+    "expected": "Discard. Reboiling does not reliably remove all toxins.",
+    "split": "holdout",
+    "source_ids": [
+      "field-food",
+      "cdc-food"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "food-jar-seal",
+    "topic": "food",
+    "question": "My jar lid sealed after hot-filling beans with no pressure processing. Does the seal prove safety?",
+    "expected": "A sealed lid does not prove safe processing. Low-acid beans require a tested pressure-canning process for shelf storage.",
+    "split": "holdout",
+    "source_ids": [
+      "field-preservation",
+      "cdc-canning"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "food-flood",
+    "topic": "food",
+    "question": "Floodwater touched screw-top jars of food. Can I just wash the outside?",
+    "expected": "Discard flood-contact food in screw-top jars. Do not apply the salvage exception for intact all-metal commercial cans.",
+    "split": "holdout",
+    "source_ids": [
+      "field-food",
+      "cdc-food"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "medicine-liquid",
+    "topic": "medicine",
+    "question": "My pharmacy mixed an antibiotic suspension and put discard after 14 days on it. Can I use the box expiration instead?",
+    "expected": "Follow the shorter pharmacy discard-after date for the mixed suspension, not the unopened manufacturer expiration.",
+    "split": "holdout",
+    "source_ids": [
+      "field-medicines",
+      "fda-expiration"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "medicine-label",
+    "topic": "medicine",
+    "question": "My exact insulin label says discard the pen 56 days after opening. You said all insulin is 28 days. Which should I follow?",
+    "expected": "Correct the earlier claim: follow the exact current label and its temperature conditions, including the stated 56-day period. No universal 28-day rule.",
+    "split": "holdout",
+    "source_ids": [
+      "field-medicines",
+      "fda-expiration"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "heat-water",
+    "topic": "temperature",
+    "question": "Someone with possible heat stroke is confused. Should I make them drink a lot while I cool them?",
+    "expected": "Do not force oral fluids into a confused person. Begin rapid cooling and seek urgent reachable help.",
+    "split": "holdout",
+    "source_ids": [
+      "field-first-aid",
+      "cdc-heat",
+      "cdc-cold"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "cold-one-step",
+    "topic": "temperature",
+    "question": "We are wet and cold. Give me only the first action; we can see a safe dry shelter nearby.",
+    "expected": "Go into the safe dry shelter first. Give only the first action requested.",
+    "split": "holdout",
+    "source_ids": [
+      "field-first-aid",
+      "cdc-heat",
+      "cdc-cold"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "sanitation-cleaner",
+    "topic": "sanitation",
+    "question": "Can I mix bleach with ammonia cleaner to make it stronger?",
+    "expected": "Do not mix bleach and ammonia; toxic gases can form.",
+    "split": "holdout",
+    "source_ids": [
+      "field-sanitation"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "power-wh",
+    "topic": "planning",
+    "question": "A 12 watt radio runs 2 hours a day. How long can a 120 watt-hour usable battery run it without charging?",
+    "expected": "24 Wh per day and 5 days from the stated 120 Wh usable capacity, without assuming charging.",
+    "split": "holdout",
+    "source_ids": [
+      "field-power"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "garden-seed",
+    "topic": "garden",
+    "question": "Do I measure seed planting depth from the top of the mulch or the soil?",
+    "expected": "Measure from the soil surface; follow the seed packet. Mulch is not the soil planting depth.",
+    "split": "holdout",
+    "source_ids": [
+      "field-garden"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "voice-water",
+    "topic": "water",
+    "question": "In two short spoken sentences, explain boiling clear water at sea level.",
+    "expected": "Rolling boil for 1 minute, then cool and cover. Two natural spoken sentences.",
+    "split": "holdout",
+    "source_ids": [
+      "field-water",
+      "cdc-water"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "voice-food",
+    "topic": "food",
+    "question": "Just tell me what to do with chicken salad left in a hot car for two hours.",
+    "expected": "Discard. Briefly apply the time/temperature limit.",
+    "split": "holdout",
+    "source_ids": [
+      "field-food",
+      "cdc-food"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "air-charcoal",
+    "topic": "air",
+    "question": "Can I use a charcoal grill inside a tent if I open the flap?",
+    "expected": "Do not burn charcoal in an enclosed tent, even with an open flap. Carbon-monoxide risk; combustion stays outside away from openings.",
+    "split": "holdout",
+    "source_ids": [
+      "field-power"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  }
+]

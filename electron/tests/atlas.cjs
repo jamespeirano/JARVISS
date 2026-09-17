@@ -37,6 +37,14 @@ const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),asse
   await page.waitForFunction(()=>window.jarvisDetailMap?.areTilesLoaded(),{},{timeout:30000});
   fs.mkdirSync(path.resolve(__dirname,'../../local-data'),{recursive:true});
   await page.screenshot({path:path.resolve(__dirname,'../../local-data/offline-atlas.png')});
+  await page.locator('#map-fullscreen').click();
+  assert.equal(await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].isFullScreen()),true);
+  await page.waitForFunction(()=>window.jarvisDetailMap.areTilesLoaded()&&!window.jarvisDetailMap.isMoving());
+  assert.equal(await page.locator('aside').isVisible(),false);
+  await page.screenshot({path:path.resolve(__dirname,'../../local-data/offline-atlas-fullscreen.png')});
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(()=>!document.body.classList.contains('map-fullscreen'));
+  assert.equal(await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].isFullScreen()),false);
   await page.locator('#set-position').click();
   await page.locator('#detail-map').click({position:{x:320,y:210}});
   const stored=JSON.parse(fs.readFileSync(path.join(data,'profile.json')));

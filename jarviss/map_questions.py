@@ -43,6 +43,11 @@ def parse_question(question):
 
 
 def answer_map(question, profile, area, previous_route=None):
+    # Navigation lessons describe a method, not a destination in the map.
+    lesson = re.search(r'\b(?:compass|azimuth|bearing|declination|contour|pace count|grid north|magnetic north)\b', question, re.I)
+    destination = re.search(r'\b(?:nearest|closest|take me to|directions to|route to|distance to|how far)\b', question, re.I)
+    if lesson and not destination:
+        return None
     # General questions about manuals, repairs, translation or meeting schedules
     # must not be swallowed by the broad "find/where" place parser.
     explicit=re.search(r'\b(?:nearest|closest|directions?|route|navigate|how far|how many (?:miles|kilometers|kilometres)|distance to|take me to)\b|how (?:can|do) i (?:get|go|walk)',question,re.I)

@@ -30,7 +30,8 @@ CASES=[
 
 def main():
  root=Path(__file__).resolve().parent.parent
- model_path=Path(os.environ.get('JARVIS_TEST_MODEL',str(root/'models/Qwen3.8-27B-UD-Q4_K_M.gguf'))).resolve()
+ catalog=json.loads((root/'resources/model-catalog.json').read_text())['models']
+ model_path=Path(os.environ.get('JARVIS_TEST_MODEL',str(root/'models'/catalog[-1]['filename']))).resolve()
  if not model_path.is_file():raise SystemExit('Finish preparing the model first.')
  with tempfile.TemporaryDirectory(prefix='jarvis-use-cases-') as temp:
   os.environ['JARVISS_DATA']=temp

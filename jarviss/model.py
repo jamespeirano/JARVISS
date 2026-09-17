@@ -20,10 +20,12 @@ class LocalModel:
         self.closed = threading.Event()
         self.api_key = secrets.token_urlsafe(32)
         self.allocated_memory = 0
+        self.context = 0
 
     def start(self, path, gpu_layers='auto', context=8192):
         import psutil
         available_before = psutil.virtual_memory().available
+        self.context = context
         server = find_server()
         if not server:
             raise RuntimeError('Prepare the local runtime in Setup first.')
@@ -62,10 +64,34 @@ class LocalModel:
         self.stop()
         raise TimeoutError('Model did not load within two minutes.')
 
+    def _post(self, endpoint, payload):
+        request = urllib.request.Request(self.url + endpoint, data=json.dumps(payload).encode(),
+                                         headers={'Content-Type':'application/json', 'Authorization':'Bearer '+self.api_key})
+        with urllib.request.urlopen(request, timeout=30) as response:
+            return json.load(response)
+
+    def _fit_messages(self, messages, max_tokens):
+        # Reserve answer space with this model's tokenizer. Character counts
+        # badly underestimate multilingual text and can leave a half-answer.
+        selected = list(messages)
+        while self.context:
+            formatted = self._post('/apply-template', {'messages':selected, 'chat_template_kwargs':{'enable_thinking':False}})
+            count = len(self._post('/tokenize', {'content':formatted['prompt']})['tokens'])
+            if count + max_tokens + 32 <= self.context:
+                break
+            if len(selected) <= 2:
+                raise ValueError('Too much text for this model. Shorten your question or saved situation, or choose a model with more context in Settings.')
+            # Remove an old exchange together. Preserve complete reference
+            # passages, saved facts and the current question without rewriting.
+            del selected[1]
+            while len(selected) > 2 and selected[1]['role'] != 'user':
+                del selected[1]
+        return selected
+
     def chat(self, messages, on_sentence=None, max_tokens=600, max_sentences=None):
         if not self.process or self.process.poll() is not None:
             raise RuntimeError('Start a local model in Setup.')
-        payload = {'messages': messages, 'temperature': 0.25, 'max_tokens': max_tokens,
+        payload = {'messages': self._fit_messages(messages, max_tokens), 'temperature': 0.25, 'max_tokens': max_tokens,
                    'stream': bool(on_sentence), 'chat_template_kwargs': {'enable_thinking': False}}
         request = urllib.request.Request(self.url + '/v1/chat/completions',
                                         data=json.dumps(payload).encode(), headers={'Content-Type': 'application/json','Authorization':'Bearer '+self.api_key})

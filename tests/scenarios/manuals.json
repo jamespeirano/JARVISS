@@ -1,0 +1,351 @@
+[
+  {
+    "id": "shelter-site",
+    "topic": "Shelter",
+    "question": "I need a place for a tarp shelter. There is a dry streambed and another spot under a dead leaning tree. How do I choose a safer site?",
+    "expected": "Check flood channels, falling limbs/trees and rock hazards; seek higher drained ground protected from wind. Neither proposed site is automatically safe.",
+    "source_ids": [
+      "field-power",
+      "army-shelter"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "shelter-condensation",
+    "topic": "Shelter",
+    "question": "Why is my sleeping bag damp inside the shelter even though rain is not getting in?",
+    "expected": "Condensation/moisture from breathing and perspiration; ventilation, dry insulation, avoid overheating.",
+    "source_ids": [
+      "field-power",
+      "army-shelter"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "shelter-ground",
+    "topic": "Shelter",
+    "question": "I have a tarp but no sleeping mat. What matters about the ground under me on a cold night?",
+    "expected": "Insulate from the ground with suitable dry material; protect insulation from moisture; roof alone insufficient.",
+    "source_ids": [
+      "field-power",
+      "army-shelter"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "shelter-snow",
+    "topic": "Shelter",
+    "question": "What ventilation precautions apply to a snow shelter?",
+    "expected": "Maintain ventilation; keep openings clear; combustion/CO and collapse hazards; do not assume sealed snow shelter safe.",
+    "source_ids": [
+      "field-power",
+      "army-shelter"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "clothing-layers",
+    "topic": "Shelter",
+    "question": "I am sweating while walking in cold weather. Should I keep every layer tightly closed?",
+    "expected": "Ventilate/remove layers to avoid sweating, keep insulation dry; adjust before chilling.",
+    "source_ids": [
+      "field-power",
+      "army-shelter"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "navigation-back-bearing",
+    "topic": "Navigation",
+    "question": "My compass bearing is 70 degrees. What is the back azimuth?",
+    "expected": "250 degrees: add 180 to 70. Do not subtract the bearing from 360.",
+    "source_ids": [
+      "field-navigation",
+      "army-navigation"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "navigation-bearing-two",
+    "topic": "Navigation",
+    "question": "My outbound compass bearing is 250 degrees. How do I calculate the back bearing?",
+    "expected": "70 degrees: subtract 180 from 250. Do not subtract the bearing from 360.",
+    "source_ids": [
+      "field-navigation",
+      "army-navigation"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "navigation-pace",
+    "topic": "Navigation",
+    "question": "How do I work out my pace count before walking cross-country?",
+    "expected": "Measure known distance, walk/count consistently, repeat and account for terrain/load; no universal count.",
+    "source_ids": [
+      "field-navigation",
+      "army-navigation"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "navigation-declination",
+    "topic": "Navigation",
+    "question": "Can I treat map grid north and my compass magnetic north as exactly the same?",
+    "expected": "Grid, true and magnetic north differ. Use the applicable grid-magnetic angle, map diagram and date; do not invent a local angle.",
+    "source_ids": [
+      "field-navigation",
+      "army-navigation"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "navigation-contours",
+    "topic": "Navigation",
+    "question": "What do very tightly spaced contour lines mean for a walking route?",
+    "expected": "Closely spaced contours indicate a steep slope. Assess a suitable route instead of assuming the shortest line is walkable.",
+    "source_ids": [
+      "field-navigation",
+      "army-navigation"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "navigation-obstacle",
+    "topic": "Navigation",
+    "question": "A big obstacle blocks my compass route. How do I keep track of my direction around it?",
+    "expected": "Explain deliberate offsets and distance accounting using the navigation manual. Do not invent turns or a route for unknown terrain.",
+    "source_ids": [
+      "field-navigation",
+      "army-navigation"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "navigation-river",
+    "topic": "Navigation",
+    "question": "Can I walk across an unfamiliar fast river just because the map shows a path on the other bank?",
+    "expected": "A map does not prove a safe crossing. Stop before fast water, turn back or seek a verified safe alternative; do not promise a ford or suggest swimming through it.",
+    "source_ids": [
+      "field-navigation",
+      "army-navigation"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "rope-bowline",
+    "topic": "Rope",
+    "question": "What is a bowline used for, and where can I see how to tie it?",
+    "expected": "A fixed loop; identify the offline Army rope chapter and its illustrated PDF. Do not guarantee suitability for supporting a person.",
+    "source_ids": [
+      "army-rope"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "rope-sheet-bend",
+    "topic": "Rope",
+    "question": "What knot does the Army guide describe for joining two ropes of different thickness?",
+    "expected": "A single sheet bend joins ropes of unequal diameter according to the manual. Do not substitute a square knot.",
+    "source_ids": [
+      "army-rope"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "rope-whipping",
+    "topic": "Rope",
+    "question": "The end of my rope keeps fraying. How does whipping help?",
+    "expected": "Bind the end tightly with small cord to prevent untwisting and fraying. Inspect the rope condition.",
+    "source_ids": [
+      "army-rope"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "rope-inspection",
+    "topic": "Rope",
+    "question": "What should I check before using an old rope to secure a shelter?",
+    "expected": "Inspect for wear, cuts, fraying, rot and chemical damage. Pulling by hand cannot establish an unknown rope strength or load rating.",
+    "source_ids": [
+      "army-rope"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "team-buddy",
+    "topic": "Team",
+    "question": "Why should we use a buddy system during light search and rescue?",
+    "expected": "Paired work supports observation, help and accountability; avoid working alone.",
+    "source_ids": [
+      "field-team",
+      "cert-7",
+      "cert-2"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "team-stress",
+    "topic": "Wellbeing",
+    "question": "How do we stop a stressed volunteer from burning out during repeated response shifts?",
+    "expected": "Rest breaks, food, water, task rotation and supportive buddy checks. Do not force a person to recount trauma.",
+    "source_ids": [
+      "field-team",
+      "cert-5"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "team-listening",
+    "topic": "Wellbeing",
+    "question": "A survivor is upset and does not want to describe what happened. How do I help without pushing them?",
+    "expected": "Offer practical support, privacy and listening if wanted. Respect someone who is not ready to talk.",
+    "source_ids": [
+      "field-team",
+      "cert-5"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "team-false-reassurance",
+    "topic": "Wellbeing",
+    "question": "Should I promise an upset person that everything will be fine?",
+    "expected": "Avoid an unfounded promise. Acknowledge feelings and identify what can actually be done.",
+    "source_ids": [
+      "field-team",
+      "cert-5"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "team-records",
+    "topic": "Team",
+    "question": "What information should our neighborhood response team record during an incident?",
+    "expected": "Record locations, people and status, hazards, resources, actions, assignments and times. Distinguish facts from reports and share through the team.",
+    "source_ids": [
+      "field-team",
+      "cert-2"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "team-objectives",
+    "topic": "Team",
+    "question": "We have more jobs than volunteers. How do we organize the team first?",
+    "expected": "Assess the situation, set priorities, assign roles and maintain accountability. Keep roles proportionate to group size.",
+    "source_ids": [
+      "field-team",
+      "cert-2"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "rescue-heavy-damage",
+    "topic": "Search and rescue",
+    "question": "A damaged building has a leaning wall and a partly collapsed roof. Is this a light search-and-rescue job for volunteers?",
+    "expected": "Do not enter a heavily damaged building. Keep people clear and seek trained help; appearance alone cannot establish structural safety.",
+    "source_ids": [
+      "cert-7"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "rescue-sizeup",
+    "topic": "Search and rescue",
+    "question": "Before entering an area to look for people, what does a rescue size-up involve?",
+    "expected": "Gather facts; assess damage, hazards and resources; set priorities; plan, act and reassess with personal and team safety first.",
+    "source_ids": [
+      "cert-7"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "rescue-search",
+    "topic": "Search and rescue",
+    "question": "How do a pair of volunteers search a lightly damaged room systematically?",
+    "expected": "Confirm entry conditions, call and listen, follow a consistent search pattern with a buddy, and mark or report areas. Do not enter severe hazards.",
+    "source_ids": [
+      "cert-7"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "fire-exit",
+    "topic": "Fire and utilities",
+    "question": "A small fire is growing and smoke blocks the exit. Should I stay and try an extinguisher?",
+    "expected": "Do not stay to fight a growing fire with a blocked escape route. Move away from smoke and seek a safe exit.",
+    "source_ids": [
+      "cert-6"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "fire-pass",
+    "topic": "Fire and utilities",
+    "question": "What does PASS mean for a fire extinguisher?",
+    "expected": "Pull the pin, aim at the base, squeeze, sweep. A suitable extinguisher, small fire and clear escape route are prerequisites.",
+    "source_ids": [
+      "cert-6"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "utility-gas",
+    "topic": "Fire and utilities",
+    "question": "After an earthquake, I smell gas near the house. Should I flip the lights on to inspect it?",
+    "expected": "Avoid electrical switches, flames and sparks; leave the unsafe area. Do not turn lights on to investigate.",
+    "source_ids": [
+      "cert-6"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "utility-gas-restore",
+    "topic": "Fire and utilities",
+    "question": "I shut off the main natural-gas valve after a leak. Can I just turn it back on myself?",
+    "expected": "Have a qualified utility professional restore service. Do not casually reopen the valve yourself.",
+    "source_ids": [
+      "cert-6"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "utility-electric",
+    "topic": "Fire and utilities",
+    "question": "The floor near the electrical panel is flooded. Can I walk through it to switch off the main breaker?",
+    "expected": "Do not enter potentially energized floodwater to reach the breaker. Keep clear and seek qualified help; operate only with safe dry access.",
+    "source_ids": [
+      "cert-6"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  }
+]

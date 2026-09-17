@@ -22,6 +22,17 @@ header{margin-bottom:20px}
 .doc-entry summary{padding:16px 20px}
 .doc-entry summary small{margin-top:4px}
 .doc-body{font-size:13px;line-height:1.8}
+.answer-references{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-top:14px;white-space:normal}
+.answer-references small{font-size:11px}
+.answer-references button,.reference-result{font-size:12px;text-align:left;padding:7px 10px;color:#a9d8cb;background:transparent;border:1px solid #3c4b46;border-radius:6px}
+.reference-result{display:block;width:100%;margin:5px 0}
+.reference-body{padding:0 20px 20px}
+.reference-note,.reference-source p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.6}
+.reference-section{margin-top:12px;border-top:1px solid #3a3a40;scroll-margin-top:20px}
+.reference-section summary{padding:13px 0;font-size:14px}
+.reference-section .doc-body{padding:0 0 14px;white-space:pre-wrap}
+.reference-selected{outline:2px solid #8fc7b9;outline-offset:8px;border-radius:3px}
+.reference-source{margin-top:20px}
 .doc-entry .form-panel{border:0;border-radius:0;max-width:none;padding:22px}
 .docs-description{font-size:12px;margin:10px 0 24px}
 .subheading{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:28px 0 12px}
@@ -237,3 +248,6 @@ main{scrollbar-color:#434349 transparent}
 #audio-status{align-self:center;color:#aaaab4;font-size:12px}
 @keyframes thinking-pulse{0%,80%,100%{opacity:.35;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
 @media(prefers-reduced-motion:reduce){.thinking-dots i{animation:none}}
+#status-dot.working,#voice-badge.generating::before{animation:response-pulse 1.2s ease-in-out infinite}#voice-badge.generating::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:#a8dcd1;margin-right:9px}.voice-card #voice-badge.generating{color:#c4eee0}@keyframes response-pulse{50%{opacity:.3}}
+
+@media(prefers-reduced-motion:reduce){#status-dot.working,#voice-badge.generating::before{animation:none}}

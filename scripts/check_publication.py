@@ -14,7 +14,8 @@ for name in filter(None, files):
     path = Path(name)
     assert path.suffix.lower() not in {'.p12', '.pfx', '.pem', '.key', '.mobileprovision'}, name
     assert not any(part in {'local-data', 'models', 'local-maps', '.azure', '.signing', '.venv'} for part in path.parts), name
-    assert path.name not in {'.env', 'TRANSCRIPT_SUMMARY.md'}, name
+    assert path.name != 'TRANSCRIPT_SUMMARY.md', name
+    assert not (path.name == '.env' or path.name.startswith('.env.') and path.name != '.env.example'), name
 
 for path in (root / '.github/workflows').glob('*.yml'):
     text = path.read_text()
