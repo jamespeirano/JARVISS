@@ -23,6 +23,11 @@ class TestService(OriginalService):
   self.voice.prepare_tts=lambda:None
   self.voice.tts=self
   self.voice.play_audio=self.play_audio
+ def command(self,method,args):
+  if method=='state':
+   if (ROOT/'startup-fail').exists():raise RuntimeError('Operation timed out. Check Settings.')
+   while (ROOT/'startup-hold').exists():time.sleep(.02)
+  return super().command(method,args)
  def chat(self,*args,**kwargs):
   while not (ROOT/'reply').exists():time.sleep(.02)
   if (ROOT/'fail').exists():raise RuntimeError('Model test failure')
@@ -44,10 +49,23 @@ service.devices=lambda:[{'id':1,'name':'Test mic','host':'Test','input':True,'ou
 service.main()
 `);
   const env={...process.env,JARVISS_ROOT:test,JARVISS_DATA:path.join(test,'data'),JARVISS_APP_DATA:path.join(test,'app')};delete env.ELECTRON_RUN_AS_NODE;
+  fs.writeFileSync(path.join(test,'startup-fail'),'');
   app=await electron.launch({args:[path.join(root,'electron')],env});const page=await app.firstWindow();
   const touch=name=>fs.writeFileSync(path.join(test,name),'');
   const remove=name=>fs.rmSync(path.join(test,name),{force:true});
+  await page.locator('#startup-retry').waitFor({state:'visible'});
+  assert.equal(await page.locator('#startup-message').innerText(),'Connecting took too long. Try again.');
+  assert.equal(await page.locator('#error').isVisible(),false);
+  assert.equal(await page.locator('aside').isVisible(),false);
+  await page.locator('#startup-retry').click();
+  await page.waitForFunction(()=>!document.querySelector('#startup-retry').hidden&&!document.querySelector('#startup-retry').disabled);
+  remove('startup-fail');touch('startup-hold');
+  await page.locator('#startup-retry').click();
+  assert.equal(await page.locator('#startup-retry').isDisabled(),true);
+  assert.equal(await page.locator('#startup-message').innerText(),'Checking setup…');
+  remove('startup-hold');
   await page.waitForFunction(()=>document.querySelector('#status').textContent==='Ready');
+  console.log('PASS startup timeout, repeated failure and retry with a delayed backend');
   await page.locator('#setup-later').click();
   await page.locator('#panel-toggle').click();
   await page.locator('#question').fill('Hello');await page.locator('#send').click();
