@@ -29,11 +29,12 @@
   for(const [id,name] of Object.entries({model:'AI model',voice:'Voice',map:'US map',directions:'Walking directions',guides:'Guides'})){
    at('setup-components').append(make('li',`${plan.components[id]?'✓ ':''}${name}`));
   }
-  at('setup-size').textContent=plan.download_bytes?`About ${gb(plan.download_bytes)} to download. Keep ${gb(plan.required_bytes)} free.`:'All files are downloaded. Run setup to check they work together.';
+  at('setup-size').textContent=plan.download_bytes?`About ${gb(plan.download_bytes)} left to download. Keep ${gb(plan.required_bytes)} free.`:'All files are downloaded. Run setup to check they work together.';
   at('setup-directory').textContent='Data folder: '+plan.directory;
   at('setup-warning').textContent=!plan.space_ok?'Not enough free storage.':!model.fits?model.reason:plan.run.error||'';
   const ready=plan.run.status==='ready'&&Object.values(plan.components).every(Boolean);
   at('setup-download').textContent=ready?'Check setup':plan.run.status==='paused'?'Continue setup':plan.download_bytes?'Download everything':'Finish setup';
+  at('setup-later').textContent=running&&state.ready?'Use chat while maps download':'Set up later';
   at('setup-download').disabled=running||!plan.space_ok||!model.fits;
   at('setup-done').hidden=!ready;
   at('setup-later').hidden=ready;
@@ -42,19 +43,19 @@
   at('setup-detail').textContent=plan.run.detail||'';
   at('setup-bar').value=plan.run.stage||0;
  }
- window.renderSetupOperation=(active,method)=>{
-  running=active&&method==='setup_run';
+ window.renderSetupOperation=(active,method,setupRunning)=>{
+  running=setupRunning||active&&method==='setup_run';
   at('setup-pause').hidden=!running;
   at('setup-pause').disabled=false;
-  at('setup-download').disabled=active||!plan||!plan.space_ok||!plan.models.find(m=>m.id===selected)?.fits;
-  at('setup-recheck').disabled=active;
-  for(const input of document.querySelectorAll('[name="setup-model"]'))input.disabled=active||!plan.models.find(m=>m.id===input.value).fits;
+  at('setup-download').disabled=active||running||!plan||!plan.space_ok||!plan.models.find(m=>m.id===selected)?.fits;
+  at('setup-recheck').disabled=active||running;
+  for(const input of document.querySelectorAll('[name="setup-model"]'))input.disabled=active||running||!plan.models.find(m=>m.id===input.value).fits;
   if(running)at('setup-activity').hidden=false;
  };
- window.setupProgress=text=>{if(running)at('setup-detail').textContent=text;};
+ window.setupProgress=text=>{if(running){at('setup-detail').textContent=text;at('setup-bar').value=state.setup?.stage||0;}at('setup-later').textContent=state.ready?'Use chat while maps download':'Set up later';};
  window.refreshSetup=()=>{if(at('setup').classList.contains('visible'))check(selected);};
  window.openSetup=()=>{page('setup');at('error').hidden=true;return check();};
- at('download-model').onclick=window.openSetup;
+ for(const id of ['download-model','view-setup','map-view-setup'])at(id).onclick=window.openSetup;
  at('setup-recheck').onclick=()=>check(selected);
  at('setup-later').onclick=at('setup-done').onclick=()=>page('assistant');
  at('setup-pause').onclick=async()=>{at('setup-pause').disabled=true;at('setup-detail').textContent='Pausing…';try{await call('setup_pause');}catch{}};

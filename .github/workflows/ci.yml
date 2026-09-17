@@ -37,6 +37,8 @@ jobs:
         run: |
           python -m venv .venv --system-site-packages
           node electron/tests/feedback.cjs
+      - name: Check setup, background maps, pause and restart
+        run: node electron/tests/setup.cjs
       - name: Check offline document reader and PDF pages
         run: node electron/tests/references.cjs
   public-source:
