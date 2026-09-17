@@ -1,5 +1,6 @@
 const $=s=>document.querySelector(s);
 let state={},busy=false,voice=false,route=null,searchTimer,pendingMethod=null,remoteOperation=null;
+let chatFinished=false,voiceStarting=false,preview=false,audioSaving=false;
 const exclusiveMethods=new Set(['setup_run','chat','route','clear','start_model','download_model','download_voice','download_us_maps']);
 const operationLabels={setup_run:'Preparing JARVISS',download_model:'Preparing model and voice',download_voice:'Preparing offline voice',download_us_maps:'Preparing US offline maps',start_model:'Loading local model',chat:'Thinking',route:'Calculating walking directions',clear:'Clearing conversation'};
 const titles={assistant:'Assistant',situation:'My situation',atlas:'Offline atlas',knowledge:'Knowledge',recovery:'Recovery plan',settings:'Settings'};
@@ -11,7 +12,16 @@ function renderOperation(){
  for(const id of ['download-model','download-voice','download-us-maps','clear','choose-model'])$('#'+id).disabled=active||(id==='download-us-maps'&&!!(state.basemap&&state.usRouting?.ready));
  $('#start-model').disabled=active||!state.settings?.model||state.modelAvailable===false;
  $('#send').disabled=active||busy;
- $('#voice-toggle').disabled=!voice&&(active||!state.ready);
+ $('#voice-toggle').disabled=voiceStarting||(!voice&&(active||!state.ready));
+ const waiting=method==='chat'&&!chatFinished;
+ $('#messages').setAttribute('aria-busy',String(waiting));
+ if(waiting&&!$('#response-wait')){
+  document.body.classList.add('has-history');
+  const loader=document.createElement('div');loader.id='response-wait';loader.setAttribute('role','status');
+  const dots=document.createElement('span');dots.className='thinking-dots';dots.setAttribute('aria-hidden','true');
+  for(let i=0;i<3;i++)dots.append(document.createElement('i'));
+  loader.append(dots,document.createTextNode('Thinking…'));$('#messages').append(loader);$('#messages').scrollTop=$('#messages').scrollHeight;
+ }else if(!waiting)$('#response-wait')?.remove();
  $('#status').textContent=label||(state.ready?'Ready':'Model not started');
  $('#model-setup-status').textContent=active?`${label}. ${remoteOperation?.progress||'Please wait for this operation to finish.'}`:state.ready?'Model is running locally.':state.settings?.model?state.modelAvailable===false?'The selected model file is missing. Choose an existing GGUF or prepare the model again.':'Model selected. Ready to start.':'Choose an existing GGUF or prepare the model and voice files first.';
  if(remoteOperation?.progress)$('#progress').textContent=remoteOperation.progress;
@@ -28,13 +38,13 @@ async function call(method,args){
  if(exclusive&&(pendingMethod||remoteOperation)){
   const problem=new Error((remoteOperation?.label||operationLabels[pendingMethod]||'Another operation is running')+'. Wait for it to finish.');error(problem);throw problem;
  }
- if(exclusive){pendingMethod=method;$('#error').hidden=true;renderOperation();}
+ if(exclusive){pendingMethod=method;if(method==='chat')chatFinished=false;$('#error').hidden=true;renderOperation();}
  try{return await window.jarviss.command(method,args);}catch(e){error(e);throw e;}
  finally{if(exclusive){pendingMethod=null;renderOperation();}}
 }
 function page(name){document.body.classList.toggle('setup-screen',name==='setup'||name==='startup');document.querySelectorAll('.page').forEach(el=>el.classList.toggle('visible',el.id===name));document.querySelectorAll('[data-page]').forEach(el=>el.classList.toggle('selected',el.dataset.page===name));if(name==='atlas'){draw();window.offlineAtlas?.resize();}}
 document.querySelectorAll('[data-page]').forEach(el=>el.onclick=()=>page(el.dataset.page));
-function message(role,text){const node=document.createElement('div');node.className='message '+role;const label=document.createElement('span');label.className='speaker';label.textContent=role==='user'?'YOU':'JARVISS';node.append(label,document.createTextNode(text));$('#messages').append(node);$('#messages').scrollTop=$('#messages').scrollHeight;document.body.classList.add('has-history');}
+function message(role,text){const node=document.createElement('div');node.className='message '+role;const label=document.createElement('span');label.className='speaker';label.textContent=role==='user'?'YOU':'JARVISS';node.append(label,document.createTextNode(text));$('#messages').insertBefore(node,$('#response-wait'));$('#messages').scrollTop=$('#messages').scrollHeight;document.body.classList.add('has-history');}
 function card(title,text,detail){const el=document.createElement('div');el.className='panel';for(const [tag,value] of [['h3',title],['p',text],['small',detail]]){const n=document.createElement(tag);n.textContent=value||'';el.append(n);}return el;}
 function renderState(initial=false){
  if(Object.hasOwn(state,'operation'))remoteOperation=state.operation;renderOperation();
@@ -52,7 +62,7 @@ $('#composer').onsubmit=e=>{e.preventDefault();send($('#question').value).catch(
 $('#question').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#composer').requestSubmit();}};
 document.querySelectorAll('[data-prompt]').forEach(el=>el.onclick=()=>send(el.dataset.prompt).catch(()=>{}));
 $('#profile-form').onsubmit=async e=>{e.preventDefault();try{state.profile=await call('save_profile',Object.fromEntries(new FormData(e.target)));$('#saved').textContent='Saved';route=null;renderState();}catch{}};
-$('#voice-toggle').onclick=async()=>{const button=$('#voice-toggle');button.disabled=true;try{const result=await call('voice',{enabled:!voice});voice=result.enabled;button.textContent=voice?'Stop voice mode':'Start voice mode';}catch{voice=false;button.textContent='Start voice mode';}finally{renderOperation();}};
+$('#voice-toggle').onclick=async()=>{const button=$('#voice-toggle');voiceStarting=true;button.disabled=true;button.textContent=voice?'Stopping…':'Starting voice…';$('#error').hidden=true;try{const result=await call('voice',{enabled:!voice});voice=result.enabled;}catch{voice=false;}finally{voiceStarting=false;button.textContent=voice?'Stop voice mode':'Start voice mode';renderOperation();}};
 
 $('#clear').onclick=async()=>{try{await call('clear');$('#messages').replaceChildren();document.body.classList.remove('has-history');}catch{}};
 $('#start-model').onclick=async()=>{try{await call('start_model',{layers:$('#gpu').value===''?'auto':Number($('#gpu').value),path:state.settings?.model});await refresh();}catch{}};
@@ -156,10 +166,10 @@ window.addEventListener('atlas-point',async({detail})=>{
 });
 function draw(){if(state.basemap?.enabled){window.offlineAtlas?.update(state,route);return;}const c=$('#map-canvas'),ctx=c.getContext('2d'),r=c.getBoundingClientRect();if(!r.width)return;c.width=r.width*devicePixelRatio;c.height=r.height*devicePixelRatio;ctx.scale(devicePixelRatio,devicePixelRatio);if(!state.map){ctx.fillStyle='#8497ae';ctx.font='14px sans-serif';ctx.fillText('Download US offline maps to begin.',30,50);return;}const p=state.map,[s,w,n,e]=p.bounds,cos=Math.cos((s+n)/2*Math.PI/180),scale=Math.min((r.width-40)/((e-w)*cos),(r.height-40)/(n-s));const xy=v=>[r.width/2+(v[1]-(w+e)/2)*cos*scale,r.height/2-(v[0]-(s+n)/2)*scale];ctx.lineWidth=1;for(const road of p.roads){ctx.strokeStyle=road.walkable?'#40586b':'#253447';for(let i=1;i<road.nodes.length;i++){const a=p.nodes[road.nodes[i-1]],b=p.nodes[road.nodes[i]];if(a&&b){ctx.beginPath();ctx.moveTo(...xy(a));ctx.lineTo(...xy(b));ctx.stroke();}}}for(const place of p.places){ctx.fillStyle=place.kind.includes('water')?'#8bd6e5':'#deb492';ctx.beginPath();ctx.arc(...xy(place.point),3,0,Math.PI*2);ctx.fill();}if(route){ctx.strokeStyle='#b7e6ce';ctx.lineWidth=3;ctx.beginPath();route.points.forEach((p,i)=>i?ctx.lineTo(...xy(p)):ctx.moveTo(...xy(p)));ctx.stroke();}ctx.fillStyle='#c9dbe4';ctx.fillText('N ↑',15,22);}
 new ResizeObserver(draw).observe($('#map-canvas'));
-window.jarviss.subscribe(({event,data})=>{window.jarvisState?.(event,data);if(event==='operation'){const completed=remoteOperation?.method;remoteOperation=data;renderOperation();if(!data&&!pendingMethod&&(completed?.startsWith('download')||completed==='start_model'||completed==='setup_run')){refresh().catch(()=>{});if(completed==='setup_run')window.refreshSetup?.();}}if(event==='status'){if(data==='Ready'||data==='Model not started'){state.ready=data==='Ready';if(remoteOperation?.legacy){remoteOperation=null;refresh().catch(()=>{});}}renderOperation();$('#orb').classList.toggle('active',data==='Thinking');}if(event==='voice'){$('#voice-badge').textContent=data.toUpperCase();$('#orb').classList.toggle('active',data==='Listening'||data==='Speaking');if(data==='Voice off'){voice=false;$('#voice-toggle').textContent='Start voice mode';}}if(event==='mic_level')$('#mic-level').value=data;if(event==='partial')$('#heard-partial').textContent=data;if(event==='heard')message('user',data);if(event==='answer'){message('assistant',data.text);route=data.route||null;renderRoute();draw();}if(event==='error')error(data);if(event==='progress'){window.setupProgress?.(data);if(!Object.hasOwn(state,'operation')&&!pendingMethod&&!/index/i.test(data)){remoteOperation={method:'download_model',label:'Preparing offline files',progress:data,legacy:true};renderOperation();}$('#progress').textContent=data;if((pendingMethod||remoteOperation?.method)==='download_us_maps')$('#map-progress').textContent=data;if(/index/i.test(data))$('#location-search-status').textContent=data;}});
+window.jarviss.subscribe(({event,data})=>{window.jarvisState?.(event,data);if(event==='operation'){const completed=remoteOperation?.method;if(data?.method==='chat'&&completed!=='chat')chatFinished=false;remoteOperation=data;renderOperation();if(!data&&!pendingMethod&&(completed?.startsWith('download')||completed==='start_model'||completed==='setup_run')){refresh().catch(()=>{});if(completed==='setup_run')window.refreshSetup?.();}}if(event==='status'){if(data==='Ready'||data==='Model not started'){state.ready=data==='Ready';if(remoteOperation?.legacy){remoteOperation=null;refresh().catch(()=>{});}}renderOperation();$('#orb').classList.toggle('active',data==='Thinking');}if(event==='voice'){$('#voice-badge').textContent=data.toUpperCase();$('#orb').classList.toggle('active',data==='Listening'||data==='Speaking');if(data==='Voice off'){voice=false;$('#voice-toggle').textContent='Start voice mode';}}if(event==='mic_level')$('#mic-level').value=data;if(event==='partial')$('#heard-partial').textContent=data;if(event==='heard')message('user',data);if(event==='answer'){chatFinished=true;renderOperation();message('assistant',data.text);route=data.route||null;renderRoute();draw();}if(event==='voice_preview'){preview=!!data;renderPreview();}if(event==='error'){if(data.startsWith('Local service stopped'))remoteOperation=null;error(data);}if(event==='progress'){window.setupProgress?.(data);if(!Object.hasOwn(state,'operation')&&!pendingMethod&&!/index/i.test(data)){remoteOperation={method:'download_model',label:'Preparing offline files',progress:data,legacy:true};renderOperation();}$('#progress').textContent=data;if((pendingMethod||remoteOperation?.method)==='download_us_maps')$('#map-progress').textContent=data;if(/index/i.test(data))$('#location-search-status').textContent=data;}});
 window.addEventListener('DOMContentLoaded',async()=>{
  try{
-  state=await call('state');renderState(true);voice=!!state.voiceEnabled;
+  state=await call('state');renderState(true);voice=!!state.voiceEnabled;preview=!!state.voicePreview;renderPreview();$('#voice-toggle').textContent=voice?'Stop voice mode':'Start voice mode';
   const needsSetup=state.setup?.status!=='ready'||!state.modelAvailable||!state.voiceReady||!state.basemap||!state.usRouting?.ready||remoteOperation?.method==='setup_run';
   if(needsSetup)await window.openSetup();else page('assistant');
   await audioDevices();renderOperation();
@@ -179,8 +189,29 @@ function askDocument(title){page('assistant');$('#question').value=`Using the do
 const recoveryAsk=document.createElement('button');recoveryAsk.className='doc-ask';recoveryAsk.textContent='Ask about this';recoveryAsk.onclick=()=>askDocument('Regroup and rebuild');$('.recovery-entry').append(recoveryAsk);
 
 async function audioDevices(){const list=await call('audio_devices');for(const [id,kind,key] of [['input-device','input','input_device'],['output-device','output','output_device']]){const select=$('#'+id);select.replaceChildren(new Option('System default',''));for(const d of list.filter(d=>d[kind])){const o=new Option(`${d.name} · ${d.host}`,d.id);select.add(o);if(state.settings?.[key]?.name===d.name&&state.settings[key].host===d.host)o.selected=true;}}$('#voice-name').value=state.settings?.voice_name||'bm_george';}
-$('#save-audio').onclick=async()=>{try{state.settings=await call('audio_settings',{input_device:$('#input-device').value?Number($('#input-device').value):null,output_device:$('#output-device').value?Number($('#output-device').value):null,voice_name:$('#voice-name').value});$('#progress').textContent='Audio settings saved.';}catch{}};
-$('#test-speaker').onclick=async()=>{try{await call('test_speaker');}catch{}};
+function renderPreview(){
+ $('#test-speaker').textContent=preview?'Stop preview':'Preview voice';
+ $('#test-speaker').disabled=audioSaving&&!preview;
+ $('#audio-status').textContent=audioSaving?'Saving…':preview?'Playing selected voice…':'';
+}
+async function saveAudio(){
+ if(audioSaving)return;
+ audioSaving=true;renderPreview();
+ for(const id of ['input-device','output-device','voice-name'])$('#'+id).disabled=true;
+ try{
+  state.settings=await call('audio_settings',{input_device:$('#input-device').value?Number($('#input-device').value):null,output_device:$('#output-device').value?Number($('#output-device').value):null,voice_name:$('#voice-name').value});
+ }finally{audioSaving=false;for(const id of ['input-device','output-device','voice-name'])$('#'+id).disabled=false;renderPreview();}
+}
+for(const id of ['input-device','output-device','voice-name'])$('#'+id).onchange=()=>saveAudio().catch(()=>{});
+$('#test-speaker').onclick=async()=>{
+ try{
+  if(preview){await call('stop_speaker');return;}
+  if(audioSaving)return;
+  await saveAudio();
+  preview=true;renderPreview();$('#error').hidden=true;
+  await call('test_speaker');
+ }catch{preview=false;renderPreview();}
+};
 
 const promptFields={'system_prompt':'system-prompt','voice_prompt':'voice-prompt','voice_max_sentences':'voice-max-sentences','voice_max_tokens':'voice-max-tokens','text_max_tokens':'text-max-tokens'};
 function renderPrompts(settings){for(const [key,id] of Object.entries(promptFields))$('#'+id).value=settings[key];}

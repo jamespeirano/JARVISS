@@ -33,6 +33,10 @@ jobs:
       - run: node electron/tests/atlas-protocol.cjs
       - run: node --test electron/tests/startup.cjs
       - run: npm run build:map --prefix electron
+      - name: Check chat and voice controls
+        run: |
+          python -m venv .venv --system-site-packages
+          node electron/tests/feedback.cjs
   public-source:
     name: Public source checks
     runs-on: ubuntu-latest

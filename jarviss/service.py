@@ -69,6 +69,7 @@ class Service:
                 'operation':dict(self.operation) if self.operation else None,
                 'modelAvailable':bool(self.settings.get('model') and model_path(self.settings['model']).is_file()),
                 'voiceEnabled':self.voice.enabled.is_set(),
+                'voicePreview':self.voice.previewing,
                 'setup':self.setup.snapshot(),
                 'map':self.area.pack if self.area else None,
                 'basemap':dict(self.archive.pack, path=str(self.archive.path), enabled=not self.example_active) if self.archive else None,
@@ -139,22 +140,26 @@ class Service:
             return {'enabled':self.voice.enabled.is_set()}
         if method == 'audio_devices': return devices()
         if method == 'audio_settings':
-            self.voice.pause()
             available = devices()
+            updated = {}
             for key, direction in [('input_device','input'),('output_device','output')]:
                 value = args.get(key)
-                if value is None: self.settings[key] = None
+                if value is None: updated[key] = None
                 else:
-                    device = next(d for d in available if d['id'] == int(value) and d[direction])
-                    self.settings[key] = {'name':device['name'],'host':device['host']}
+                    device = next((d for d in available if d['id'] == int(value) and d[direction]), None)
+                    if device is None: raise ValueError('Audio device disconnected. Choose another in Settings → Voice.')
+                    updated[key] = {'name':device['name'],'host':device['host']}
             name = args.get('voice_name','bm_george')
             if name not in ('bm_george','bm_lewis','am_michael','af_heart','bf_emma'): raise ValueError('Unknown voice.')
-            self.settings['voice_name'] = name
+            self.voice.pause()
+            self.settings.update(updated, voice_name=name)
             self.voice.configure(self.settings); write_json(DATA / 'settings.json', self.settings)
             return self.settings
         if method == 'test_speaker':
-            self.voice.prepare_tts()
-            self.voice.speak('Jarvis is ready. This voice is generated entirely on your device.')
+            self.voice.speak('This is my voice.', preview=True)
+            return True
+        if method == 'stop_speaker':
+            self.voice.pause()
             return True
         if method == 'save_profile':
             profile = {**self.profile, **{k:str(args.get(k, ''))[:2000] for k in ('situation','supplies','location_text')}}
