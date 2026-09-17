@@ -3,7 +3,7 @@ const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),asse
 (async()=>{const root=path.resolve(__dirname,'../..'),data=fs.mkdtempSync(path.join(os.tmpdir(),'jarvis-planner-'));let app;
 try{const env={...process.env,JARVISS_DATA:data,JARVISS_APP_DATA:data};delete env.ELECTRON_RUN_AS_NODE;
 app=await electron.launch({args:[path.join(root,'electron')],env});const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));
-await page.waitForFunction(()=>document.querySelector('#status').textContent==='Model not started');
+await page.waitForFunction(()=>document.querySelector('#status').textContent==='Model not started');await page.locator('#setup-later').click();
 assert.equal(await page.locator('[name="lat"], [name="lon"]').count(),0);
 await page.locator('[data-page="docs"]').click();await page.locator('#situation-document summary').click();await page.locator('[name="location_text"]').fill('123 Congress Ave, Austin, TX');await page.locator('#situation-find').click();
 assert.equal(await page.locator('#atlas').isVisible(),true);assert.equal(await page.locator('#city-search').inputValue(),'Austin, TX');assert.equal(await page.locator('#landmark-search').inputValue(),'123 Congress Ave');
@@ -20,7 +20,7 @@ await tab('Garden');await add({name:'Beans',quantity:20,plant_on:'2026-05-01',da
 await tab('People');await add({name:'Alex',skills:'Bicycle repair',needs:'Water',responsibility:'Repair pump',contact:'Library at noon'});
 await tab('Log');await add({name:'Bridge damaged',status:'Reported',observer:'Neighbor',place:'River road'});assert.match(await page.locator('#plan-list').innerText(),/Reported/);
 await tab('Messages');await page.locator('#board-form [name="name"]').fill('Alex');await page.locator('#board-form [name="text"]').fill('Meet at the library at noon.');await page.locator('#board-form button').click();await page.waitForFunction(()=>document.querySelector('#board-messages').textContent.includes('Meet at the library'));
-await page.reload();await page.waitForFunction(()=>document.querySelector('#status').textContent==='Model not started');await page.locator('[data-page="plan"]').click();assert.match(await page.locator('#plan-list').innerText(),/2 days left/);
+await page.reload();await page.waitForFunction(()=>document.querySelector('#status').textContent==='Model not started');await page.locator('#setup-later').click();await page.locator('[data-page="plan"]').click();assert.match(await page.locator('#plan-list').innerText(),/2 days left/);
 await page.locator('[data-page="docs"]').click();assert.equal(await page.locator('#guides details').count(),16);await page.locator('.recovery-entry summary').click();const recovery=await page.locator('#recovery-document').innerText();assert.ok(recovery.split(/\s+/).length<150);
 await page.locator('#paste-document').click();await page.locator('#note-form [name="title"]').fill('Pump TP1 manual');await page.locator('#note-form [name="text"]').fill('E04: Intake obstruction. Switch off and check the filter.');await page.locator('#note-form button').filter({hasText:'Save document'}).click();await page.waitForFunction(()=>document.querySelector('#documents').textContent.includes('Pump TP1 manual'));
 await page.locator('#docs-search').fill('E04');assert.equal(await page.locator('#documents .doc-entry:visible').count(),1);assert.equal(await page.locator('#guides .doc-entry:visible').count(),0);

@@ -53,7 +53,7 @@
  };
  window.setupProgress=text=>{if(running)at('setup-detail').textContent=text;};
  window.refreshSetup=()=>{if(at('setup').classList.contains('visible'))check(selected);};
- window.openSetup=()=>{page('setup');check();};
+ window.openSetup=()=>{page('setup');at('error').hidden=true;return check();};
  at('download-model').onclick=window.openSetup;
  at('setup-recheck').onclick=()=>check(selected);
  at('setup-later').onclick=at('setup-done').onclick=()=>page('assistant');
@@ -62,7 +62,7 @@
   if(!plan||running)return;
   at('setup-warning').textContent='';at('setup-activity').hidden=false;at('setup-bar').removeAttribute('value');
   try{await call('setup_run',{model_id:selected});}
-  catch(e){at('setup-warning').textContent=e.message;}
+  catch(e){error(e);}
   finally{await refresh();await check(selected);}
  };
 })();

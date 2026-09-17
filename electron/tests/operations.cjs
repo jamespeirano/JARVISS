@@ -10,6 +10,7 @@ const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),asse
   const env={...process.env,JARVISS_ROOT:test,JARVISS_DATA:path.join(test,'data'),JARVISS_APP_DATA:path.join(test,'app')};delete env.ELECTRON_RUN_AS_NODE;
   app=await electron.launch({args:[path.join(root,'electron')],env});const page=await app.firstWindow();
   await page.waitForFunction(()=>document.querySelector('#status').textContent==='Model not started');
+  await page.locator('#setup-later').click();
   assert.equal(await page.locator('#start-model').isDisabled(),true);
   await page.locator('[data-page="settings"]').click();await page.locator('[data-settings="model"]').click();
   await page.evaluate(()=>{call('download_model',{}).catch(()=>{});});
@@ -22,6 +23,7 @@ const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),asse
   // A renderer reload must restore the backend's ongoing work, not start a second operation.
   await page.reload();
   await page.waitForFunction(()=>document.querySelector('#status').textContent==='Preparing model and voice');
+  await page.locator('#setup-later').click();
   assert.equal(await page.locator('#start-model').isDisabled(),true);
   assert.match(await page.locator('#progress').innerText(),/60 MB/);
   assert.equal(await page.locator('#error').isVisible(),false);

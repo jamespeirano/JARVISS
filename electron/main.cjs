@@ -4,10 +4,11 @@ const fs=require('node:fs');
 const path=require('node:path');
 const readline=require('node:readline');
 const {atlasHandler}=require('./atlas-protocol.cjs');
+const {watchStartup}=require('./startup.cjs');
 app.setName('JARVISS');
 protocol.registerSchemesAsPrivileged([{scheme:'atlas',privileges:{standard:true,secure:true,supportFetchAPI:true,corsEnabled:true,stream:true}}]);
 let archivePath;
-let win, child, sequence=0, quitting=false;
+let win, child, startup, sequence=0, quitting=false;
 const pending=new Map();
 app.setPath('userData',process.env.JARVISS_APP_DATA||path.join(app.getPath('appData'),'JARVISS'));
 const allowed=new Set(['setup_plan','setup_run','setup_pause','location_parts','import_note','planner_save','planner_delete','planner_done','planner_energy','board_start','board_stop','board_state','board_send','state','chat','save_profile','set_map_position','search_locations','use_basemap','voice','clear','start_model','nearest','route','example_map','download_model','download_voice','download_us_maps','download_map','audio_devices','audio_settings','test_speaker','prompt_settings']);
@@ -39,6 +40,7 @@ app.whenReady().then(()=>{
  child.on('exit',()=>{for(const p of pending.values()){clearTimeout(p.timer);p.reject(new Error('Local service stopped.'));}pending.clear();send('error','Local service stopped. Restart the application.');});
  ipcMain.handle('command',(event,method,args)=>{
   if(event.sender!==win.webContents||!allowed.has(method))throw new Error('Unsupported operation');
+  if(method==='state')startup?.ready();
   return rpc(method,args);
  });
  ipcMain.handle('pick',async(event,kind)=>{
@@ -54,7 +56,8 @@ app.whenReady().then(()=>{
  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
  win.webContents.on('will-navigate',e=>e.preventDefault());
  win.webContents.session.setPermissionRequestHandler((_w,_p,callback)=>callback(false));
- win.loadFile(path.join(__dirname,'index.html'));
+ startup=watchStartup(win,{app,dialog,report:reason=>fs.appendFileSync(path.join(root,'startup.log'),`${new Date().toISOString()} ${reason}\n`)});
+ win.loadFile(path.join(__dirname,'index.html')).catch(error=>startup.failed(error.message));
 });
 app.on('window-all-closed',()=>app.quit());
 app.on('before-quit',event=>{

@@ -31,6 +31,7 @@ jobs:
       - run: npm ci --prefix electron
       - run: python -m unittest discover -s tests -p "test_*.py" -v
       - run: node electron/tests/atlas-protocol.cjs
+      - run: node --test electron/tests/startup.cjs
       - run: npm run build:map --prefix electron
   public-source:
     name: Public source checks

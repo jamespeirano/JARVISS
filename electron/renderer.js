@@ -16,7 +16,13 @@ function renderOperation(){
  $('#model-setup-status').textContent=active?`${label}. ${remoteOperation?.progress||'Please wait for this operation to finish.'}`:state.ready?'Model is running locally.':state.settings?.model?state.modelAvailable===false?'The selected model file is missing. Choose an existing GGUF or prepare the model again.':'Model selected. Ready to start.':'Choose an existing GGUF or prepare the model and voice files first.';
  if(remoteOperation?.progress)$('#progress').textContent=remoteOperation.progress;
 }
-function error(e){$('#error').hidden=false;$('#error').textContent=(e.message||String(e)).replace(/^Error invoking remote method '[^']+': (?:Error: )?/,'');renderOperation();}
+function error(e){
+ const text=(e.message||String(e)).replace(/^Error invoking remote method '[^']+': (?:Error: )?/,'');
+ const inSetup=$('#setup').classList.contains('visible');
+ $('#error').hidden=inSetup;
+ $(inSetup?'#setup-warning':'#error').textContent=text;
+ renderOperation();
+}
 async function call(method,args){
  const exclusive=exclusiveMethods.has(method);
  if(exclusive&&(pendingMethod||remoteOperation)){
@@ -26,7 +32,7 @@ async function call(method,args){
  try{return await window.jarviss.command(method,args);}catch(e){error(e);throw e;}
  finally{if(exclusive){pendingMethod=null;renderOperation();}}
 }
-function page(name){document.querySelectorAll('.page').forEach(el=>el.classList.toggle('visible',el.id===name));document.querySelectorAll('[data-page]').forEach(el=>el.classList.toggle('selected',el.dataset.page===name));if(name==='atlas'){draw();window.offlineAtlas?.resize();}}
+function page(name){document.body.classList.toggle('setup-screen',name==='setup'||name==='startup');document.querySelectorAll('.page').forEach(el=>el.classList.toggle('visible',el.id===name));document.querySelectorAll('[data-page]').forEach(el=>el.classList.toggle('selected',el.dataset.page===name));if(name==='atlas'){draw();window.offlineAtlas?.resize();}}
 document.querySelectorAll('[data-page]').forEach(el=>el.onclick=()=>page(el.dataset.page));
 function message(role,text){const node=document.createElement('div');node.className='message '+role;const label=document.createElement('span');label.className='speaker';label.textContent=role==='user'?'YOU':'JARVISS';node.append(label,document.createTextNode(text));$('#messages').append(node);$('#messages').scrollTop=$('#messages').scrollHeight;document.body.classList.add('has-history');}
 function card(title,text,detail){const el=document.createElement('div');el.className='panel';for(const [tag,value] of [['h3',title],['p',text],['small',detail]]){const n=document.createElement(tag);n.textContent=value||'';el.append(n);}return el;}
@@ -59,7 +65,8 @@ const miles=m=>`${(m/1609.344).toFixed(2)} miles (${Math.round(m).toLocaleString
 function renderRoute(){
  const container=$('#route-info');container.replaceChildren();
  if(route){
-  const heading=document.createElement('strong');heading.textContent=`Walk to ${route.destination||'destination'} · ${miles(route.distance_m)}`;container.append(heading);
+  const heading=document.createElement('strong');heading.textContent=`Walk ${route.destination_note?'near':'to'} ${route.destination||'destination'} · ${miles(route.distance_m)}`;container.append(heading);
+  if(route.destination_note){const note=document.createElement('p');note.textContent=route.destination_note;container.append(note);}
   const steps=route.steps||[];let index=0;
   if(steps.length){
    const current=document.createElement('p'),controls=document.createElement('div'),back=document.createElement('button'),next=document.createElement('button');back.textContent='Back';next.textContent='Next';controls.className='route-step-controls';controls.append(back,next);
@@ -153,9 +160,10 @@ window.jarviss.subscribe(({event,data})=>{window.jarvisState?.(event,data);if(ev
 window.addEventListener('DOMContentLoaded',async()=>{
  try{
   state=await call('state');renderState(true);voice=!!state.voiceEnabled;
-  if(!state.settings?.model||remoteOperation?.method==='setup_run'||['paused','failed'].includes(state.setup?.status))window.openSetup?.();
+  const needsSetup=state.setup?.status!=='ready'||!state.modelAvailable||!state.voiceReady||!state.basemap||!state.usRouting?.ready||remoteOperation?.method==='setup_run';
+  if(needsSetup)await window.openSetup();else page('assistant');
   await audioDevices();renderOperation();
-  if(state.settings?.model&&state.modelAvailable!==false&&!state.ready&&!remoteOperation)await call('start_model');
+  if(!needsSetup&&state.settings?.model&&!state.ready&&!remoteOperation)await call('start_model');
  }catch{}
 });
 

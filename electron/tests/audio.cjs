@@ -7,7 +7,7 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),asse
   const env={...process.env,JARVISS_ROOT:path.resolve(__dirname,'../..'),JARVISS_DATA:data,JARVISS_APP_DATA:data};delete env.ELECTRON_RUN_AS_NODE;
   app=await electron.launch({executablePath:process.env.TEST_PACKAGED,args:[],env});
   const page=await app.firstWindow();
-  await page.waitForFunction(()=>document.querySelector('#status').textContent==='Model not started');
+  await page.waitForFunction(()=>document.querySelector('#status').textContent==='Model not started');await page.locator('#setup-later').click();
   await page.evaluate(()=>{window.audioEvents=[];window.jarviss.subscribe(e=>window.audioEvents.push(e));});
   await page.locator('[data-page="settings"]').click();
   await page.locator('[data-settings="audio"]').click();

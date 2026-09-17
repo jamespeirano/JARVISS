@@ -11,7 +11,7 @@ const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),asse
   await app.evaluate(({session})=>{globalThis.externalRequests=[];session.defaultSession.webRequest.onBeforeRequest((details,done)=>{if(/^https?:/.test(details.url)){globalThis.externalRequests.push(details.url);done({cancel:true});}else done({});});});
   const page=await app.firstWindow();const errors=[];page.on('pageerror',e=>errors.push(e.message));
   page.on('console',m=>{if(m.type()==='error')console.error('renderer:',m.text());});
-  await page.waitForFunction(()=>document.querySelector('#status').textContent==='Model not started');
+  await page.waitForFunction(()=>document.querySelector('#status').textContent==='Model not started');await page.locator('#setup-later').click();
   await page.locator('[data-page="atlas"]').click();
   await page.waitForFunction(()=>window.jarvisDetailMap?.isStyleLoaded(),{},{timeout:30000});
   assert.match(await page.locator('#map-local-status').innerText(),/Offline/);

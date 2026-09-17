@@ -1,7 +1,9 @@
 import hashlib
+import ssl
 import tempfile
 import threading
 import unittest
+import urllib.error
 from pathlib import Path
 from unittest.mock import Mock, patch
 from jarviss.hardware import recommend, GIB
@@ -80,6 +82,43 @@ class SetupTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,'Not enough memory'):self.setup.run('compact',only_model=True)
         self.assertEqual(self.service.settings['model'],'previous.gguf')
         self.assertEqual(self.setup.snapshot()['status'],'failed')
+
+    def test_pause_during_routing_keeps_completed_map_and_remaining_space(self):
+        hardware=self.hardware();hardware['disk']=30*GIB
+        archive=self.root/'map.pmtiles';model=choose('compact')
+        def prepare_model(_id,progress):
+            path=self.root/'models'/model['filename'];path.parent.mkdir()
+            with path.open('wb') as f:f.truncate(model['bytes'])
+            return path
+        def import_map(method,args):
+            self.assertEqual((method,args),('import_basemap',{'path':str(archive)}))
+            self.service.archive=Mock(path=archive)
+            hardware['disk']=8*GIB
+        def pause(progress):
+            self.setup.cancel.set();progress('Partial routing download')
+        self.service.command.side_effect=import_map
+        self.service.state.return_value={'voiceReady':True}
+        with patch('jarviss.setup.inspect',return_value=hardware), \
+             patch('jarviss.setup.prepare_runtime'), \
+             patch('jarviss.setup.prepare_model',side_effect=prepare_model), \
+             patch('jarviss.setup.prepare_voice'), \
+             patch('jarviss.setup.prepare_basemap',return_value=archive), \
+             patch('jarviss.setup.prepare_routing',side_effect=pause):
+            result=self.setup.run('compact')
+        self.assertEqual(result['run']['status'],'paused')
+        self.assertTrue(result['components']['map'])
+        self.assertEqual(result['download_bytes'],2_000_000_000)
+        self.assertTrue(result['space_ok'])
+        self.service.model.start.assert_not_called()
+
+    def test_certificate_failure_has_a_retry_message_and_keeps_setup_incomplete(self):
+        failure=urllib.error.URLError(ssl.SSLCertVerificationError('unable to get local issuer certificate'))
+        with patch('jarviss.setup.inspect',return_value=self.hardware()),patch('jarviss.setup.prepare_runtime'),patch('jarviss.setup.prepare_model',side_effect=failure):
+            with self.assertRaisesRegex(RuntimeError,'Could not verify the download server'):
+                self.setup.run('compact')
+        self.assertEqual(Setup(self.service).snapshot()['status'],'failed')
+        self.assertNotIn('_ssl',self.setup.snapshot()['error'])
+        self.service.model.start.assert_not_called()
 
     def test_complete_setup_checks_response_without_chat_history(self):
         self.service.model.chat.return_value='Ready'

@@ -4,13 +4,15 @@ import sys
 from pathlib import Path
 
 root = Path(__file__).resolve().parent.parent
+if not (root / 'jarviss' / '__init__.py').is_file():
+    raise SystemExit('Missing jarviss application source. Use a complete source checkout before building.')
 subprocess.run([sys.executable, str(root / 'scripts/bundle_runtime.py')], cwd=root, check=True)
 args = [sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', '--onefile',
         '--name', 'jarviss-service', '--distpath', str(root / 'electron/backend'),
         '--add-data', f'{root / "resources"}:resources', '--collect-all', 'vosk',
         '--collect-all', 'sounddevice', '--collect-all', 'kokoro_onnx',
         '--collect-all', 'espeakng_loader', '--collect-all', 'phonemizer',
-        '--collect-all', 'language_tags',
+        '--collect-all', 'language_tags', '--collect-data', 'certifi',
         '--collect-all', 'onnxruntime', '--copy-metadata', 'kokoro-onnx',
         '--copy-metadata', 'phonemizer-fork', '--collect-all', 'psutil', '--collect-all', 'pypdf']
 if sys.platform == 'win32': args += ['--icon', str(root / 'electron/icons/icon.ico')]

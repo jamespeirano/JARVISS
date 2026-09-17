@@ -1,11 +1,13 @@
 import io
 import json
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 from jarviss.us_routing import USRouter, segment_name
-from jarviss.map_setup import download_file, select_us_files, prepare_us
+from jarviss.map_setup import download_file, select_us_files, prepare_us, prepare_routing
+from jarviss.setup import SetupPaused
 
 
 class DownloadTests(unittest.TestCase):
@@ -29,6 +31,34 @@ class DownloadTests(unittest.TestCase):
 
     def test_national_manifest_rejects_incomplete_listing(self):
         with self.assertRaisesRegex(ValueError,'full US'):select_us_files('<a href="W100_N30.rd5">W100_N30.rd5</a> 14-Sep-2026 01:03 10\n')
+
+    def test_routing_pause_does_not_start_queued_downloads(self):
+        with tempfile.TemporaryDirectory() as temp:
+            rows=[{'name':f'W{x}_N30.rd5','size':100,'provider_modified':'test'} for x in range(60,120,5)]
+            cancelled=threading.Event(); others_finished=threading.Event()
+            lock=threading.Lock(); stopped=0; started=[]
+            def progress(text):
+                nonlocal stopped
+                with lock:
+                    if cancelled.is_set() or text.startswith('US directions ·'):
+                        cancelled.set(); stopped+=1
+                        if stopped>=len(rows)-1:others_finished.set()
+                        raise SetupPaused()
+            def download(url,target,report,size):
+                started.append(target.name)
+                # Keep the first result pending while another worker requests
+                # pause. Queued work must observe it before opening a connection.
+                if target.name==rows[0]['name']:
+                    self.assertTrue(others_finished.wait(2))
+                report('Partial file saved')
+            with patch('jarviss.map_setup.USRouter',return_value=USRouter(temp)), \
+                 patch('jarviss.map_setup.prepare_engine'), \
+                 patch('jarviss.map_setup.select_us_files',return_value=rows), \
+                 patch('urllib.request.urlopen',return_value=io.BytesIO(b'listing')), \
+                 patch('jarviss.map_setup.download_file',side_effect=download):
+                with self.assertRaises(SetupPaused):prepare_routing(progress)
+            self.assertLessEqual(len(started),3,'Pause started downloads beyond the three already active workers')
+            self.assertFalse(json.loads((Path(temp)/'manifest.json').read_text())['complete'])
 
 
 class RoutingTests(unittest.TestCase):

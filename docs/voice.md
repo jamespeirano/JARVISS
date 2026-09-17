@@ -57,6 +57,7 @@ ONNX Runtime 1.30 is pinned. The app sets `ORT_DISABLE_TELEMETRY=1` before impor
 - [Kokoro ONNX runtime](https://github.com/thewh1teagle/kokoro-onnx): engine and model-download instructions.
 - [Kokoro 82M](https://huggingface.co/hexgrad/Kokoro-82M): model weights, Apache 2.0.
 - [Vosk model catalog](https://alphacephei.com/vosk/models): 0.22-lgraph is the 128 MB English dynamic-graph model, Apache 2.0.
+- Setup downloads this archive from the [Rhasspy mirror](https://huggingface.co/rhasspy/vosk-models/tree/8e5f85a35b402c35022b5af62c101dd6a06d0219/en), with the original host as a fallback. Both downloads must match the same pinned SHA-256 checksum.
 - [eSpeak NG](https://github.com/espeak-ng/espeak-ng) and [phonemizer](https://github.com/bootphon/phonemizer): phonemization dependencies include GPL licensing. Public binary distribution needs their license notices and corresponding-source compliance; the current build is a local test artifact, not a completed public release package.
 
 Kokoro downloads are checked against pinned SHA-256 digests. Vosk's downloaded archive hash is recorded, but the upstream catalog provides no independently pinned digest in this implementation. All assets must be prepared while online; inference and playback then use local files.
