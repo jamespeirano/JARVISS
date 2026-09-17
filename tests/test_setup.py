@@ -109,7 +109,9 @@ class SetupTests(unittest.TestCase):
         self.assertTrue(result['components']['map'])
         self.assertEqual(result['download_bytes'],2_000_000_000)
         self.assertTrue(result['space_ok'])
-        self.service.model.start.assert_not_called()
+        self.service.model.start.assert_called_once()
+        self.assertTrue(self.service.ready)
+        self.assertEqual(self.service.settings['model_id'],'compact')
 
     def test_certificate_failure_has_a_retry_message_and_keeps_setup_incomplete(self):
         failure=urllib.error.URLError(ssl.SSLCertVerificationError('unable to get local issuer certificate'))

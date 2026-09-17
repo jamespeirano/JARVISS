@@ -4,8 +4,9 @@ const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),asse
  const root=path.resolve(__dirname,'../..'),test=fs.mkdtempSync(path.join(os.tmpdir(),'jarvis-setup-'));
  let app;
  try{
-  fs.symlinkSync(path.join(root,'.venv'),path.join(test,'.venv'),'dir');
-  fs.symlinkSync(path.join(root,'resources'),path.join(test,'resources'),'dir');
+  fs.mkdirSync(path.join(root,'local-data'),{recursive:true});
+  fs.symlinkSync(path.join(root,'.venv'),path.join(test,'.venv'),process.platform==='win32'?'junction':'dir');
+  fs.symlinkSync(path.join(root,'resources'),path.join(test,'resources'),process.platform==='win32'?'junction':'dir');
   const hw={system:'Darwin',arch:'arm64',memory:36*2**30,available:30*2**30,disk:100*2**30,cores:8,unified:true,gpus:[],accelerated:true};
   fs.writeFileSync(path.join(test,'hardware.json'),JSON.stringify(hw));
   fs.writeFileSync(path.join(test,'service.py'),`import sys,time,json
@@ -33,7 +34,11 @@ def voice(progress):
  for f in ['vosk-model-en-us-0.22-lgraph/am/final.mdl','kokoro/kokoro-v1.0.onnx','kokoro/voices-v1.0.bin']:
   p=MODELS/f;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(b'fixture')
 setup.prepare_voice=voice
-setup.prepare_basemap=lambda progress,cancel=None:ROOT/'fixture.pmtiles'
+def basemap(progress,cancel=None):
+ while (ROOT/'hold-map').exists():
+  progress('US map: downloading');time.sleep(.03)
+ return ROOT/'fixture.pmtiles'
+setup.prepare_basemap=basemap
 def routing(progress):
  (ROOT/'map-ready').touch()
 setup.prepare_routing=routing
@@ -87,6 +92,12 @@ service.main()
   await page.locator('#setup-download').click();
   await page.waitForFunction(()=>document.querySelector('#setup-detail').textContent==='Downloading model');
   assert.equal(await page.locator('#send').isDisabled(),true);
+  await page.locator('#setup-later').click();
+  await page.locator('[data-page="settings"]').click();
+  await page.locator('[data-settings="model"]').click();
+  assert.equal(await page.locator('#download-model').isEnabled(),true,'Active setup must remain accessible');
+  await page.locator('#download-model').click();
+  await page.locator('#setup-pause').waitFor({state:'visible'});
   await page.reload();
   await page.waitForFunction(()=>document.querySelector('#setup-pause').hidden===false);
   await page.locator('#setup-pause').click();
@@ -102,15 +113,36 @@ service.main()
   await page.waitForFunction(()=>!document.querySelector('#setup-download').disabled);
   assert.equal(await page.locator('#setup').isVisible(),true);
   assert.match(await page.locator('#setup-warning').innerText(),/Download interrupted/);
-  fs.unlinkSync(path.join(test,'fail'));await page.locator('#setup-download').click();
+  fs.unlinkSync(path.join(test,'fail'));fs.writeFileSync(path.join(test,'hold-map'),'');
+  await page.locator('#setup-download').click();
+  await page.waitForFunction(()=>document.querySelector('#setup-detail').textContent==='US map: downloading');
+  await page.locator('#setup-later').click();
+  await page.waitForFunction(()=>!document.querySelector('#send').disabled);
+  await page.locator('#question').fill('Hello Jarvis');await page.locator('#send').click();
+  await page.locator('.message.assistant').filter({hasText:'Ready'}).waitFor();
+  await page.locator('[data-page="atlas"]').click();
+  assert.equal(await page.locator('#city-search-form button').isDisabled(),true);
+  assert.match(await page.locator('#location-search-status').innerText(),/Map not ready/);
+  await page.locator('#map-view-setup').click();
+  await page.locator('#setup-pause').click();
+  await page.waitForFunction(()=>document.querySelector('#setup-download').textContent==='Continue setup');
+  assert.equal(await page.locator('#status').innerText(),'Ready','Pause must keep the validated model running');
+  await app.close();
+  app=await electron.launch({args:[path.join(root,'electron')],env});page=await app.firstWindow();
+  await page.waitForFunction(()=>document.querySelector('#status').textContent==='Ready');
+  await page.locator('#setup-later').click();
+  await page.locator('#question').fill('Hello again');await page.locator('#send').click();
+  await page.locator('.message.assistant').filter({hasText:'Ready'}).nth(1).waitFor();
+  await page.locator('#view-setup').click();fs.unlinkSync(path.join(test,'hold-map'));
+  await page.locator('#setup-download').click();
   await page.waitForFunction(()=>document.querySelector('#setup-size').textContent==='Ready offline');
   assert.equal(JSON.parse(fs.readFileSync(path.join(test,'data/settings.json'))).model_id,'compact');
-  assert.equal(fs.existsSync(path.join(test,'data/conversation.json')),false);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(test,'data/conversation.json'))).length,4,'Setup must not add its validation exchange to chat');
   await page.locator('#setup-done').click();assert.equal(await page.locator('#assistant').isVisible(),true);
   await page.reload();await page.locator('#assistant').waitFor({state:'visible'});
   const model=JSON.parse(fs.readFileSync(path.join(test,'data/settings.json'))).model;
   fs.unlinkSync(path.resolve(test,model));
   await page.reload();await page.locator('#setup').waitFor({state:'visible'});
   console.log('PASS: startup hides chat, fresh setup first, explicit skip, failed setup/relaunch/retry, missing model recovery, recommendation, low storage, two window sizes, pause/reload, all components, unchanged conversation');
- }finally{fs.writeFileSync(path.join(test,'release'),'');if(app)await app.close();fs.rmSync(test,{recursive:true,force:true});}
+ }finally{fs.writeFileSync(path.join(test,'release'),'');fs.rmSync(path.join(test,'hold-map'),{force:true});if(app)await app.close();fs.rmSync(test,{recursive:true,force:true});}
 })().catch(e=>{console.error(e);process.exitCode=1;});

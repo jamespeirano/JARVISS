@@ -45,7 +45,7 @@ function ensureMap(){
   const title=document.createElement('strong');title.textContent=place?.name||'Selected point';
   const coords=document.createElement('p');coords.textContent='Confirm this point on the map.';
   const here=document.createElement('button');here.textContent='I am here';here.onclick=()=>{popup.remove();window.dispatchEvent(new CustomEvent('atlas-point',{detail:{point,action:'position',name:place?.name}}));};
-  const go=document.createElement('button');go.textContent='Walking directions';go.onclick=()=>{popup.remove();window.dispatchEvent(new CustomEvent('atlas-point',{detail:{point,action:'route'}}));};
+  const go=document.createElement('button');go.textContent='Walking directions';go.onclick=()=>{popup.remove();window.dispatchEvent(new CustomEvent('atlas-point',{detail:{point,action:'route',name:place?.name}}));};
   content.append(title,coords,here,go);popup?.remove();popup=new Popup().setLngLat(event.lngLat).setDOMContent(content).addTo(map);
  });
  window.jarvisDetailMap=map;

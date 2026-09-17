@@ -8,7 +8,8 @@ function referenceButton(label,action){
 }
 function renderReferences(){
  const docs=state.references||[];
- $('#reference-summary').textContent=`${docs.length} documents · ${Math.round(docs.reduce((n,d)=>n+d.words,0)/1000).toLocaleString()}k words · Available offline`;
+ $('#reference-summary').textContent=`${docs.length} field documents · ${Math.round(docs.reduce((n,d)=>n+d.words,0)/1000).toLocaleString()}k words · Available offline`;
+ $('#reference-summary').dataset.fullSummary=$('#reference-summary').textContent;
  $('#reference-pdfs').textContent=`Illustrated PDFs (${docs.filter(d=>d.pdf).length})`;
  if(referenceEntries.size===docs.length)return;
  referenceEntries.clear();$('#references').replaceChildren();
@@ -159,22 +160,37 @@ for(const [selector,format,label] of [['#reference-save-text','md','Text saved']
 $('#reference-ask').onclick=()=>askDocument(readingDocument.title);
 function filterDocs(){
  const q=$('#docs-search').value.trim().toLowerCase(),sequence=++referenceSearch,pdfs=$('#reference-pdfs').getAttribute('aria-pressed')==='true';
- for(const d of document.querySelectorAll('#guides .doc-entry,#documents .doc-entry,.recovery-entry'))d.hidden=!!q&&!d.textContent.toLowerCase().includes(q);
+ for(const id of ['documents','documents-heading','guides','guides-heading','situation-document'])$('#'+id).hidden=!!q||pdfs;
+ $('.recovery-entry').hidden=!!q||pdfs;
+ $('#field-library-heading').hidden=!!q;
  for(const item of referenceEntries.values())item.entry.hidden=pdfs&&!item.doc.pdf;
  clearTimeout(referenceTimer);$('#references').hidden=!!q;$('#reference-results').hidden=!q;
- if(!q){$('#reference-results').replaceChildren();return;}
- $('#reference-results').textContent='Searching…';
+ if(!q){$('#reference-summary').textContent=pdfs?'Illustrated PDFs · Available offline':$('#reference-summary').dataset.fullSummary;$('#reference-results').replaceChildren();return;}
+ $('#reference-summary').textContent='Searching documents…';
+ const local=[];
+ if(!pdfs){
+  for(const doc of [...(state.documents||[]),...(state.guides||[])]){
+   if((doc.title+' '+doc.text).toLowerCase().includes(q))local.push(docEntry(doc.title,doc.text,doc.imported_at?'Your files':'Using JARVISS',doc.prompt,doc.plan));
+  }
+  if(('Regroup and rebuild '+state.recovery).toLowerCase().includes(q))local.push(docEntry('Regroup and rebuild',state.recovery,'Group checklist'));
+ }
+ const searching=document.createElement('p');searching.textContent='Searching field library…';
+ $('#reference-results').replaceChildren(...local,searching);
  referenceTimer=setTimeout(async()=>{
   try{const results=await window.jarviss.command('reference_search',{query:q});if(sequence!==referenceSearch)return;
-   const nodes=results.filter(ref=>!pdfs||referenceEntries.get(ref.id)?.doc.pdf).map(ref=>{
+   const matching=results.filter(ref=>!pdfs||referenceEntries.get(ref.id)?.doc.pdf);
+   const count=local.length+new Set(matching.map(ref=>ref.id)).size;
+   $('#reference-summary').textContent=`${count} matching document${count===1?'':'s'}`;
+   const nodes=matching.map(ref=>{
     const b=referenceButton(ref.title+' · '+ref.heading,()=>openReference(ref.id,ref.section));b.className='reference-result';return b;
    });
-   if(!nodes.length){const p=document.createElement('p');p.textContent='No matching documents.';nodes.push(p);}
-   $('#reference-results').replaceChildren(...nodes);
+   if(!nodes.length&&!local.length){const p=document.createElement('p');p.textContent='No matching documents.';nodes.push(p);}
+   $('#reference-results').replaceChildren(...local,...nodes);
   }catch(e){
    if(sequence!==referenceSearch)return;
+   $('#reference-summary').textContent='Field library search incomplete';
    const message=document.createElement('p');message.textContent='Search could not finish.';
-   $('#reference-results').replaceChildren(message,referenceButton('Try search again',()=>filterDocs()));
+   $('#reference-results').replaceChildren(...local,message,referenceButton('Try search again',()=>filterDocs()));
   }
  },180);
 }

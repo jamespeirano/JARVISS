@@ -95,6 +95,26 @@ service.main()
   await page.locator('#reference-ask').click();
   assert.equal(await page.locator('#question').inputValue(),'Using the document "Food and water after storms", ');
   await page.locator('[data-page="docs"]').click();
+  // A search applies to the entire library, including user imports.
+  await page.evaluate(async()=>{await call('import_note',{title:'Generator manual',text:'E04 means the oil level must be checked before restarting.'});await refresh();});
+  await page.locator('#docs-search').fill('E04');
+  await expect(page.locator('#reference-results')).not.toContainText('Searching');
+  await expect(page.locator('#reference-results')).toContainText('Generator manual');
+  await expect(page.locator('#reference-summary')).toHaveText('1 matching document');
+  assert.equal(await page.locator('.reference-card:visible').count(),0,'No unrelated field documents during search');
+  assert.equal(await page.getByText('No matching documents.',{exact:true}).isVisible(),false);
+  assert.equal(await page.locator('#documents').isVisible(),false);
+  if(process.env.JARVISS_UX_SCREENSHOTS)await page.screenshot({path:path.join(process.env.JARVISS_UX_SCREENSHOTS,'import-search.png')});
+  await page.locator('#reference-results summary').click();
+  await expect(page.locator('#reference-results .doc-body')).toBeVisible();
+  await page.locator('#reference-pdfs').click();
+  await page.getByText('No matching documents.',{exact:true}).waitFor();
+  assert.equal(await page.locator('#reference-results .doc-entry').count(),0,'PDF-only search excludes text imports');
+  await page.locator('#reference-pdfs').click();
+  await expect(page.locator('#reference-results')).toContainText('Generator manual');
+  await page.locator('#docs-search').fill('');
+  assert.equal(await page.locator('.reference-card:visible').count(),38);
+  assert.equal(await page.locator('#documents .doc-entry:visible').count(),1);
   await page.locator('#docs-search').fill('bowline');
   const result=page.locator('#reference-results button').filter({hasText:'Knots, rope and lashings'}).first();
   await result.click();await waitReader('Knots, rope and lashings');

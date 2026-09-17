@@ -1,17 +1,21 @@
 const $=s=>document.querySelector(s);
-let state={},busy=false,voice=false,route=null,searchTimer,pendingMethod=null,remoteOperation=null;
+let state={},busy=false,voice=false,route=null,searchTimer,pendingMethod=null,remoteOperation=null,pendingSetup=false,setupStarting=false,remoteSetup=false;
 let chatFinished=false,voiceStarting=false,preview=false,audioSaving=false,pageSequence=0;
 let voicePhase='Voice off';
-const exclusiveMethods=new Set(['setup_run','chat','route','clear','start_model','download_model','download_voice','download_us_maps']);
+const exclusiveMethods=new Set(['chat','route','clear','start_model','download_model','download_voice','download_us_maps']);
 const operationLabels={setup_run:'Preparing JARVISS',download_model:'Preparing model and voice',download_voice:'Preparing offline voice',download_us_maps:'Preparing US offline maps',start_model:'Loading local model',chat:'Thinking',route:'Calculating walking directions',clear:'Clearing conversation'};
 const titles={assistant:'Assistant',situation:'My situation',atlas:'Offline atlas',knowledge:'Knowledge',recovery:'Recovery plan',settings:'Settings'};
 function renderOperation(){
- const method=pendingMethod||remoteOperation?.method;
+ const method=pendingMethod||remoteOperation?.method||(setupStarting?'setup_run':null);
  const label=remoteOperation?.label||operationLabels[method];
  const active=!!(method||remoteOperation);
- window.renderSetupOperation?.(active, method);
- for(const id of ['download-model','download-voice','download-us-maps','clear','choose-model'])$('#'+id).disabled=active||(id==='download-us-maps'&&!!(state.basemap&&state.usRouting?.ready));
- $('#start-model').disabled=active||!state.settings?.model||state.modelAvailable===false;
+ const setupRunning=pendingSetup||remoteSetup;
+ window.renderSetupOperation?.(active,method,setupRunning);
+ $('#view-setup').hidden=!setupRunning&&!['paused','failed','model_ready'].includes(state.setup?.status);
+ $('#download-model').disabled=false;
+ $('#download-model').textContent=setupRunning?'View setup':'Set up / change model';
+ for(const id of ['download-voice','download-us-maps','clear','choose-model'])$('#'+id).disabled=active||(setupRunning&&id!=='clear')||(id==='download-us-maps'&&!!(state.basemap&&state.usRouting?.ready));
+ $('#start-model').disabled=active||setupRunning||!state.settings?.model||state.modelAvailable===false;
  $('#send').disabled=active||busy;
  $('#voice-toggle').disabled=voiceStarting||(!voice&&(active||!state.ready));
  const waiting=method==='chat'&&!chatFinished;
@@ -57,20 +61,22 @@ function error(e){
  renderOperation();
 }
 async function call(method,args){
- const exclusive=exclusiveMethods.has(method);
- if(exclusive&&(pendingMethod||remoteOperation)){
+ const setup=method==='setup_run',exclusive=exclusiveMethods.has(method);
+ if(setup&& (pendingSetup||remoteSetup))throw new Error('Setup is already running.');
+ if((exclusive||setup)&&(pendingMethod||remoteOperation||setupStarting)){
   const problem=new Error((remoteOperation?.label||operationLabels[pendingMethod]||'Another operation is running')+'. Wait for it to finish.');error(problem);throw problem;
  }
+ if(setup){pendingSetup=true;setupStarting=true;renderOperation();}
  if(exclusive){pendingMethod=method;if(method==='chat')chatFinished=false;$('#error').hidden=true;renderOperation();}
  try{return await window.jarviss.command(method,args);}catch(e){error(e);throw e;}
- finally{if(exclusive){pendingMethod=null;renderOperation();}}
+ finally{if(setup){pendingSetup=false;setupStarting=false;}if(exclusive)pendingMethod=null;renderOperation();}
 }
 function page(name){pageSequence++;if(name!=='atlas'&&document.body.classList.contains('map-fullscreen')){window.jarviss.mapFullscreen(false).catch(error);mapFullscreen(false);}document.body.classList.toggle('setup-screen',name==='setup'||name==='startup');document.querySelectorAll('.page').forEach(el=>el.classList.toggle('visible',el.id===name));document.querySelectorAll('[data-page]').forEach(el=>el.classList.toggle('selected',el.dataset.page===(name==='reference-reader'?'docs':name)));if(name==='atlas'){draw();window.offlineAtlas?.resize();}}
 document.querySelectorAll('[data-page]').forEach(el=>el.onclick=()=>page(el.dataset.page));
 function message(role,text,references=[]){const node=document.createElement('div');node.className='message '+role;const label=document.createElement('span');label.className='speaker';label.textContent=role==='user'?'YOU':'JARVISS';node.append(label,document.createTextNode(text));if(references.length){const sources=document.createElement('div');sources.className='answer-references';const heading=document.createElement('small');heading.textContent='Reference passages';sources.append(heading);for(const ref of references){const button=document.createElement('button');button.textContent=ref.title+' · '+ref.heading;button.onclick=()=>openReference(ref.id,ref.section).catch(error);sources.append(button);}node.append(sources);}$('#messages').insertBefore(node,$('#response-wait'));$('#messages').scrollTop=$('#messages').scrollHeight;document.body.classList.add('has-history');}
 function card(title,text,detail){const el=document.createElement('div');el.className='panel';for(const [tag,value] of [['h3',title],['p',text],['small',detail]]){const n=document.createElement(tag);n.textContent=value||'';el.append(n);}return el;}
 function renderState(initial=false){
- if(Object.hasOwn(state,'operation'))remoteOperation=state.operation;renderOperation();
+ if(Object.hasOwn(state,'operation'))remoteOperation=state.operation;remoteSetup=!!state.setupRunning;renderOperation();
  $('#model-name').textContent=state.settings?.model||'No model selected';$('#gpu').value=state.settings?.gpu_layers==='auto'?'':state.settings?.gpu_layers??'';$('#voice-ready').textContent=state.voiceReady?'Offline voice pack is installed.':'Offline voice pack is missing.';
  if(initial){renderPrompts(state.settings);for(const k of ['situation','supplies','location_text'])$('#profile-form').elements[k].value=state.profile?.[k]??'';for(const item of state.history||[])message(item.role,item.content,item.references);}
  $('#documents').replaceChildren(...(state.documents||[]).map(d=>docEntry(d.title,d.text,`Imported ${d.imported_at.slice(0,10)}`)));
@@ -78,10 +84,11 @@ function renderState(initial=false){
  renderReferences();
  $('#guides').replaceChildren(...(state.guides||[]).map(d=>docEntry(d.title,d.text,d.url?'Source: '+new URL(d.url).hostname:'JARVISS planning checklist',d.prompt,d.plan)));
  $('#recovery-document').replaceChildren();for(const line of (state.recovery||'').split('\n')){if(!line.trim())continue;const tag=line.startsWith('## ')?'h3':line.startsWith('# ')?'h2':'p';const el=document.createElement(tag);el.textContent=line.replace(/^#{1,2} /,'');$('#recovery-document').append(el);}
+ filterDocs();
  if(state.map){$('#map-caption').textContent=`${state.map.label||'Your saved area'} · OSM snapshot ${state.map.osm_timestamp||'unknown'} · Conditions unverified`;}renderAtlas();draw();window.renderPlanner?.();
 }
 async function refresh(){state=await call('state');route=state.route||null;renderState();}
-async function send(text){if(busy||pendingMethod||remoteOperation)return;text=text.trim();if(!text)return;busy=true;$('#send').disabled=true;$('#error').hidden=true;$('#question').value='';message('user',text);try{await call('chat',{text});}finally{busy=false;renderOperation();}}
+async function send(text){if(busy||pendingMethod||remoteOperation||setupStarting)return;text=text.trim();if(!text)return;busy=true;$('#send').disabled=true;$('#error').hidden=true;$('#question').value='';message('user',text);try{await call('chat',{text});}finally{busy=false;renderOperation();}}
 $('#composer').onsubmit=e=>{e.preventDefault();send($('#question').value).catch(()=>{});};
 $('#question').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#composer').requestSubmit();}};
 document.querySelectorAll('[data-prompt]').forEach(el=>el.onclick=()=>send(el.dataset.prompt).catch(()=>{}));
@@ -124,12 +131,17 @@ function renderAtlas(){
  const installed=!!(state.basemap && state.usRouting?.ready);
  $('#us-map-status').textContent=installed?'US map and walking directions are ready offline.':state.basemap?'US basemap installed. Download walking directions once for the full US coverage.':'Download the US basemap and walking directions once (about 23 GB total).';
  $('#download-us-maps').textContent=installed?'Installed':state.basemap?'Download US walking directions':'Download US offline maps';
- $('#download-us-maps').disabled=installed||!!(pendingMethod||remoteOperation);
+ $('#download-us-maps').disabled=installed||!!(pendingMethod||remoteOperation||pendingSetup||remoteSetup);
+ const available=!!(state.basemap||state.map);
+ for(const selector of ['#city-search-form button','#landmark-search-form button','#map-search'])$(selector).disabled=!available;
+ $('#map-view-setup').hidden=available;
+ if(!available)$('#location-search-status').textContent='Map not ready. Open setup to download it or check progress.';
  if(state.mapError)$('#map-local-status').textContent=state.mapError;
  renderRoute();places();
 }
 async function places(){
  const sequence=++searchSequence;
+ if(!state.basemap&&!state.map){$('#places').textContent='Map not ready. Open setup to download it or check progress.';return;}
  if(!state.profile||state.profile.lat===''||state.profile.lat==null){$('#places').textContent='Set your position to search nearby.';return;}
  $('#places').textContent='Searching local map…';
  try{
@@ -151,6 +163,7 @@ async function places(){
 $('#find-location').onclick=()=>{$('#location-picker').open=true;$('#city-search').focus();};
 $('#locate-this-view').onclick=()=>{locationCenter=window.offlineAtlas?.viewCenter();$('#location-area-name').textContent=locationCenter?'Searching the area currently shown · not your saved position':'Choose a basemap first.';$('#landmark-search').focus();};
 async function searchLocation(near){
+ if(!state.basemap&&!state.map){$('#location-search-status').textContent='Map not ready. Open setup to download it or check progress.';return;}
  const query=$(near?'#landmark-search':'#city-search').value.trim();
  if(query.length<2){$('#location-search-status').textContent='Enter at least two letters.';return;}
  if(near&&!locationCenter){$('#location-search-status').textContent='Find an area first, or pan the map and choose “Search the area shown”.';return;}
@@ -185,12 +198,26 @@ window.addEventListener('atlas-point',async({detail})=>{
    $('#location-picker').open=false;
    $('#situation-location-status').textContent=state.profile.position_name||'Position confirmed';
    renderAtlas();
-  }else{route=await call('route',{point:detail.point});renderRoute();}
+  }else{route=await call('route',{point:detail.point,name:detail.name});renderRoute();}
  }catch{}
 });
 function draw(){if(state.basemap?.enabled){window.offlineAtlas?.update(state,route);return;}const c=$('#map-canvas'),ctx=c.getContext('2d'),r=c.getBoundingClientRect();if(!r.width)return;c.width=r.width*devicePixelRatio;c.height=r.height*devicePixelRatio;ctx.scale(devicePixelRatio,devicePixelRatio);if(!state.map){ctx.fillStyle='#8497ae';ctx.font='14px sans-serif';ctx.fillText('Download US offline maps to begin.',30,50);return;}const p=state.map,[s,w,n,e]=p.bounds,cos=Math.cos((s+n)/2*Math.PI/180),scale=Math.min((r.width-40)/((e-w)*cos),(r.height-40)/(n-s));const xy=v=>[r.width/2+(v[1]-(w+e)/2)*cos*scale,r.height/2-(v[0]-(s+n)/2)*scale];ctx.lineWidth=1;for(const road of p.roads){ctx.strokeStyle=road.walkable?'#40586b':'#253447';for(let i=1;i<road.nodes.length;i++){const a=p.nodes[road.nodes[i-1]],b=p.nodes[road.nodes[i]];if(a&&b){ctx.beginPath();ctx.moveTo(...xy(a));ctx.lineTo(...xy(b));ctx.stroke();}}}for(const place of p.places){ctx.fillStyle=place.kind.includes('water')?'#8bd6e5':'#deb492';ctx.beginPath();ctx.arc(...xy(place.point),3,0,Math.PI*2);ctx.fill();}if(route){ctx.strokeStyle='#b7e6ce';ctx.lineWidth=3;ctx.beginPath();route.points.forEach((p,i)=>i?ctx.lineTo(...xy(p)):ctx.moveTo(...xy(p)));ctx.stroke();}ctx.fillStyle='#c9dbe4';ctx.fillText('N ↑',15,22);}
 new ResizeObserver(draw).observe($('#map-canvas'));
-window.jarviss.subscribe(({event,data})=>{window.jarvisState?.(event,data);if(event==='operation'){const completed=remoteOperation?.method;if(data?.method==='chat'&&completed!=='chat')chatFinished=false;remoteOperation=data;renderOperation();if(!data&&!pendingMethod&&(completed?.startsWith('download')||completed==='start_model'||completed==='setup_run')){refresh().catch(()=>{});if(completed==='setup_run')window.refreshSetup?.();}}if(event==='status'){if(data==='Ready'||data==='Model not started'){state.ready=data==='Ready';if(remoteOperation?.legacy){remoteOperation=null;refresh().catch(()=>{});}}renderOperation();}if(event==='voice'){voicePhase=data;if(data==='Voice off'){voice=false;$('#voice-toggle').textContent='Start voice mode';}renderOperation();}if(event==='map_fullscreen')mapFullscreen(data);if(event==='mic_level')$('#mic-level').value=data;if(event==='partial')$('#heard-partial').textContent=data;if(event==='heard')message('user',data);if(event==='answer'){chatFinished=true;renderOperation();message('assistant',data.text,data.references);route=data.route||null;renderRoute();draw();}if(event==='voice_preview'){preview=!!data;renderPreview();}if(event==='error'){if(data.startsWith('Local service stopped'))remoteOperation=null;error(data);}if(event==='progress'){window.setupProgress?.(data);if(!Object.hasOwn(state,'operation')&&!pendingMethod&&!/index/i.test(data)){remoteOperation={method:'download_model',label:'Preparing offline files',progress:data,legacy:true};renderOperation();}$('#progress').textContent=data;if((pendingMethod||remoteOperation?.method)==='download_us_maps')$('#map-progress').textContent=data;if(/index/i.test(data))$('#location-search-status').textContent=data;}});
+window.jarviss.subscribe(({event,data})=>{
+ window.jarvisState?.(event,data);
+ if(event==='setup'){const milestone=data.model_ready&&!state.setup?.model_ready||data.mapReady&&!state.basemap;remoteSetup=!!data.running;state.setup=data;if(data.modelReady)state.ready=true;renderOperation();window.setupProgress?.(data.detail);$('#progress').textContent=data.detail||'';if(data.stage>=3)$('#map-progress').textContent=data.detail||'';if(!remoteSetup||milestone)refresh().then(()=>window.refreshSetup?.()).catch(()=>{});}
+ if(event==='operation'){setupStarting=false;const completed=remoteOperation?.method;if(data?.method==='chat'&&completed!=='chat')chatFinished=false;remoteOperation=data;renderOperation();if(!data&&!pendingMethod&&(completed?.startsWith('download')||completed==='start_model'||completed==='setup_run')){refresh().catch(()=>{});if(completed==='setup_run')window.refreshSetup?.();}}
+ if(event==='status'){if(data==='Ready'||data==='Model not started'){state.ready=data==='Ready';if(remoteOperation?.legacy){remoteOperation=null;refresh().catch(()=>{});}}renderOperation();}
+ if(event==='voice'){voicePhase=data;if(data==='Voice off'){voice=false;$('#voice-toggle').textContent='Start voice mode';}renderOperation();}
+ if(event==='map_fullscreen')mapFullscreen(data);
+ if(event==='mic_level')$('#mic-level').value=data;
+ if(event==='partial')$('#heard-partial').textContent=data;
+ if(event==='heard')message('user',data);
+ if(event==='answer'){chatFinished=true;renderOperation();message('assistant',data.text,data.references);route=data.route||null;renderRoute();draw();}
+ if(event==='voice_preview'){preview=!!data;renderPreview();}
+ if(event==='error'){if(data.startsWith('Local service stopped'))remoteOperation=null;error(data);}
+ if(event==='progress'){window.setupProgress?.(data);if(!Object.hasOwn(state,'operation')&&!pendingMethod&&!/index/i.test(data)){remoteOperation={method:'download_model',label:'Preparing offline files',progress:data,legacy:true};renderOperation();}$('#progress').textContent=data;if((pendingMethod||remoteOperation?.method)==='download_us_maps')$('#map-progress').textContent=data;if(/index/i.test(data))$('#location-search-status').textContent=data;}
+});
 let initializing=false;
 async function initialize(){
  if(initializing)return;
@@ -198,10 +225,10 @@ async function initialize(){
  $('#error').hidden=true;$('#startup-message').textContent='Checking setup…';
  try{
   state=await call('state');renderState(true);voice=!!state.voiceEnabled;voicePhase=voice?'Listening':'Voice off';preview=!!state.voicePreview;renderPreview();$('#voice-toggle').textContent=voice?'Stop voice mode':'Start voice mode';
-  const needsSetup=state.setup?.status!=='ready'||!state.modelAvailable||!state.voiceReady||!state.basemap||!state.usRouting?.ready||remoteOperation?.method==='setup_run';
+  const needsSetup=state.setup?.status!=='ready'||!state.modelAvailable||!state.voiceReady||!state.basemap||!state.usRouting?.ready||remoteOperation?.method==='setup_run'||remoteSetup;
   if(needsSetup)await window.openSetup();else page('assistant');
   await audioDevices();renderOperation();
-  if(!needsSetup&&state.settings?.model&&!state.ready&&!remoteOperation)await call('start_model');
+  if(state.settings?.model&&!state.ready&&!remoteOperation&&!remoteSetup&&(!needsSetup||state.setup?.model_ready))await call('start_model');
  }catch(e){error(e);}
  finally{initializing=false;$('#startup-retry').disabled=false;}
 }

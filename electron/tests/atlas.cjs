@@ -35,11 +35,26 @@ const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),asse
   await page.waitForFunction(()=>document.querySelectorAll('#places .place-card').length>0);
   assert.match(await page.locator('#places').innerText(),/miles.*straight-line/);
   await page.waitForFunction(()=>window.jarvisDetailMap?.areTilesLoaded(),{},{timeout:30000});
+  // Click a named result on the actual map, then route through the popup.
+  const named=await page.evaluate(async()=>{
+   const rows=await window.jarviss.command('nearest',{query:'pharmacy'});
+   const place=rows.find(p=>p.distance_m>20&&p.distance_m<5000);if(!place)throw new Error('No suitable route destination');
+   window.offlineAtlas.results([place]);window.jarvisDetailMap.jumpTo({center:[place.point[1],place.point[0]],zoom:17});
+   return place;
+  });
+  await page.waitForFunction(()=>window.jarvisDetailMap.areTilesLoaded()&&!window.jarvisDetailMap.isMoving());
+  const click=await page.evaluate(p=>{const q=window.jarvisDetailMap.project([p.point[1],p.point[0]]);return {x:q.x,y:q.y};},named);
+  await page.locator('#detail-map').click({position:click});
+  assert.equal(await page.locator('.maplibregl-popup-content strong').innerText(),named.name);
+  await page.locator('.maplibregl-popup-content button').filter({hasText:'Walking directions'}).click();
+  await page.waitForFunction(name=>document.querySelector('#route-info').textContent.includes(name),named.name,{timeout:60000});
+  assert.match(await page.locator('#route-info').innerText(),/miles/);
   fs.mkdirSync(path.resolve(__dirname,'../../local-data'),{recursive:true});
   await page.screenshot({path:path.resolve(__dirname,'../../local-data/offline-atlas.png')});
   await page.locator('#map-fullscreen').click();
   assert.equal(await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].isFullScreen()),true);
   await page.waitForFunction(()=>window.jarvisDetailMap.areTilesLoaded()&&!window.jarvisDetailMap.isMoving());
+  await page.locator('body.map-fullscreen').waitFor();
   assert.equal(await page.locator('aside').isVisible(),false);
   await page.screenshot({path:path.resolve(__dirname,'../../local-data/offline-atlas-fullscreen.png')});
   await page.keyboard.press('Escape');

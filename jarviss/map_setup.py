@@ -17,6 +17,7 @@ from .assets import fetch_json, extract
 from .network import tls_context
 from .storage import ROOT, RUNTIME, BUNDLED_RUNTIME, RESOURCES, read_json, write_json
 from .us_routing import USRouter, US_BOUNDS, BROUTER_VERSION, java_path
+from .download_progress import download_label, transfer_text, map_transfer_text
 
 SEGMENTS_URL = 'https://brouter.de/brouter/segments4/'
 JAVA_TAG = 'jdk-21.0.12.1+1'
@@ -28,9 +29,28 @@ def sha256(path):
     with Path(path).open('rb') as source: return hashlib.file_digest(source,'sha256').hexdigest()
 
 
+def remaining_bytes(target, url, size, checksum=None):
+    """Credit only completed files or partials belonging to this exact transfer."""
+    target = Path(target)
+    try:
+        if target.is_file() and target.stat().st_size == size: return 0
+        part = target.with_suffix(target.suffix+'.part')
+        identity = {'url':url, 'size':size, 'checksum':checksum}
+        if part.is_file() and read_json(part.with_suffix(part.suffix+'.json'),{}) == identity:
+            # A full but unverified partial may need downloading again.
+            saved = part.stat().st_size
+            if saved < size: return size-saved
+    except FileNotFoundError:
+        pass  # The download may have just renamed the partial.
+    return size
+
+
 def download_file(url, target, progress=print, size=None, checksum=None):
     """Retain partial downloads, validate ranges, and publish only complete files."""
     target = Path(target); target.parent.mkdir(parents=True,exist_ok=True)
+    label = download_label(target)
+    checking = label if label.startswith('AI ') else label.lower()
+    progress(f'Checking {checking} files…')
     if target.is_file() and (size is None or target.stat().st_size == size) and (not checksum or sha256(target)==checksum):
         return sha256(target)
     part = target.with_suffix(target.suffix+'.part')
@@ -52,14 +72,16 @@ def download_file(url, target, progress=print, size=None, checksum=None):
                     raise ValueError('Server returned an incorrect download range.')
                 if not resumed: offset=0
                 total = size or (int(response.headers.get('Content-Length',0))+offset)
-                done, last = offset, 0
+                done, last, started = offset, 0, time.monotonic()
                 with part.open('ab' if resumed else 'wb') as output:
                     while chunk := response.read(64*1024):
                         output.write(chunk); done+=len(chunk)
                         if time.monotonic()-last>1:
-                            progress(f'{target.name}: {done/1048576:.0f} MB'+(f' / {total/1048576:.0f} MB' if total else ''))
+                            elapsed = time.monotonic()-started
+                            progress(transfer_text(label,done,total,(done-offset)/elapsed if elapsed >= 1 else 0))
                             last=time.monotonic()
                 if total and done != total: raise ValueError('Incomplete download; retry to resume.')
+            progress(f'Checking {checking} download…')
             digest=sha256(part)
             if checksum and digest!=checksum:
                 part.unlink(); raise ValueError('Download checksum mismatch; retrying.')
@@ -168,14 +190,16 @@ def prepare_basemap(progress=print, cancel=None):
     target.parent.mkdir(parents=True,exist_ok=True)
     coverage=target.parent/'us-coverage.geojson';shutil.copyfile(RESOURCES/'routing'/'us-coverage.geojson',coverage)
     partial=target.with_suffix('.partial');partial.unlink(missing_ok=True)
-    progress('Downloading the US basemap (about 19 GB). Keep Jarvis open until setup finishes.')
-    process=subprocess.Popen([str(executable),'extract',source,str(partial),f'--region={coverage}','--maxzoom=15','--download-threads=3'],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,
+    progress('Downloading US map. Keep Jarvis open; chat is available once its model is ready.')
+    process=subprocess.Popen([str(executable),'extract',source,str(partial),f'--region={coverage}','--maxzoom=15','--download-threads=3'],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding='utf-8',errors='replace',
                              creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
     lines=queue.Queue()
     def read():
-        for line in process.stdout: lines.put(line)
-        lines.put(None)
+        try:
+            for line in process.stdout: lines.put(line)
+        finally: lines.put(None)
     threading.Thread(target=read,daemon=True).start()
+    last_update = 0
     try:
         while True:
             if cancel and cancel.is_set():
@@ -184,7 +208,9 @@ def prepare_basemap(progress=print, cancel=None):
             try: line=lines.get(timeout=.2)
             except queue.Empty: continue
             if line is None: break
-            if line.strip():progress('US basemap · '+line.strip()[-250:])
+            text = map_transfer_text(line)
+            if text and (time.monotonic()-last_update >= 1 or '100%' in text):
+                progress(text);last_update=time.monotonic()
         if process.wait():raise ValueError('US basemap download did not finish. Retry setup while connected.')
     finally:
         if process.poll() is None:
@@ -192,12 +218,15 @@ def prepare_basemap(progress=print, cancel=None):
             try:process.wait(timeout=5)
             except subprocess.TimeoutExpired:process.kill();process.wait()
         process.stdout.close()
+    progress('Checking US map download…')
     subprocess.run([str(executable),'verify',str(partial)],check=True,capture_output=True)
     archive=TileArchive(partial)
+    digest=sha256(partial)
+    progress('US map verified')
     partial.replace(target)
     write_json(target.parent/'manifest.json',{'file':target.name,'size_bytes':target.stat().st_size,'source':source,
         'completed_at':datetime.now(timezone.utc).isoformat(),'source_osm_replication_time':archive.pack['osm_timestamp'],
-        'coverage_file':coverage.name,'sha256':sha256(target)})
+        'coverage_file':coverage.name,'sha256':digest})
     return target
 
 

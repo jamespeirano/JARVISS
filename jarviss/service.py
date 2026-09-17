@@ -55,6 +55,7 @@ class Service:
         self.model = LocalModel()
         self.ready = False
         self.lock = threading.Lock()
+        self.setup_lock = threading.Lock()
         self.operation = None
         self.board = LocalBoard()
         self.voice = Voice(self.heard, lambda text: emit({'event':'voice', 'data':text}),
@@ -71,6 +72,7 @@ class Service:
                 'voiceEnabled':self.voice.enabled.is_set(),
                 'voicePreview':self.voice.previewing,
                 'setup':self.setup.snapshot(),
+                'setupRunning':self.setup_lock.locked(),
                 'map':self.area.pack if self.area else None,
                 'basemap':dict(self.archive.pack, path=str(self.archive.path), enabled=not self.example_active) if self.archive else None,
                 'mapError':self.archive_error, 'route':self.route,
@@ -92,6 +94,10 @@ class Service:
             self.operation = dict(self.operation, progress=text)
             emit({'event':'operation', 'data':self.operation})
         emit({'event':'progress', 'data':text})
+
+    def setup_progress(self):
+        # Map downloads can overlap chat. Never replace its operation or status.
+        emit({'event':'setup', 'data':dict(self.setup.snapshot(), running=self.setup_lock.locked(), modelReady=self.ready, mapReady=bool(self.archive))})
 
     def save_area(self, area):
         import hashlib
@@ -187,6 +193,7 @@ class Service:
         if method == 'search_locations':
             query = str(args.get('query', '')).strip()[:200]
             if len(query) < 2: return []
+            if not self.catalog(): raise ValueError('The map is not ready. Open setup to download it or check progress.')
             if args.get('near') is not None:
                 point = coordinate(*args['near'])
                 catalog = self.catalog()
@@ -235,19 +242,43 @@ class Service:
             if method == 'import_map': self.save_area(area)
             else: self.area, self.route, self.example_active = area, None, True
             return area.pack
+        if self.setup_lock.locked() and method in ('setup_run','start_model','download_model','download_voice','download_us_maps'):
+            raise RuntimeError('Setup is running. Open setup to check progress or pause it.')
         if not self.lock.acquire(blocking=False):
             label = self.operation['label'] if self.operation else 'Another operation is running'
             raise RuntimeError(label + '. Wait for it to finish before starting another operation.')
+        if self.setup_lock.locked() and method in ('setup_run','start_model','download_model','download_voice','download_us_maps'):
+            self.lock.release()
+            raise RuntimeError('Setup is running. Open setup to check progress or pause it.')
         self.operation = {'method':method, 'label':OPERATION_LABELS.get(method, 'Working'), 'progress':''}
         emit({'event':'operation', 'data':self.operation})
+        foreground = True
+        def release_foreground():
+            nonlocal foreground
+            self.voice.busy.clear()
+            self.operation = None
+            emit({'event':'operation', 'data':None})
+            emit({'event':'status','data':'Ready' if self.ready else 'Model not started'})
+            foreground = False
+            self.lock.release()
         try:
-            if method == 'setup_run': return self.setup.run(args.get('model_id'))
+            if method == 'setup_run':
+                # Claim setup while holding the foreground lock, so a second
+                # request cannot start changing model files between phases.
+                if not self.setup_lock.acquire(blocking=False): raise RuntimeError('Setup is already running.')
+                try:
+                    return self.setup.run(args.get('model_id'), background=release_foreground)
+                finally:
+                    self.setup_lock.release()
+                    self.setup_progress()
             if method == 'route':
                 catalog = self.catalog()
                 self.route = None
                 if not catalog or not location(self.profile): raise ValueError('Confirm your position in Maps first.')
                 if 'point' in args:
-                    place = {'point':coordinate(*args['point']), 'name':'Selected map point', 'kind':'coordinates'}
+                    name = args.get('name')
+                    name = ' '.join(name.split())[:200] if isinstance(name,str) else ''
+                    place = {'point':coordinate(*args['point']), 'name':name or 'Selected map point', 'kind':'coordinates'}
                 else:
                     place = self.places_by_id.get(args.get('id'))
                     if not place: raise ValueError('Search again and select the destination.')
@@ -333,11 +364,7 @@ class Service:
                 return pack
             raise ValueError('Unknown operation.')
         finally:
-            self.voice.busy.clear()
-            self.operation = None
-            emit({'event':'operation', 'data':None})
-            self.lock.release()
-            emit({'event':'status','data':'Ready' if self.ready else 'Model not started'})
+            if foreground: release_foreground()
 
     def close(self):
         self.setup.cancel.set()
