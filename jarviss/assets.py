@@ -3,7 +3,6 @@ import hashlib
 import json
 import os
 import platform
-import shutil
 import tarfile
 import tempfile
 import urllib.parse
@@ -14,8 +13,6 @@ from .storage import MODELS, RUNTIME, BUNDLED_RUNTIME, DATA, write_json, read_js
 from .network import tls_context
 
 LLAMA_TAG = 'b10948'
-DEMO_REPO = 'unsloth/Qwen3-0.6B-GGUF'
-DEMO_FILE = 'Qwen3-0.6B-Q4_K_M.gguf'
 VOICE_NAME = 'vosk-model-en-us-0.22-lgraph'
 VOICE_SHA256 = 'd9838b4aaa82a75c4a17f5aca300eaca129aaab2a7cbf951bafbb500eb9c4334'
 VOICE_URLS = (
@@ -139,31 +136,8 @@ def prepare_tts(progress=print):
     return dest
 
 
-def prepare_demo(progress=print):
-    prepare_runtime(progress)
-    prepare_voice(progress)
-    dest = MODELS / DEMO_FILE
-    if not dest.exists():
-        metadata = fetch_json(f'https://huggingface.co/api/models/{DEMO_REPO}/revision/main')
-        revision = metadata['sha']
-        listing = fetch_json(f'https://huggingface.co/api/models/{DEMO_REPO}/tree/{revision}')
-        entry = next(x for x in listing if x['path'] == DEMO_FILE)
-        sha = entry.get('lfs', {}).get('oid')
-        if not sha:
-            raise RuntimeError('Model checksum unavailable; download cancelled.')
-        url = f'https://huggingface.co/{DEMO_REPO}/resolve/{revision}/{DEMO_FILE}'
-        download(url, dest, progress, sha)
-        write_json(MODELS / 'demo-source.json', {'url': url, 'sha256': sha, 'purpose': 'pipeline demonstration only'})
-    settings = read_json(DATA / 'settings.json', {})
-    settings.setdefault('model', portable_path(dest))
-    settings.setdefault('gpu_layers', 99)
-    write_json(DATA / 'settings.json', settings)
-    progress('Prepared. Start the assistant.')
-    return dest
-
-
 def prepare_qwen(progress=print):
-    # Compatibility for the old Tk launcher; recommendations use the same catalog.
+    # Settings downloads use the same hardware recommendations as setup.
     from .setup import model_catalog, prepare_model
     from .hardware import inspect, recommend
     rows, selected = recommend(model_catalog(), inspect())
@@ -174,7 +148,3 @@ def prepare_qwen(progress=print):
     settings.update(model=portable_path(dest), model_id=selected, gpu_layers='auto', model_context=next(r['context'] for r in rows if r['id']==selected))
     write_json(DATA / 'settings.json', settings)
     return dest
-
-
-if __name__ == '__main__':
-    prepare_demo()
