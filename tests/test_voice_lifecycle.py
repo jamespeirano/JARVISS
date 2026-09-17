@@ -19,6 +19,13 @@ def wait_for(condition):
 
 
 class VoiceLifecycleTests(unittest.TestCase):
+    def setUp(self):
+        # These are deterministic lifecycle/device fixtures, not live hardware tests.
+        # Importing PortAudio on a cold Windows runner can take several seconds.
+        native = patch.dict(sys.modules, sounddevice=Mock(), pythoncom=Mock())
+        native.start()
+        self.addCleanup(native.stop)
+
     def make_voice(self):
         events, errors, statuses = [], [], []
         voice = Voice(lambda _: None, statuses.append, errors.append,
