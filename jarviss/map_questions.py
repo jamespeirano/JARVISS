@@ -1,21 +1,33 @@
 """Deterministic map questions: all places, distances and turns come from local data."""
 import re
-from .maps import coordinate, distance, format_distance, normalized, CATEGORIES, ALIASES
+from .maps import coordinate, distance, format_distance, normalized, route_to_place, CATEGORIES, ALIASES
 
 INTENT = re.compile(r"\b(?:where(?:'s)?|nearest|closest|directions?|route|navigate|find|how far|how many (?:miles|kilometers|kilometres)|distance to|take me to)\b|how (?:can|do) i (?:get|go|walk)", re.I)
+FOLLOWUP = r"(?:how (?:can|do|should) i\b|how (?:far|many miles)\b|(?:give|show|tell) me\b|(?:can|could) you\b|directions?\b)"
+
+
+def place_text(text):
+    """Keep a place name separate from a second request for directions."""
+    text = re.split(r'\s*(?:[?!;]|[, .]*\s+and\s+(?=' + FOLLOWUP + r')|[,.]\s+(?=' + FOLLOWUP + r'))', text, maxsplit=1, flags=re.I)[0]
+    text = re.split(r'\s+(?:(?:give|show|tell) me|near me|from here|from me|to me|around here)\b', text, maxsplit=1, flags=re.I)[0]
+    return re.sub(r'\s+(?:please|thing)$', '', text.strip(' ./'), flags=re.I).strip(' ,./')
 
 
 def parse_question(question):
     text = question.replace('’', "'").strip()
     if not INTENT.search(text): return None
     origin = None
-    match = re.search(r"\b(?:i(?:'m| am) (?:on|at)|from)\s+(.+?)(?=\.\s+(?:how|where|give|find)|[,;]\s*(?:how|where|give|find)|\s+to\s+|[?;]|$)", text, re.I)
+    match = re.search(r"\b(?:i(?:'m| am) (?:on|at|near|by)|from)\s+(.+?)(?=\.\s+(?:how|where|give|find)|[,;]\s*(?:how|where|give|find)|\s+(?:and\s+)?(?:how|where|give|find)\b|\s+to\s+|[?;]|$)", text, re.I)
     if match:
-        origin = match.group(1).strip(' .')
+        origin = place_text(match.group(1))
         text = text[:match.start()] + text[match.end():]
     nearest = re.search(r'\b(?:nearest|closest)\s+(.+)', text, re.I)
     if nearest:
-        target = nearest.group(1)
+        target = place_text(nearest.group(1))
+        nearby = re.search(r'\s+(?:near|by|close to|to)\s+(.+)', target, re.I)
+        if nearby:
+            if not origin: origin = place_text(nearby.group(1))
+            target = target[:nearby.start()]
     else:
         match = re.search(r'\bto\s+(.+)', text, re.I)
         if not match:
@@ -23,10 +35,10 @@ def parse_question(question):
         if not match:
             match = re.search(r"\b(?:where(?:'s| is| are)?|find|locate)\s+(?:the\s+)?(.+)", text, re.I)
         target = match.group(1) if match else ''
-    target = re.split(r'\s+(?:(?:and )?(?:give|show|tell) me|near me|from here|from me|to me|around here)\b|[?!;]', target, maxsplit=1, flags=re.I)[0]
-    target = re.sub(r'\s+(?:please|thing)$', '', target.strip(' .'), flags=re.I)
+    target = place_text(target)
     target = re.sub(r'^(?:the|a|an)\s+', '', target, flags=re.I)
-    if target.lower() in ('there', 'here', 'it', 'that place'): target = ''
+    if origin and origin.lower() in ('here', 'me', 'my position', 'my location'): origin = None
+    if target.lower() in ('there', 'here', 'it', 'that place', 'that', 'is it', 'is that'): target = ''
     return {'origin': origin, 'target': target, 'nearest': bool(nearest)}
 
 
@@ -61,7 +73,7 @@ def answer_map(question, profile, area, previous_route=None):
     target = intent['target']
     if not target:
         if previous_route and previous_route.get('destination_point'):
-            places = [{'id': 'previous', 'name': previous_route['destination'], 'point': previous_route['destination_point'], 'kind': previous_route.get('destination_kind', 'place')}]
+            places = [{'id': 'previous', 'name': previous_route['destination'], 'point': previous_route['destination_point'], 'kind': previous_route.get('destination_kind', 'place'), 'category': previous_route.get('destination_category', '')}]
         else:
             return ('Which destination? Name a place or resource, or select a point in Maps.', None)
     else:
@@ -104,10 +116,9 @@ def answer_map(question, profile, area, previous_route=None):
         lines.append('Name a cross street, or select the destination point on that road in Maps.')
     else:
         try:
-            route = area.route(point, destination['point'])
-            route['destination'] = destination['name']
-            route['destination_kind'] = destination['kind']
-            lines.append(f"Mapped walk to {destination['name']}: {format_distance(route['distance_m'])}.")
+            route = route_to_place(area, point, destination)
+            lines.append(f"Mapped walk {'near' if route.get('destination_note') else 'to'} {destination['name']}: {format_distance(route['distance_m'])}.")
+            if route.get('destination_note'): lines.append(route['destination_note'])
             lines.extend(f"{i}. {s['instruction']}" for i, s in enumerate(route.get('steps', [])[:4], 1))
             if len(route.get('steps',[]))>4:lines.append('Continue step by step in Maps, or open All directions.')
             if route['start_gap_m'] or route['end_gap_m']:

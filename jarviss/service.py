@@ -7,7 +7,7 @@ from .storage import DATA, RESOURCES, MODELS, ROOT, read_json, write_json, model
 from .model import LocalModel
 from .voice import Voice, devices
 from .assistant import messages, map_answer, reference_answer, location, GUIDES, PROMPT_DEFAULTS
-from .maps import OfflineMap, coordinate, download_area
+from .maps import OfflineMap, coordinate, download_area, route_to_place
 from .atlas import TileArchive, MapCatalog
 from .location_search import LocationIndex
 from .us_routing import USRouter
@@ -17,6 +17,7 @@ from .local_board import LocalBoard
 from .assets import prepare_qwen, prepare_voice, VOICE_NAME
 from .setup import Setup
 from .library import import_text, import_note
+from .calculations import supply_duration
 
 output_lock = threading.Lock()
 OPERATION_LABELS = {'download_model':'Preparing model and voice', 'download_voice':'Preparing offline voice',
@@ -243,10 +244,9 @@ class Service:
                     place = self.places_by_id.get(args.get('id'))
                     if not place: raise ValueError('Search again and select the destination.')
                 revision = self.position_revision
-                result = catalog.route(location(self.profile), place['point'])
+                result = route_to_place(catalog, location(self.profile), place)
                 if revision != self.position_revision:
                     raise ValueError('Your position changed while directions were calculated. Request directions again from the new position.')
-                result.update(destination=place['name'], destination_kind=place['kind'])
                 self.route = result
                 return result
             if method == 'clear':
@@ -277,8 +277,12 @@ class Service:
                 catalog = self.catalog()
                 revision = self.position_revision
                 direct = map_answer(text, self.profile, catalog, self.route)
+                is_map_answer = direct is not None
+                if not direct:
+                    calculation = supply_duration(text)
+                    if calculation: direct = (calculation, None)
                 if not direct and not self.ready: direct = reference_answer(text)
-                if direct and revision != self.position_revision:
+                if is_map_answer and revision != self.position_revision:
                     direct = ('Your position changed while directions were calculated. Request directions again from the new position.', None)
                 if not direct and not self.ready: raise RuntimeError('Start your model in Settings first.')
                 self.voice.busy.set(); emit({'event':'status','data':'Thinking'})
@@ -293,14 +297,14 @@ class Service:
                 self.history += [{'role':'user','content':text},{'role':'assistant','content':answer}]
                 self.history = self.history[-100:]
                 write_json(DATA / 'conversation.json', self.history)
-                if direct: self.route = route
+                if is_map_answer: self.route = route
                 if direct and self.voice.enabled.is_set():
                     # Keep full map records on screen; speak a short orientation only.
                     summary = (f"The recorded destination is {route['destination']}; the mapped walk is {route['distance_m']/1609.344:.2f} miles. " + (route['steps'][0]['instruction'] if route.get('steps') else '') + ' Conditions and access are unverified; full directions are in chat.'
                                if route else ' '.join(answer.splitlines()[:1]))
                     import re
                     self.voice.speak(' '.join(re.split(r'(?<=[.!?])\s+', summary)[:preferences['voice_max_sentences']]))
-                emit({'event':'answer','data':{'text':answer,'question':text,'route':route}})
+                emit({'event':'answer','data':{'text':answer,'question':text,'route':self.route}})
                 return answer
             if method in ('download_model','download_voice'):
                 fn = prepare_qwen if method == 'download_model' else prepare_voice

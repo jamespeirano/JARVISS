@@ -65,7 +65,8 @@ const miles=m=>`${(m/1609.344).toFixed(2)} miles (${Math.round(m).toLocaleString
 function renderRoute(){
  const container=$('#route-info');container.replaceChildren();
  if(route){
-  const heading=document.createElement('strong');heading.textContent=`Walk to ${route.destination||'destination'} · ${miles(route.distance_m)}`;container.append(heading);
+  const heading=document.createElement('strong');heading.textContent=`Walk ${route.destination_note?'near':'to'} ${route.destination||'destination'} · ${miles(route.distance_m)}`;container.append(heading);
+  if(route.destination_note){const note=document.createElement('p');note.textContent=route.destination_note;container.append(note);}
   const steps=route.steps||[];let index=0;
   if(steps.length){
    const current=document.createElement('p'),controls=document.createElement('div'),back=document.createElement('button'),next=document.createElement('button');back.textContent='Back';next.textContent='Next';controls.className='route-step-controls';controls.append(back,next);

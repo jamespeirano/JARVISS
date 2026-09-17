@@ -57,6 +57,15 @@ def format_distance(meters):
     return f'{meters / 1609.344:.2f} miles ({round(meters):,} m)'
 
 
+def route_to_place(area, origin, place):
+    result = area.route(origin, place['point'])
+    result.update(destination=place['name'], destination_kind=place['kind'],
+                  destination_category=place.get('category', ''))
+    if place['kind'] == 'untreated water' or place.get('category') in {'river', 'stream', 'lake', 'pond', 'reservoir', 'canal'}:
+        result['destination_note'] = 'The route ends on a mapped path near the water, possibly on a bridge. Access to the water is unverified.'
+    return result
+
+
 def project(point, a, b):
     """Nearest point on a short segment, in a local equirectangular plane."""
     scale = math.cos(math.radians(point[0]))

@@ -100,7 +100,13 @@ class QuestionTests(unittest.TestCase):
             {'id':'stream','name':'Recorded creek','kind':'untreated water','category':'stream','point':[40.001,-73.999]}]
         self.area=OfflineMap(pack)
         for question in ['Hey, how do I get to the closest running water?',
-                         "I'm on Park Path. Where is the nearest flowing water?"]:
+                         "I'm on Park Path. Where is the nearest flowing water?",
+                         'Where is the nearest running water and how do I walk there?',
+                         'Where is the nearest running water, and can you give me directions?',
+                         'Where is the closest running water? Give me directions to it.',
+                         'Where is the nearest running water from here?',
+                         'Where is the closest running water near me?',
+                         'Where is the nearest running water and how do I walk there/']:
             with self.subTest(question=question):
                 text,route=self.answer(question)
                 self.assertIsNotNone(route,text)
@@ -110,6 +116,32 @@ class QuestionTests(unittest.TestCase):
                 self.assertIn('Current flow is unknown',text)
                 self.assertNotIn('Nearby pond',text)
                 self.assertNotIn('Recorded fountain',text)
+                self.assertIn('Access to the water is unverified', text)
+                self.assertIn('bridge', route['destination_note'])
+
+    def test_named_origin_and_directions_are_separate_from_resource(self):
+        for question in [
+            "I'm at Recorded fountain. Where is the nearest water and how do I walk there?",
+            'Where is the nearest water near Recorded fountain, and how far is it?',
+            'Where is the closest water to Recorded fountain and give me directions',
+            'From Recorded fountain to the nearest water, please',
+        ]:
+            with self.subTest(question=question):
+                intent = parse_question(question)
+                self.assertEqual(intent['origin'], 'Recorded fountain')
+                self.assertEqual(intent['target'], 'water')
+                text, route = answer_map(question, {}, self.area)
+                self.assertIsNotNone(route, text)
+                self.assertEqual(route['origin'], self.area.pack['places'][0]['point'])
+
+    def test_named_origin_does_not_silently_fall_back_to_saved_position(self):
+        text, route = self.answer('Where is the nearest water near Atlantis and how do I walk there?')
+        self.assertIsNone(route)
+        self.assertNotIn('Mapped walk', text)
+
+    def test_place_names_with_and_are_preserved(self):
+        self.assertEqual(parse_question('Directions to Bread and Water Cafe')['target'], 'Bread and Water Cafe')
+        self.assertEqual(parse_question("I'm on First Road and Second Street. Where is the nearest water?")['origin'], 'First Road and Second Street')
 
     def test_running_water_does_not_substitute_a_tap(self):
         text,route=self.answer('Where is the closest running water?')
@@ -143,9 +175,11 @@ class QuestionTests(unittest.TestCase):
 
     def test_followup_uses_previous_destination(self):
         _,route=self.answer('nearest water')
-        text,new=self.answer('Give me directions',route)
-        self.assertEqual(new['destination'],'Recorded fountain')
-        self.assertIn('miles',text)
+        for question in ['Give me directions', 'How do I walk there?', 'How far is it?']:
+            with self.subTest(question=question):
+                text,new=self.answer(question,route)
+                self.assertEqual(new['destination'],'Recorded fountain')
+                self.assertIn('miles',text)
 
     def test_followup_retains_explicit_origin(self):
         previous={'destination':'Recorded fountain','destination_point':[40.001,-73.999],

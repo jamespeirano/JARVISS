@@ -48,6 +48,40 @@ class AtlasServiceTests(unittest.TestCase):
         service.command('chat',{'text':'nearest water'});self.assertIsNotNone(service.route)
         service.command('set_map_position',{'lat':40.0001,'lon':-74});self.assertIsNone(service.route)
 
+    def test_unrelated_answers_keep_the_displayed_route(self):
+        service=self.service();self.import_area(service,fixture())
+        service.command('set_map_position',{'lat':40,'lon':-74})
+        service.command('chat',{'text':'nearest water'})
+        route=service.route
+        for ready in (False, True):
+            with self.subTest(model_ready=ready), patch('jarviss.service.emit') as emit, \
+                 patch('jarviss.service.reference_answer',return_value=('Use dry clothes.',None)), \
+                 patch.object(service.model,'chat',return_value='Use dry clothes.'):
+                service.ready=ready
+                service.command('chat',{'text':'Why do wet clothes feel colder in wind?'})
+                answer_event=next(c.args[0] for c in emit.call_args_list if c.args[0]['event']=='answer')
+                self.assertEqual(answer_event['data']['route'],route)
+                self.assertEqual(service.route,route)
+        answer=service.command('chat',{'text':'How do I walk there?'})
+        self.assertIn('Recorded fountain',answer)
+        with patch.object(service.model,'chat') as chat, patch('jarviss.service.emit') as emit:
+            answer=service.command('chat',{'text':'I have 12 litres for 3 people. Each uses 2 litres per day. How many days will it last?'})
+            self.assertTrue(answer.startswith('2 days.'))
+            chat.assert_not_called()
+            answer_event=next(c.args[0] for c in emit.call_args_list if c.args[0]['event']=='answer')
+            self.assertEqual(answer_event['data']['route'],route)
+
+    def test_water_access_note_matches_map_button_and_chat(self):
+        pack=fixture();pack['places'][0].update(kind='untreated water',category='stream')
+        service=self.service();self.import_area(service,pack)
+        service.command('set_map_position',{'lat':40,'lon':-74})
+        place=service.command('nearest',{'query':'running water'})[0]
+        selected=service.command('route',{'id':place['id']})
+        service.command('chat',{'text':'Where is the nearest running water and how do I walk there?'})
+        self.assertEqual(service.route['destination_note'],selected['destination_note'])
+        service.command('chat',{'text':'Give me directions'})
+        self.assertEqual(service.route['destination_note'],selected['destination_note'])
+
     def test_location_discovery_does_not_assign_a_default_or_save_search_centers(self):
         service=self.service()
         self.assertNotIn('lat',service.state()['profile'])
