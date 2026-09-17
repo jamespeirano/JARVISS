@@ -6,7 +6,7 @@ permissions:
 jobs:
   sources:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
     permissions:
       contents: write
     steps:
@@ -27,7 +27,7 @@ jobs:
         run: |
           test "$(gh api repos/jamespeirano/JARVISS/releases/390856464 --jq '.draft')" = true
           test "$(gh api repos/jamespeirano/JARVISS/releases/390856464 --jq '.target_commitish')" = b5118ec06113e3af7df400fa5979a53f87f55529
-          gh release upload v0.2.3 output/JARVISS-corresponding-source.tar.gz output/chromium-152.0.7977.78.tar.gz --repo jamespeirano/JARVISS
+          python3 transfer/scripts/release-source-transfer/upload.py output
       - name: Verify uploaded digests
         env:
           GH_TOKEN: ${{ github.token }}
