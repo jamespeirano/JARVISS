@@ -7,13 +7,11 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "package": "node package.cjs",
     "build:map": "node build-map.cjs",
     "prestart": "npm run build:map",
     "installer": "npm run build:map && electron-builder --publish never"
   },
   "devDependencies": {
-    "@electron/packager": "20.3.0",
     "electron": "44.3.0",
     "electron-builder": "26.15.3",
     "esbuild": "0.28.2",

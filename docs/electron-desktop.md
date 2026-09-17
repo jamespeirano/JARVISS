@@ -1,6 +1,6 @@
 # Electron desktop
 
-The current desktop is Electron. Tkinter files are retained only as legacy prototype code; Electron does not import or display them.
+Electron provides the desktop interface; the bundled Python service runs the local assistant, voice, maps and planning.
 
 ## Development on Windows or macOS
 
@@ -10,7 +10,7 @@ Use Python 3.12 and Node 24. In the repository root, create `.venv` and install 
 
 Install PyInstaller 6.22.3, then run `python scripts/build_electron.py` using the prepared Python environment. The result in `dist` is a macOS DMG/ZIP or Windows installer. It includes Electron/Node, the frozen Python service, llama.cpp, BRouter, Java and PMTiles. End users install no development tools. Build on the target operating system and CPU architecture.
 
-The GitHub Actions workflow builds Windows and macOS artifacts on their native runners when manually triggered or when a version tag is pushed. The Mac artifact follows the runner's architecture; build separately on Intel and Apple Silicon hosts when distributing both. This workflow has not been executed here. The Apple silicon DMG was built and launched locally. Signing and notarization are disabled; security prompts are expected. See [distribution notes](distribution-notices.md) before publishing binaries.
+The desktop workflow runs manually and builds unsigned Windows x64 and/or macOS artifacts. Maintainers sign reviewed builds separately: James Peirano for Windows; Abito Inc., with Apple notarization, for Mac. Public CI has no signing credentials. Official downloads currently support Windows x64 and Apple silicon. See [release instructions](releases.md) and [distribution notices](distribution-notices.md).
 
 ## Existing models and data
 
