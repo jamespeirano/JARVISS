@@ -3,7 +3,7 @@ const {_electron:electron}=require('playwright');
 const {expect}=require('playwright/test');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),assert=require('node:assert/strict');
 (async()=>{
- const root=path.resolve(__dirname,'../..'),test=fs.mkdtempSync(path.join(os.tmpdir(),'jarviss-reader-'));
+ const root=path.resolve(__dirname,'../..'),test=fs.mkdtempSync(path.join(os.tmpdir(),'jarviss reader ü-'));
  const catalog=JSON.parse(fs.readFileSync(path.join(root,'resources/references/catalog.json')));
  let app;
  try{
@@ -19,6 +19,7 @@ OriginalService=service.Service
 class TestService(OriginalService):
  def command(self,method,args=None):
   args=args or {}
+  if method=='reference_search' and (ROOT/'fail-search').exists():raise ValueError('Search interrupted. Try again.')
   if method=='reference':
    ident=args.get('id','')
    if (ROOT/('fail-'+ident)).exists():raise ValueError('The document could not be read. Try again.')
@@ -48,6 +49,7 @@ service.main()
   await page.locator('#setup-later').click();await page.locator('[data-page="docs"]').click();
   assert.equal(await page.locator('.reference-card').count(),38);
   assert.equal(await page.getByRole('button',{name:'Open illustrated PDF',exact:true}).count(),3); // Only the three available PDF cards are exposed.
+  if(process.env.JARVISS_UX_SCREENSHOTS)fs.mkdirSync(process.env.JARVISS_UX_SCREENSHOTS,{recursive:true});
   // Every bundled document is complete, readable, and browsable without a model.
   for(const entry of catalog){
    await read(entry.id);await waitReader(entry.title);
@@ -62,9 +64,26 @@ service.main()
     assert.equal(words(shown),words(source),`${entry.id}: all words and quantities must survive formatting (${doc.sections[i].heading})`);
    }
    assert.equal(await page.locator('#reference-text details').count(),0,'No collapsed advice');
+   if(process.env.JARVISS_UX_SCREENSHOTS&&['fda-food-flood','cdc-respirators','fema-preparedness','cert-4'].includes(entry.id)){
+    const target=entry.id==='cert-4'?doc.sections.find(s=>s.text.includes('1. Head;')):entry.id==='fema-preparedness'?doc.sections.find(s=>s.heading==='PDF page 10'):null;
+    if(target)await page.evaluate(({id,section})=>openReference(id,section),{id:entry.id,section:target.id});
+    await page.screenshot({path:path.join(process.env.JARVISS_UX_SCREENSHOTS,entry.id+'-text.png')});
+   }
    await back();
   }
   console.log('PASS all 38 full documents: complete text and quantities, sections, format labels, and PDF availability; no model or internet');
+  const formatting=await page.evaluate(()=>{
+   const body=documentBody('3. Keep 2 litres.\n\n4. Wait 30 minutes.\n\n9. Check again.');
+   const nested=documentBody('• Main step\n  - First part\n  - Second part\n• Next step');
+   return {numbers:[...body.querySelectorAll('li')].map(el=>el.value),nested:nested.querySelectorAll('ul>li>ul>li').length,top:nested.querySelectorAll(':scope>ul>li').length,label:referenceSectionLabel({heading:'A-5 · PDF page 199',text:'#### Figure-eight knot\n\nSteps.'})};
+  });
+  assert.deepEqual(formatting.numbers,[3,4,9]);assert.match(formatting.label,/^Figure-eight knot/);
+  assert.equal(formatting.nested,2);assert.equal(formatting.top,2);
+  const last=catalog.at(-1);await row(last.id).scrollIntoViewIfNeeded();
+  const libraryScroll=await page.locator('main').evaluate(el=>el.scrollTop);
+  await read(last.id);await waitReader(last.title);await back();
+  assert.equal(await page.locator('main').evaluate(el=>el.scrollTop),libraryScroll,'Back must restore a scrolled library');
+  assert.equal(await row(last.id).getByRole('button',{name:'Read full document',exact:true}).evaluate(el=>el===document.activeElement),true);
   await read('fda-food-flood');await waitReader('Food and water after storms');
   assert.equal(await page.locator('#reference-text > section').count(),3);
   assert.doesNotMatch(await page.locator('#reference-text').innerText(),/WATCH|1-888|Questions\?|Get Assistance|Links for|Ask about this/);
@@ -91,6 +110,11 @@ service.main()
   await page.getByText('No matching documents.',{exact:true}).waitFor();
   await page.locator('#reference-pdfs').click();
   await page.locator('#reference-results button').filter({hasText:'Insulin'}).first().waitFor();
+  await page.locator('#docs-search').fill('');
+  touch('fail-search');await page.locator('#docs-search').fill('water');
+  await page.getByText('Search could not finish.',{exact:true}).waitFor();remove('fail-search');
+  await page.getByRole('button',{name:'Try search again',exact:true}).click();
+  await page.locator('#reference-results button').filter({hasText:'Drinking water'}).first().waitFor();
   await page.locator('#docs-search').fill('');
   console.log('PASS usable FDA sections, section jumps, Ask JARVISS, preserved search/back/focus, empty results and PDF filtering');
   // The actual offline Chromium PDF viewer must open at the cited excerpt page.
@@ -120,9 +144,26 @@ service.main()
    viewer=app.windows().find(w=>w!==page&&w.url().includes(doc.pdf));
    const coverFrame=viewer.frames().find(f=>f.url().startsWith('chrome-extension:'))||await viewer.waitForEvent('framenavigated',{predicate:f=>f.url().startsWith('chrome-extension:')});
    await expect(coverFrame.getByRole('textbox',{name:'Page number',exact:true})).toHaveValue('1');
+   // Reuse the same viewer at both ends of the excerpt, including its cover offset.
+   for(const edge of [doc.sections[0],doc.sections.at(-1)]){
+    const expected=Number(edge.heading.match(/PDF page (\d+)/)[1])-first+2;
+    await page.evaluate(({id,section})=>openReference(id,section),{id,section:edge.id});
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    assert.equal(await page.locator('#reference-contents').getAttribute('data-target'),`reference-${id}-${edge.id}`,'A short final section must stay selected after jumping');
+    await page.locator('#reference-page-pdf').click();
+    await expect.poll(()=>viewer.url()).toContain(`#page=${expected}&view=FitH`);
+    const frame=viewer.frames().find(f=>f.url().startsWith('chrome-extension:'))||await viewer.waitForEvent('framenavigated',{predicate:f=>f.url().startsWith('chrome-extension:')});
+    await expect(frame.getByRole('textbox',{name:'Page number',exact:true})).toHaveValue(String(expected),{timeout:20000});
+   }
    await viewer.close();await back();
   }
-  console.log('PASS three real offline PDFs, cited-page mapping, cover opening, close/reopen');
+  const competing=await page.evaluate(()=>Promise.allSettled(['army-shelter','army-rope','army-navigation'].map(id=>window.jarviss.openReferencePDF(id))));
+  assert.ok(competing.every(r=>r.status==='fulfilled'),'Rapid PDF requests must not produce aborted-load errors');
+  const latestViewer=app.windows().find(w=>w!==page);
+  assert.equal(app.windows().length,2,'Reuse one document window');
+  assert.match(latestViewer.url(),/army-navigation\.pdf\?view=\d+#page=1&view=FitH/);
+  await latestViewer.close();
+  console.log('PASS three real offline PDFs, first/middle/last cited pages, cover opening, close/reopen and rapid requests');
   // Stale saved citation remains understandable, and untrusted text stays literal.
   await page.evaluate(()=>openReference('field-water','removed-section'));
   assert.equal(await page.locator('#reference-link-status').isVisible(),true);
@@ -159,11 +200,21 @@ service.main()
   // Keyboard and resized windows, including larger text, must retain usable controls.
   for(const size of [{width:1024,height:720},{width:1440,height:940}]){
    await page.setViewportSize(size);
-   for(const zoom of [1,1.25]){
+   for(const zoom of [1,1.25,1.5]){
     await app.evaluate(({BrowserWindow},zoom)=>BrowserWindow.getAllWindows()[0].webContents.setZoomFactor(zoom),zoom);
     await page.evaluate(()=>openReference('army-rope'));
     assert.equal(await page.locator('#reference-title').evaluate(el=>el===document.activeElement),true);
-    await page.bringToFront();await page.locator('#reference-contents').focus();await page.keyboard.press('Enter');await page.keyboard.press('End');await page.keyboard.press('Enter');
+    await page.bringToFront();await page.locator('#reference-contents').focus();await page.keyboard.press('Enter');
+    await expect(page.locator('#reference-section-list')).toBeVisible();
+    const menu=await page.locator('#reference-section-list').evaluate(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom,height:innerHeight};});
+    assert.ok(menu.top>=0&&menu.bottom<=menu.height,`Section menu must stay in the viewport: ${JSON.stringify(menu)}`);
+    if(process.env.JARVISS_UX_SCREENSHOTS)await page.screenshot({path:path.join(process.env.JARVISS_UX_SCREENSHOTS,`menu-${size.width}-${zoom}.png`)});
+    await page.keyboard.press('Escape');assert.equal(await page.locator('#reference-reader').isVisible(),true,`Escape closes only menu at ${size.width}, zoom ${zoom}`);
+    assert.equal(await page.locator('#reference-contents').evaluate(el=>el===document.activeElement),true);
+    await page.keyboard.press('Enter');await page.locator('#reference-page-pdf').focus();
+    assert.equal(await page.locator('#reference-section-list').isVisible(),false,'Leaving the picker closes its menu');
+    await page.locator('#reference-contents').focus();
+    await page.keyboard.press('Enter');await page.keyboard.press('End');await page.keyboard.press('Enter');
     await page.waitForFunction(()=>document.querySelector('.reference-selected'));
     const layout=await page.evaluate(()=>{
      const main=document.querySelector('main'),select=document.querySelector('#reference-contents').getBoundingClientRect();
@@ -175,7 +226,7 @@ service.main()
    }
   }
   assert.deepEqual(errors,[]);assert.deepEqual(await app.evaluate(()=>globalThis.readerExternalRequests),[]);
-  console.log('PASS keyboard, 1024/1440 windows, 100/125% zoom, no script errors or external requests');
+  console.log('PASS keyboard, anchored menu bounds, 1024/1440 windows, 100/125/150% zoom, no script errors or external requests');
  }finally{
   for(const name of fs.readdirSync(test).filter(n=>n.startsWith('hold-')))fs.rmSync(path.join(test,name));
   if(app)await app.close();fs.rmSync(test,{recursive:true,force:true});

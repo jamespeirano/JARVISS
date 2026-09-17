@@ -85,7 +85,10 @@ app.whenReady().then(()=>{
    pdfWindow.webContents.on('will-navigate',event=>event.preventDefault());
   }
   const viewer=pdfWindow;
-  await viewer.loadFile(file,{hash:`page=${page}&view=FitH`});
+  // Chromium's PDF viewer can ignore a hash-only page change. A fresh local
+  // document URL reloads the viewer while keeping this one window.
+  try{await viewer.loadFile(file,{query:{view:String(sequence)},hash:`page=${page}&view=FitH`});}
+  catch(e){if(sequence!==pdfSequence||viewer.isDestroyed())return false;throw e;}
   if(sequence!==pdfSequence||viewer.isDestroyed())return false;
   viewer.setTitle(doc.title);viewer.show();viewer.focus();return true;
  });

@@ -1,6 +1,6 @@
 // Offline library browser and continuous document reader. Source text is never HTML.
 const referenceEntries=new Map();
-let referenceSearch=0,referenceTimer,readerSequence=0,readingDocument=null,readerReturn=null;
+let referenceSearch=0,referenceTimer,readerSequence=0,readingDocument=null,readerReturn=null,readerJumpScroll=null;
 const readerSections=new Map();
 function referenceButton(label,action){
  const button=document.createElement('button');button.textContent=label;
@@ -29,7 +29,7 @@ async function loadReference(id){
 }
 function documentBody(text){
  const body=document.createElement('div');body.className='reference-prose';
- const lines=text.split('\n');let paragraph=[],list=null;
+ const lines=text.split('\n');let paragraph=[],lists=[];
  const flush=()=>{if(paragraph.length){const p=document.createElement('p');p.textContent=paragraph.join(' ');body.append(p);paragraph=[];}};
  const cells=line=>line.trim().replace(/^\||\|$/g,'').split('|').map(s=>s.trim());
  for(let i=0;i<lines.length;i++){
@@ -37,7 +37,7 @@ function documentBody(text){
   if(!line){flush();continue;}
   let next=i+1;while(next<lines.length&&!lines[next].trim())next++;
   if(line.includes('|')&&next<lines.length&&/^\|?\s*:?-{3,}/.test(lines[next].trim())){
-   flush();list=null;const table=document.createElement('table'),head=document.createElement('thead'),row=document.createElement('tr');
+   flush();lists=[];const table=document.createElement('table'),head=document.createElement('thead'),row=document.createElement('tr');
    for(const value of cells(line)){const th=document.createElement('th');th.scope='col';th.textContent=value;row.append(th);}head.append(row);table.append(head);
    const rows=document.createElement('tbody');i=next;
    while(i+1<lines.length){
@@ -48,20 +48,33 @@ function documentBody(text){
    table.append(rows);const wrap=document.createElement('div');wrap.className='reference-table';wrap.append(table);body.append(wrap);continue;
   }
   const heading=line.match(/^#{1,6}\s+(.+)/),bullet=line.match(/^([-*•]|\d+[.)])\s+(.*)/);
-  if(heading){flush();list=null;const h=document.createElement('h4');h.textContent=heading[1];body.append(h);}
+  if(heading){flush();lists=[];const h=document.createElement('h4');h.textContent=heading[1];body.append(h);}
   else if(bullet){
-   flush();const tag=/^\d/.test(bullet[1])?'OL':'UL';
-   if(!list||list.tagName!==tag){list=document.createElement(tag);body.append(list);}
+   flush();const tag=/^\d/.test(bullet[1])?'OL':'UL',indent=lines[i].match(/^\s*/)[0].length;
+   while(lists.length&&(lists.at(-1).indent>indent||(lists.at(-1).indent===indent&&lists.at(-1).node.tagName!==tag)))lists.pop();
+   if(!lists.length||lists.at(-1).indent<indent){
+    const node=document.createElement(tag),parent=lists.at(-1)?.node.lastElementChild||body;
+    parent.append(node);lists.push({indent,node});
+   }
+   const list=lists.at(-1).node;
    const li=document.createElement('li');li.textContent=bullet[2];if(tag==='OL')li.value=parseInt(bullet[1],10);list.append(li);
-  }else{list=null;paragraph.push(line);}
+  }else{lists=[];paragraph.push(line);}
  }
  flush();return body;
+}
+function referenceSectionLabel(section){
+ if(section.path?.length>2)return section.path.slice(-2).join(' · ');
+ if(/^(?:PDF page |[A-Z]-\d+ · |Unit \d+, page )/.test(section.heading)){
+  const title=[...section.text.matchAll(/^#### (.+)$/gm)].map(m=>m[1]).find(s=>! /^(?:Figure|Table|Appendix)\s+[A-Z0-9]/i.test(s));
+  if(title)return title+' · '+section.heading;
+ }
+ return section.heading;
 }
 async function openReference(id,section){
  const sequence=++readerSequence,navigation=pageSequence,origin=document.activeElement,scroll=document.querySelector('main').scrollTop;
  const doc=await loadReference(id);if(sequence!==readerSequence||navigation!==pageSequence)return;
  if(!$('#reference-reader').classList.contains('visible'))readerReturn={origin,scroll,page:$('.page.visible')?.id||'docs'};
- readingDocument=doc;page('reference-reader');
+ readingDocument=doc;readerJumpScroll=null;page('reference-reader');
  $('#reference-back').textContent=readerReturn?.page==='assistant'?'← Back to chat':'← Back to Docs';
  $('#reference-title').textContent=doc.title;
  $('#reference-meta').textContent=`${doc.publisher} · ${doc.date} · ${doc.words.toLocaleString()} words`;
@@ -71,7 +84,7 @@ async function openReference(id,section){
  closeSectionMenu();readerSections.clear();$('#reference-section-list').replaceChildren();$('#reference-text').replaceChildren();
  for(const section of doc.sections){
   const block=document.createElement('section');block.className='reference-section';block.id='reference-'+id+'-'+section.id;block.dataset.section=section.id;block.tabIndex=-1;
-  const label=section.path?.length>2?section.path.slice(-2).join(' · '):section.heading;
+  const label=referenceSectionLabel(section);
   const heading=document.createElement('h3');heading.textContent=label;
   block.append(heading,documentBody(section.text));$('#reference-text').append(block);
   const choice=referenceButton(label,()=>{closeSectionMenu();showReferenceSection(block);});choice.dataset.target=block.id;
@@ -96,12 +109,18 @@ function showReferenceSection(target){
  setReaderSection(target.id);
  document.querySelectorAll('.reference-selected').forEach(el=>el.classList.remove('reference-selected'));
  target.classList.add('reference-selected');target.focus({preventScroll:true});target.scrollIntoView({block:'start'});
+ // A short final section cannot always reach the top. Keep an explicit jump
+ // selected until the reader scrolls, so its illustrated-page button stays exact.
+ readerJumpScroll=document.querySelector('main').scrollTop;
 }
 function closeSectionMenu(focus=false){$('#reference-section-list').hidden=true;$('#reference-contents').setAttribute('aria-expanded','false');if(focus)$('#reference-contents').focus();}
-function openSectionMenu(){
+function positionSectionMenu(){
  const button=$('#reference-contents'),list=$('#reference-section-list'),rect=button.getBoundingClientRect();
  const below=innerHeight-rect.bottom-16,above=rect.top-16,up=below<180&&above>below;
  list.classList.toggle('open-above',up);list.style.maxHeight=Math.min(360,Math.max(100,up?above:below))+'px';
+}
+function openSectionMenu(){
+ const button=$('#reference-contents'),list=$('#reference-section-list');positionSectionMenu();
  list.hidden=false;button.setAttribute('aria-expanded','true');
  const selected=readerSections.get(button.dataset.target)?.choice;
  selected?.focus({preventScroll:true});if(selected)list.scrollTop=selected.offsetTop-list.clientHeight/2;
@@ -115,18 +134,23 @@ $('#reference-picker').onkeydown=event=>{
  const next=event.key==='Home'?0:event.key==='End'?choices.length-1:Math.max(0,Math.min(choices.length-1,index+(event.key==='ArrowDown'?1:-1)));
  choices[next]?.focus();
 };
+$('#reference-picker').addEventListener('focusout',event=>{if(!$('#reference-picker').contains(event.relatedTarget))closeSectionMenu();});
 document.addEventListener('click',event=>{if(!$('#reference-picker').contains(event.target))closeSectionMenu();});
-window.addEventListener('resize',()=>closeSectionMenu());
+window.addEventListener('resize',()=>{if(!$('#reference-section-list').hidden)positionSectionMenu();});
 let readerScrollFrame;
 document.querySelector('main').addEventListener('scroll',()=>{
- closeSectionMenu();if(readerScrollFrame||!$('#reference-reader').classList.contains('visible'))return;
+ if(!$('#reference-section-list').hidden)positionSectionMenu();
+ if(readerScrollFrame||!$('#reference-reader').classList.contains('visible'))return;
  readerScrollFrame=requestAnimationFrame(()=>{readerScrollFrame=null;let current=readerSections.keys().next().value;
+  if(!$('#reference-reader').classList.contains('visible'))return;
+  if(readerJumpScroll===document.querySelector('main').scrollTop)return;
+  readerJumpScroll=null;
   const edge=$('.reference-jump').getBoundingClientRect().bottom+24;
   for(const [id,item] of readerSections){if(item.block.getBoundingClientRect().top<=edge)current=id;else break;}setReaderSection(current);
  });
 },{passive:true});
 $('#reference-back').onclick=()=>{readerSequence++;page(readerReturn?.page==='assistant'?'assistant':'docs');document.querySelector('main').scrollTop=readerReturn?.scroll||0;readerReturn?.origin?.focus({preventScroll:true});};
-document.addEventListener('keydown',event=>{if(event.key==='Escape'&&$('#reference-reader').classList.contains('visible'))$('#reference-back').click();});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&$('#reference-reader').classList.contains('visible')){if(!$('#reference-section-list').hidden)closeSectionMenu(true);else $('#reference-back').click();}});
 $('#reference-open-pdf').onclick=()=>window.jarviss.openReferencePDF(readingDocument.id).catch(error);
 $('#reference-page-pdf').onclick=()=>window.jarviss.openReferencePDF(readingDocument.id,document.getElementById($('#reference-contents').dataset.target).dataset.section).catch(error);
 for(const [selector,format,label] of [['#reference-save-text','md','Text saved'],['#reference-save-pdf','pdf','PDF saved']]){
@@ -141,13 +165,17 @@ function filterDocs(){
  if(!q){$('#reference-results').replaceChildren();return;}
  $('#reference-results').textContent='Searching…';
  referenceTimer=setTimeout(async()=>{
-  try{const results=await call('reference_search',{query:q});if(sequence!==referenceSearch)return;
+  try{const results=await window.jarviss.command('reference_search',{query:q});if(sequence!==referenceSearch)return;
    const nodes=results.filter(ref=>!pdfs||referenceEntries.get(ref.id)?.doc.pdf).map(ref=>{
     const b=referenceButton(ref.title+' · '+ref.heading,()=>openReference(ref.id,ref.section));b.className='reference-result';return b;
    });
    if(!nodes.length){const p=document.createElement('p');p.textContent='No matching documents.';nodes.push(p);}
    $('#reference-results').replaceChildren(...nodes);
-  }catch{}
+  }catch(e){
+   if(sequence!==referenceSearch)return;
+   const message=document.createElement('p');message.textContent='Search could not finish.';
+   $('#reference-results').replaceChildren(message,referenceButton('Try search again',()=>filterDocs()));
+  }
  },180);
 }
 $('#docs-search').oninput=filterDocs;

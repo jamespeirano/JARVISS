@@ -53,11 +53,19 @@ Scenario files: [core questions](../tests/scenarios/knowledge.json), [manual que
 
 ## Application checks
 
-- 119 backend tests passed, including source integrity, saved reference links and long-context handling.
+- 121 backend tests passed, including source integrity, saved reference links, section hierarchy, source-text formatting and long-context handling.
 - Desktop checks exercised setup, maps, planner, messages, documents, delayed responses and voice failures/retry. Full-screen map entry and exit, cross-page voice generation indicators, document search, persisted links, canceled exports and attributed text/PDF exports passed.
 - Real map data produced 102 sampled walking routes across all 50 states and DC. This checks sampled graph connections, not road access, water quality or current conditions.
 - Real local speech synthesis and recognition completed six digital round trips with two distinct voices and the spoken stop command. This did not use a physical microphone or speakers and does not establish audio-device compatibility.
 - Installer-specific results belong with the release checksums. The new builds still need signature, packaged first-launch and setup integration checks; earlier VM results do not automatically certify a new binary.
+
+### Reader usability checks
+
+All 38 documents were opened with networking blocked and no model loaded. The reader tests compare the visible words and quantities against every bundled section. They cover search and retry, PDF filtering, saved chat links, highlighted sections, return focus and scroll position, export cancellation, literal untrusted text, missing PDFs, stale links and late or reordered responses.
+
+The actual Chromium PDF viewer was checked at each illustrated chapter's cover, first, middle and last source pages. Reopening another page in the same PDF originally left the viewer on page 1; each open now reloads the local PDF at the requested page. A short final section also keeps its selection after a jump, even when it cannot scroll to the top.
+
+The section menu stays in the app and supports arrow keys, Home/End, Escape and leaving by keyboard. Layout checks use 1024- and 1440-pixel windows at 100%, 125% and 150% zoom, plus paths containing spaces and non-ASCII characters. The Mac and Windows PR jobs run this suite. These are source-app tests; the packaged-app check separately verifies setup, bundled text, reader assets and a real illustrated PDF page.
 
 ## Public-source review
 

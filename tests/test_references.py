@@ -92,6 +92,24 @@ class ReferenceTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 library.reference_pdf('untrusted')
 
+    def test_section_paths_distinguish_repeated_headings_without_changing_links(self):
+        parts = library.sections('# Heat\n## Heatstroke\n### Symptoms\nConfusion.\n'
+                                 '## Heat exhaustion\n### Symptoms\nHeavy sweating.')
+        self.assertEqual([p['path'] for p in parts], [
+            ['Heat', 'Heatstroke', 'Symptoms'], ['Heat', 'Heat exhaustion', 'Symptoms']])
+        original = library.sections('### Symptoms\nConfusion.\n### Symptoms\nHeavy sweating.')
+        self.assertEqual([p['id'] for p in parts], [p['id'] for p in original])
+
+    def test_offline_editions_exclude_website_controls_and_keep_complete_advice(self):
+        food = library.reference_document('fda-food-flood')
+        self.assertEqual([s['heading'] for s in food['sections']], ['Before a Storm', 'During a Storm', 'After a Storm'])
+        self.assertNotRegex(food['text'], r'WATCH|Get Assistance|Links for Consumer|1-888-SAFE')
+        rope = library.reference_document('army-rope')
+        self.assertIn('should have a basic knowledge of ropes and knots', rope['text'])
+        medical = library.reference_document('cert-4')
+        for number, part in enumerate(['Head', 'Neck', 'Shoulders', 'Chest', 'Arms', 'Abdomen', 'Pelvis', 'Legs'], 1):
+            self.assertRegex(medical['text'], rf'(?m)^{number}\. {part}\b')
+
     def test_exact_model_manual_and_user_content_preserved(self):
         docs = [{'title':'UnknownPump ZQ77 manual', 'text':'Fault E04: inspect the blue inlet strainer.'},
                 {'title':'AnotherPump X18 manual', 'text':'Fault E04: high motor temperature.'}]

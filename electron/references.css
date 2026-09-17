@@ -30,9 +30,15 @@
 .reference-prose h4{font-size:18px;line-height:1.5;margin:24px 0 12px}
 .reference-prose ul,.reference-prose ol{padding-left:28px;margin:16px 0 22px}
 .reference-prose li{padding-left:5px;margin:7px 0}
+.reference-prose li>ul,.reference-prose li>ol{margin:8px 0}
 .reference-table{overflow:auto;margin:18px 0}
 .reference-table table{border-collapse:collapse;width:100%;text-align:left;font-size:14px}
 .reference-table td,.reference-table th{border:1px solid #434349;padding:10px;vertical-align:top}
 .reference-source{border-top:1px solid #39393f;margin-top:40px;padding:20px 0}
 .reference-source summary{cursor:pointer;color:#b1b1ba}
 .reference-source p{font-size:13px;white-space:pre-wrap;line-height:1.7;overflow-wrap:anywhere;color:#a0a0a8}
+@media(max-width:900px){
+ .reference-jump{flex-wrap:wrap;gap:10px}
+ .reference-jump>span{flex-basis:100%}
+ .reference-section{scroll-margin-top:140px}
+}

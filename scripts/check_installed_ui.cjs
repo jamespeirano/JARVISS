@@ -5,9 +5,12 @@ const assert = require('node:assert/strict');
 const {_electron: electron} = require(require.resolve('playwright', {
   paths: [path.resolve(__dirname, '../electron'), path.resolve(__dirname, '../.verify')],
 }));
+const {expect} = require(require.resolve('playwright/test', {
+  paths: [path.resolve(__dirname, '../electron'), path.resolve(__dirname, '../.verify')],
+}));
 (async () => {
   if (!process.argv[2]) throw new Error('Pass the built application executable.');
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jarvis-installed-ui-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jarviss installed ü-'));
   const screenshot = path.join(process.env.RUNNER_TEMP || os.tmpdir(), 'jarvis-signed-startup.png');
   let app;
   try {
@@ -39,6 +42,30 @@ const {_electron: electron} = require(require.resolve('playwright', {
     assert.equal(await page.locator('#setup-models input').count(), plan.models.length);
     await page.screenshot({path: screenshot});
     console.log('PASS packaged app opens fresh setup, recommends a model and communicates with its bundled backend without Python or Node on PATH');
+    // Exercise the packaged reader assets and PDF support, not source-tree files.
+    await page.locator('#setup-later').click();
+    await page.locator('[data-page="docs"]').click();
+    assert.ok(await page.locator('.reference-card').count() >= 38);
+    await page.locator('[data-reference="fda-food-flood"]').getByRole('button',{name:'Read full document',exact:true}).click();
+    await page.locator('#reference-reader.visible').waitFor();
+    assert.equal(await page.locator('#reference-title').innerText(),'Food and water after storms');
+    assert.equal(await page.locator('#reference-text > section').count(),3);
+    assert.doesNotMatch(await page.locator('#reference-text').innerText(),/WATCH|Get Assistance|1-888-SAFE/);
+    await page.locator('#reference-back').click();
+    await page.locator('[data-reference="army-rope"]').getByRole('button',{name:'Read full document',exact:true}).click();
+    await page.locator('#reference-reader.visible').waitFor();
+    await page.locator('#reference-contents').click();
+    await page.locator('#reference-section-list button').last().click();
+    await page.locator('.reference-selected').waitFor();
+    const opened=app.waitForEvent('window');
+    await page.locator('#reference-page-pdf').click();
+    const viewer=await opened;
+    await viewer.waitForURL(/army-rope\.pdf\?view=\d+#page=26&view=FitH/,{timeout:60000});
+    const frame=viewer.frames().find(f=>f.url().startsWith('chrome-extension:'))||await viewer.waitForEvent('framenavigated',{predicate:f=>f.url().startsWith('chrome-extension:')});
+    await expect(frame.getByRole('textbox',{name:'Page number',exact:true})).toHaveValue('26',{timeout:60000});
+    await viewer.close();
+    assert.equal(await page.evaluate(()=>typeof window.require),'undefined');
+    console.log('PASS packaged offline text, reader scripts/styles, section navigation and illustrated PDF at the cited page');
   } catch (error) {
     if (app) {
       for (const page of app.windows()) {
