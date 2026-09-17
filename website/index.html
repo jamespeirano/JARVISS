@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Download JARVISS for Mac or Windows.">
+  <meta name="color-scheme" content="dark">
+  <title>Download JARVISS</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; min-height: 100svh; display: grid; place-items: center; background: #101416; color: #f5f8fa; font-family: system-ui, sans-serif; }
+    main { width: min(720px, 100%); padding: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    a { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 42px 24px; border: 1px solid #38505a; border-radius: 20px; color: inherit; text-align: center; text-decoration: none; background: #192227; }
+    a:hover { background: #22343d; border-color: #78cde6; }
+    a:focus-visible { outline: 3px solid #91def4; outline-offset: 6px; }
+    strong { font-size: 21px; font-weight: 600; }
+    small { font-size: 14px; color: #adc1ca; }
+    svg { width: 32px; height: 32px; margin-bottom: 8px; color: #91def4; }
+    @media (max-width: 540px) { main { max-width: 380px; grid-template-columns: 1fr; } a { padding: 32px 20px; } }
+  </style>
+</head>
+<body>
+  <main aria-label="Download JARVISS">
+    <a href="https://github.com/jamespeirano/JARVISS/releases/latest/download/JARVISS-Mac-Apple-Silicon.dmg">
+      <svg aria-hidden="true" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="4" width="22" height="18" rx="2"/><path d="M2 27h28M11 22l-1 5m11-5 1 5"/></svg>
+      <strong>Download for Mac</strong>
+      <small>Apple silicon · macOS 13+</small>
+    </a>
+    <a href="https://github.com/jamespeirano/JARVISS/releases/latest/download/JARVISS-Windows-x64.exe">
+      <svg aria-hidden="true" viewBox="0 0 32 32" fill="currentColor"><path d="M3 5h11v10H3zm13 0h13v10H16zM3 17h11v10H3zm13 0h13v10H16z"/></svg>
+      <strong>Download for Windows</strong>
+      <small>Intel / AMD 64-bit · Windows 10+</small>
+    </a>
+  </main>
+</body>
+</html>
