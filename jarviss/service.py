@@ -16,7 +16,7 @@ from . import planner
 from .local_board import LocalBoard
 from .assets import prepare_qwen, prepare_voice, VOICE_NAME
 from .setup import Setup
-from .library import import_text, import_note
+from .library import import_text, import_note, retrieve, reference_catalog, reference_document, reference_pdf, search_references
 from .calculations import supply_duration
 
 output_lock = threading.Lock()
@@ -79,7 +79,7 @@ class Service:
                     'center':a.pack['center'], 'downloaded_at':a.pack['downloaded_at'], 'roads':len(a.pack['roads']),
                     'places':len(a.pack['places'])} for a in self.areas],
                 'promptDefaults':PROMPT_DEFAULTS,
-                'documents':read_json(DATA / 'library.json', []), 'guides':GUIDES,
+                'documents':read_json(DATA / 'library.json', []), 'guides':GUIDES, 'references':reference_catalog(),
                 'planner':planner.state(), 'plannerSchemas':planner.SCHEMAS, 'board':self.board.state(),
                 'recovery':(RESOURCES / 'collective-recovery.md').read_text(encoding='utf-8')}
 
@@ -111,6 +111,9 @@ class Service:
 
     def command(self, method, args):
         if method == 'state': return self.state()
+        if method == 'reference': return reference_document(args.get('id'))
+        if method == 'reference_pdf': return reference_pdf(args.get('id'))
+        if method == 'reference_search': return search_references(args.get('query',''))
         if method == 'setup_plan': return self.setup.plan(args.get('model_id'))
         if method == 'setup_pause': self.setup.cancel.set(); return True
         if method.startswith('planner_'): return planner.command(method,args)
@@ -293,13 +296,15 @@ class Service:
                 self.voice.busy.set(); emit({'event':'status','data':'Thinking'})
                 spoken = self.voice.enabled.is_set()
                 preferences = {**PROMPT_DEFAULTS, **self.settings}
-                payload = messages(self.profile, self.history, text, catalog, self.route, preferences, spoken) if not direct else None
+                documents = retrieve(text) if not direct else []
+                references = [{k:d[k] for k in ('id','section','title','heading')} for d in documents if d.get('id')]
+                payload = messages(self.profile, self.history, text, catalog, self.route, preferences, spoken, documents) if not direct else None
                 def speak_sentence(sentence):
                     if self.voice.enabled.is_set(): self.voice.speak(sentence)
                 answer, route = direct or (self.model.chat(payload, on_sentence=speak_sentence if spoken else None,
                     max_tokens=preferences['voice_max_tokens' if spoken else 'text_max_tokens'],
                     max_sentences=preferences['voice_max_sentences'] if spoken else None), None)
-                self.history += [{'role':'user','content':text},{'role':'assistant','content':answer}]
+                self.history += [{'role':'user','content':text},{'role':'assistant','content':answer,'references':references}]
                 self.history = self.history[-100:]
                 write_json(DATA / 'conversation.json', self.history)
                 if is_map_answer: self.route = route
@@ -309,7 +314,7 @@ class Service:
                                if route else ' '.join(answer.splitlines()[:1]))
                     import re
                     self.voice.speak(' '.join(re.split(r'(?<=[.!?])\s+', summary)[:preferences['voice_max_sentences']]))
-                emit({'event':'answer','data':{'text':answer,'question':text,'route':self.route}})
+                emit({'event':'answer','data':{'text':answer,'question':text,'route':self.route,'references':references}})
                 return answer
             if method in ('download_model','download_voice'):
                 fn = prepare_qwen if method == 'download_model' else prepare_voice

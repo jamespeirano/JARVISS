@@ -30,7 +30,7 @@ Exact sizes and SHA-256 checksums are on the [release page](https://github.com/j
 - **Chat:** ask a question, translate text, or select **Start voice mode**.
 - **Maps:** find recorded resources, check miles and follow walking directions.
 - **Plan:** track supplies, tasks, power, crops, people and observations.
-- **Docs:** read short guides or add your equipment manuals and other PDF/TXT/Markdown files.
+- **Docs:** search 38 offline references (about 105,000 words), including FEMA disaster-response and Army field-skills chapters. Open source passages from chat, save text or illustrated PDFs, and add your own manuals. [Library details](docs/reference-library.md).
 - **Group messages:** connect devices to the same local network. Internet is not needed. Messages are not encrypted.
 
 After setup, answers, voice and map searches run locally. Maps do not confirm current access, safe drinking water or available supplies. AI answers can be wrong; [model and scenario limitations](docs/use-case-verification.md) are documented.

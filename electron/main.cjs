@@ -12,6 +12,7 @@ let win, child, startup, sequence=0, quitting=false;
 const pending=new Map();
 app.setPath('userData',process.env.JARVISS_APP_DATA||path.join(app.getPath('appData'),'JARVISS'));
 const allowed=new Set(['setup_plan','setup_run','setup_pause','location_parts','import_note','planner_save','planner_delete','planner_done','planner_energy','board_start','board_stop','board_state','board_send','state','chat','save_profile','set_map_position','search_locations','use_basemap','voice','clear','start_model','nearest','route','example_map','download_model','download_voice','download_us_maps','download_map','audio_devices','audio_settings','test_speaker','stop_speaker','prompt_settings']);
+for(const method of ['reference','reference_search'])allowed.add(method);
 if(!app.requestSingleInstanceLock()) app.quit();
 app.on('second-instance',()=>{if(win){win.show();win.focus();}});
 function rpc(method,args={}){
@@ -52,9 +53,60 @@ app.whenReady().then(()=>{
   if(kind==='model')return result.filePaths[0];
   return rpc(kind==='map'?'import_map':kind==='basemap'?'import_basemap':'import_document',{path:result.filePaths[0]});
  });
+ let fullscreenTransition=Promise.resolve();
+ ipcMain.handle('map-fullscreen',(event,enabled)=>{
+  if(event.sender!==win.webContents||typeof enabled!=='boolean')throw new Error('Unsupported operation');
+  fullscreenTransition=fullscreenTransition.then(()=>new Promise(resolve=>{
+   if(win.isFullScreen()===enabled){resolve(enabled);return;}
+   // macOS changes Spaces asynchronously. Finish one transition before another.
+   win.once(enabled?'enter-full-screen':'leave-full-screen',()=>resolve(enabled));
+   win.setFullScreen(enabled);
+  }));
+  return fullscreenTransition;
+ });
+ let pdfWindow,pdfSequence=0;
+ ipcMain.handle('open-reference-pdf',async(event,id,section)=>{
+  if(event.sender!==win.webContents||typeof id!=='string'||(section!==undefined&&typeof section!=='string'))throw new Error('Unsupported operation');
+  const sequence=++pdfSequence;
+  // Resolve only bundled document IDs, including the original-to-excerpt page offset.
+  const doc=await rpc('reference',{id}),file=await rpc('reference_pdf',{id});
+  let page=1;
+  if(section){
+   const found=doc.sections.find(s=>s.id===section);
+   if(!found)throw new Error('This section is not in the document.');
+   const original=Number(found.heading.match(/PDF page (\d+)/)?.[1]);
+   const [first,last]=(doc.source_pages||'').split('–').map(Number);
+   if(original>=first&&original<=last)page=original-first+2; // Excerpts include one cover page.
+  }
+  if(sequence!==pdfSequence)return false;
+  if(!pdfWindow||pdfWindow.isDestroyed()){
+   pdfWindow=new BrowserWindow({parent:win,width:1040,height:820,show:false,title:doc.title,autoHideMenuBar:true,webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,plugins:true}});
+   pdfWindow.webContents.setWindowOpenHandler(()=>({action:'deny'}));
+   pdfWindow.webContents.on('will-navigate',event=>event.preventDefault());
+  }
+  const viewer=pdfWindow;
+  // Chromium's PDF viewer can ignore a hash-only page change. A fresh local
+  // document URL reloads the viewer while keeping this one window.
+  try{await viewer.loadFile(file,{query:{view:String(sequence)},hash:`page=${page}&view=FitH`});}
+  catch(e){if(sequence!==pdfSequence||viewer.isDestroyed())return false;throw e;}
+  if(sequence!==pdfSequence||viewer.isDestroyed())return false;
+  viewer.setTitle(doc.title);viewer.show();viewer.focus();return true;
+ });
+ ipcMain.handle('save-reference',async(event,id,format='md')=>{
+  if(event.sender!==win.webContents||typeof id!=='string'||!['md','pdf'].includes(format))throw new Error('Unsupported operation');
+  const doc=await rpc('reference',{id});
+  const source=format==='pdf'?await rpc('reference_pdf',{id}):null;
+  const result=await dialog.showSaveDialog(win,{defaultPath:doc.id+'.'+format,filters:[{name:format==='pdf'?'Illustrated PDF':'Markdown document',extensions:[format]}]});
+  if(result.canceled)return false;
+  if(source){await fs.promises.copyFile(source,result.filePath);return true;}
+  const attribution=[doc.title,doc.publisher,`Edition: ${doc.date}`,doc.url,doc.note||'',doc.editing_note||'',doc.attribution||'',doc.license_note||''].filter(Boolean).join('\n');
+  await fs.promises.writeFile(result.filePath,attribution+'\n\n'+doc.text+'\n\nSources\n'+(doc.sources||[doc.url]).join('\n'),'utf8');
+  return true;
+ });
  win=new BrowserWindow({width:1440,height:940,minWidth:1024,minHeight:720,backgroundColor:'#181818',title:'JARVISS',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
  win.webContents.on('will-navigate',e=>e.preventDefault());
+ win.on('leave-full-screen',()=>send('map_fullscreen',false));
  win.webContents.session.setPermissionRequestHandler((_w,_p,callback)=>callback(false));
  startup=watchStartup(win,{app,dialog,report:reason=>fs.appendFileSync(path.join(root,'startup.log'),`${new Date().toISOString()} ${reason}\n`)});
  win.loadFile(path.join(__dirname,'index.html')).catch(error=>startup.failed(error.message));

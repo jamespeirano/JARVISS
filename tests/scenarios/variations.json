@@ -1,0 +1,383 @@
+[
+  {
+    "id": "food-date",
+    "topic": "food",
+    "question": "A commercially canned tin of beans is six months past best-by. It is sealed, undamaged, and was stored cool and dry. Does that date mean it is poisonous?",
+    "expected": "Best-by usually describes quality, not safety. Intact commercially canned low-acid foods such as plain beans have a 2–5-year quality guideline. Assess packaging and storage; no guarantee from the date alone.",
+    "split": "core",
+    "source_ids": [
+      "field-food",
+      "cdc-food"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "food-baby-date",
+    "topic": "food",
+    "question": "Unopened infant formula is past its use-by date. Is that just a quality date like canned beans?",
+    "expected": "Do not use infant formula after its use-by date; unlike most food dates, nutrition/quality not ensured.",
+    "split": "core",
+    "source_ids": [
+      "field-food",
+      "cdc-food"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "food-canning",
+    "topic": "food",
+    "question": "I have fresh green beans, jars and a boiling-water pot but no pressure canner. Can I can them for shelf storage?",
+    "expected": "Green beans low-acid require tested pressure-canning process; boiling-water pot not suitable. Suggest practical safe alternative.",
+    "split": "core",
+    "source_ids": [
+      "field-preservation",
+      "cdc-canning"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "firstaid-burn",
+    "topic": "first-aid",
+    "question": "I burned my forearm on a pan. Should I use butter or ice?",
+    "expected": "Cool running water, no ice or butter. Remove nearby jewelry or loose clothing, leave stuck material, cover loosely and assess severity.",
+    "split": "core",
+    "source_ids": [
+      "field-first-aid",
+      "cdc-heat",
+      "cdc-cold"
+    ],
+    "source_review": "Expected facts checked against cited primary guidance."
+  },
+  {
+    "id": "shelter-site",
+    "topic": "Shelter",
+    "question": "I need a place for a tarp shelter. There is a dry streambed and another spot under a dead leaning tree. How do I choose a safer site?",
+    "expected": "Check flood channels, falling limbs/trees and rock hazards; seek higher drained ground protected from wind. Neither proposed site is automatically safe.",
+    "source_ids": [
+      "field-power",
+      "army-shelter"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "navigation-declination",
+    "topic": "Navigation",
+    "question": "Can I treat map grid north and my compass magnetic north as exactly the same?",
+    "expected": "Grid, true and magnetic north differ. Use the applicable grid-magnetic angle, map diagram and date; do not invent a local angle.",
+    "source_ids": [
+      "field-navigation",
+      "army-navigation"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "rescue-heavy-damage",
+    "topic": "Search and rescue",
+    "question": "A damaged building has a leaning wall and a partly collapsed roof. Is this a light search-and-rescue job for volunteers?",
+    "expected": "Do not enter a heavily damaged building. Keep people clear and seek trained help; appearance alone cannot establish structural safety.",
+    "source_ids": [
+      "cert-7"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "fire-exit",
+    "topic": "Fire and utilities",
+    "question": "A small fire is growing and smoke blocks the exit. Should I stay and try an extinguisher?",
+    "expected": "Do not stay to fight a growing fire with a blocked escape route. Move away from smoke and seek a safe exit.",
+    "source_ids": [
+      "cert-6"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "utility-gas",
+    "topic": "Fire and utilities",
+    "question": "After an earthquake, I smell gas near the house. Should I flip the lights on to inspect it?",
+    "expected": "Avoid electrical switches, flames and sparks; leave the unsafe area. Do not turn lights on to investigate.",
+    "source_ids": [
+      "cert-6"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "utility-electric",
+    "topic": "Fire and utilities",
+    "question": "The floor near the electrical panel is flooded. Can I walk through it to switch off the main breaker?",
+    "expected": "Do not enter potentially energized floodwater to reach the breaker. Keep clear and seek qualified help; operate only with safe dry access.",
+    "source_ids": [
+      "cert-6"
+    ],
+    "split": "manual_holdout",
+    "source_review": "Primary publication passages identified; answer requires semantic review."
+  },
+  {
+    "id": "food-lentil-date",
+    "topic": "food",
+    "question": "A commercially canned lentil soup is three years past packing, sealed and undamaged, kept cool and dry. Is a 12-month rule always correct?",
+    "expected": "Distinguish food type, formulation and quality dates. Low-acid canned foods generally have a 2–5-year quality guideline; no blanket guarantee from dates alone.",
+    "source_ids": [
+      "field-food"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "food-tomato-date",
+    "topic": "food",
+    "question": "Are canned tomatoes and canned plain beans in the same storage-time category?",
+    "expected": "Tomatoes are high-acid (12–18 months quality); plain beans low-acid (2–5 years). Conditions and intact packaging matter.",
+    "source_ids": [
+      "field-food"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "food-formula-today",
+    "topic": "food",
+    "question": "The only sealed infant formula I found expired last month. The powder looks fine. Is it suitable to feed my baby?",
+    "expected": "Expired infant formula is unsuitable. Appearance and a seal do not extend its use-by date; find usable formula.",
+    "source_ids": [
+      "field-food"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "food-formula-unexpired",
+    "topic": "food",
+    "question": "My infant formula is unopened and still within its use-by date. What else should I check before using it?",
+    "expected": "Packaging and labeled storage, correct preparation and safe water; unexpired does not establish safety after storage damage. Do not invent mixing ratios.",
+    "source_ids": [
+      "field-food"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "canning-carrots",
+    "topic": "canning",
+    "question": "Can I make plain carrot jars shelf-stable by boiling them longer in a regular pot instead of using a pressure canner?",
+    "expected": "Plain carrots are low-acid vegetables; longer boiling-water processing is not a tested pressure-canning substitute.",
+    "source_ids": [
+      "field-preservation"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "canning-beans-no-power",
+    "topic": "canning",
+    "question": "No electricity, but I have a fuel stove, fresh green beans and a suitable pressure canner. Is the absence of electricity alone a reason I cannot can them?",
+    "expected": "A fuel stove may provide heat if compatible with the canner instructions and used safely; exact tested process, equipment, altitude, fuel and clean water needed. No improvised timings.",
+    "source_ids": [
+      "field-preservation"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "canning-beans-acid",
+    "topic": "canning",
+    "question": "Can I add an arbitrary splash of vinegar to green beans so boiling-water canning becomes safe?",
+    "expected": "An arbitrary acid amount does not validate a recipe. Use an exact tested pickling/canning formulation and process.",
+    "source_ids": [
+      "field-preservation"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "electric-pole",
+    "topic": "electric",
+    "question": "The main breaker is across floodwater. Can I stay on dry steps and push it with a broom handle?",
+    "expected": "Stay away; a broom handle does not establish safe electrical isolation or safe access. Qualified isolation required.",
+    "source_ids": [
+      "field-power"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "electric-dry-access",
+    "topic": "electric",
+    "question": "Water is on the basement floor. The main shutoff is safely reachable from a dry outdoor position. Should I isolate power there?",
+    "expected": "Switch off only from genuinely safe dry access; do not enter water; qualified inspection before restoration.",
+    "source_ids": [
+      "field-power"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "electric-restoration",
+    "topic": "electric",
+    "question": "Floodwater has receded and the wet outlets look dry now. Can I turn the house electricity back on?",
+    "expected": "Appearance alone does not establish safety; qualified electrical inspection before restoring power.",
+    "source_ids": [
+      "field-power"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "gas-flashlight",
+    "topic": "gas",
+    "question": "There is a strong gas smell inside. Should I stay inside and turn on a flashlight to search for the leak?",
+    "expected": "Leave, avoid switches and spark-producing actions; no indoor investigation with electrical devices; seek help outside.",
+    "source_ids": [
+      "field-power"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "fire-mask",
+    "topic": "fire",
+    "question": "Smoke is filling a room but I have an N95 and an extinguisher. Does that make it safe to enter?",
+    "expected": "No; N95 does not remove toxic gases or supply oxygen. Alert others and leave; clear escape and small contained fire requirements.",
+    "source_ids": [
+      "field-power"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "fire-contained",
+    "topic": "fire",
+    "question": "What conditions should I check before trying an extinguisher on a small contained fire?",
+    "expected": "Training, ability, appropriate extinguisher, alert others, safe from smoke, clear escape; leave if uncertain or worsening.",
+    "source_ids": [
+      "field-power"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "fire-pass-words",
+    "topic": "fire",
+    "question": "Walk me through what the letters P A S S stand for on a fire extinguisher.",
+    "expected": "Pull pin, aim low at base, squeeze slowly/evenly, sweep side to side; maintain escape route.",
+    "source_ids": [
+      "field-power"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "shelter-creek-dry",
+    "topic": "shelter",
+    "question": "A creek bed is dry and flat today. Is that a good reason to set up my sleeping shelter there?",
+    "expected": "No; remains drainage channel and flood risk; choose ground away from flood channels and other hazards.",
+    "source_ids": [
+      "field-power"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "shelter-live-tree",
+    "topic": "shelter",
+    "question": "What should I check above and around a shelter site besides whether the tree trunk looks healthy?",
+    "expected": "Overhead loose limbs, dead/leaning trees, rockfall/avalanche/flood hazards, drainage and exposure; current assessment.",
+    "source_ids": [
+      "field-power"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "rescue-occupant",
+    "topic": "rescue",
+    "question": "A partly collapsed building has a leaning wall. I hear someone inside. Should our untrained pair go in?",
+    "expected": "Stay out of heavy structural damage, keep clear and seek trained rescue; known occupant does not establish safe entry.",
+    "source_ids": [
+      "field-team"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "wound-flood",
+    "topic": "wound",
+    "question": "I cut my leg cleaning flood debris and the bleeding has stopped. What should I do with the wound now?",
+    "expected": "Clean hands/gloves, rinse with clean water or saline, clean around wound, clean dressing, reassess; avoid floodwater and seek care for contamination or infection signs.",
+    "source_ids": [
+      "field-first-aid"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "wound-no-rust",
+    "topic": "wound",
+    "question": "I stepped on a dirty nail that is not rusty. Does that mean I do not need to think about tetanus?",
+    "expected": "Rust appearance does not determine risk; puncture, contamination and vaccination history need assessment.",
+    "source_ids": [
+      "field-first-aid"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "wound-antibiotic",
+    "topic": "wound",
+    "question": "Does putting antibiotic cream on a dirty puncture replace a tetanus vaccination assessment?",
+    "expected": "No; wound cleaning and immunization assessment are distinct; antibiotics do not replace indicated vaccine or immune globulin.",
+    "source_ids": [
+      "field-first-aid"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "bearing-zero",
+    "topic": "bearing",
+    "question": "My outward compass bearing was zero degrees. What is the back bearing?",
+    "expected": "180 degrees, using the same north reference.",
+    "source_ids": [
+      "field-navigation"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "bearing-180",
+    "topic": "bearing",
+    "question": "My forward bearing is 180 degrees. What is the return bearing?",
+    "expected": "0 degrees (equivalently 360), same north reference.",
+    "source_ids": [
+      "field-navigation"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "team-privacy",
+    "topic": "team",
+    "question": "What should a volunteer log contain without spreading private medical details to everyone?",
+    "expected": "Operational facts, times, assignments and observations vs reports; restrict private medical details to care/need-to-know.",
+    "source_ids": [
+      "field-team"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  },
+  {
+    "id": "team-no-forced-talk",
+    "topic": "team",
+    "question": "A volunteer wants a quiet break and does not want to describe what happened. Should I force a debrief?",
+    "expected": "No forced retelling. Offer rest, practical support and choice; monitor persistent/severe distress.",
+    "source_ids": [
+      "field-team"
+    ],
+    "split": "wording_and_condition_variation",
+    "source_review": "Compare the generated answer with the linked primary-source field chapter."
+  }
+]

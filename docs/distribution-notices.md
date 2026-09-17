@@ -41,3 +41,7 @@ Language models, voice weights and US map datasets are not inside the installer.
 Kokoro and the selected Vosk voice model retain their publisher terms. OpenStreetMap data uses ODbL; preserve attribution and applicable database-sharing obligations. Imported manuals retain their original rights.
 
 User documents, conversations, locations, access codes and personal records are excluded from releases.
+
+## Offline reference library
+
+The reference library combines selected U.S. federal publication excerpts with original MIT-licensed field chapters. It is not all covered by the application's MIT grant. Publisher, edition, source URL, reuse basis and hashes are recorded per entry in `resources/references/catalog.json`. Preserve that catalog and source attribution when redistributing the library. See [reference-library.md](reference-library.md) for inclusion rules and limits. No agency endorsement is implied.

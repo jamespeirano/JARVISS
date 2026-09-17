@@ -15,8 +15,10 @@ def main():
  archive=TileArchive(ROOT/'local-maps/us-z15.pmtiles');index=LocationIndex(archive);router=USRouter()
  folder=ROOT/'local-data/state-verification';folder.mkdir(parents=True,exist_ok=True);results=[]
  assert router.status()['ready']
+ boundaries=state_boundaries()
+ assert {meta['code'] for meta,_ in boundaries}==set(CAPITALS),'State boundary resources are missing or incomplete; cannot verify all states.'
  with patch('socket.socket',side_effect=AssertionError('Network forbidden')):
-  for meta,geom in sorted(state_boundaries(),key=lambda item:item[0]['code']):
+  for meta,geom in sorted(boundaries,key=lambda item:item[0]['code']):
    code=meta['code'];capital=CAPITALS[code];start=time.monotonic();row={'state':meta['name'],'code':code,'city':capital}
    try:
     cities=[p for p in index.search(f'{capital}, {code}') if normalized(p['name'])==normalized(capital)]

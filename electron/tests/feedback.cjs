@@ -23,6 +23,11 @@ class TestService(OriginalService):
   self.voice.prepare_tts=lambda:None
   self.voice.tts=self
   self.voice.play_audio=self.play_audio
+ def command(self,method,args):
+  if method=='state':
+   if (ROOT/'startup-fail').exists():raise RuntimeError('Operation timed out. Check Settings.')
+   while (ROOT/'startup-hold').exists():time.sleep(.02)
+  return super().command(method,args)
  def chat(self,*args,**kwargs):
   while not (ROOT/'reply').exists():time.sleep(.02)
   if (ROOT/'fail').exists():raise RuntimeError('Model test failure')
@@ -44,10 +49,23 @@ service.devices=lambda:[{'id':1,'name':'Test mic','host':'Test','input':True,'ou
 service.main()
 `);
   const env={...process.env,JARVISS_ROOT:test,JARVISS_DATA:path.join(test,'data'),JARVISS_APP_DATA:path.join(test,'app')};delete env.ELECTRON_RUN_AS_NODE;
+  fs.writeFileSync(path.join(test,'startup-fail'),'');
   app=await electron.launch({args:[path.join(root,'electron')],env});const page=await app.firstWindow();
   const touch=name=>fs.writeFileSync(path.join(test,name),'');
   const remove=name=>fs.rmSync(path.join(test,name),{force:true});
+  await page.locator('#startup-retry').waitFor({state:'visible'});
+  assert.equal(await page.locator('#startup-message').innerText(),'Connecting took too long. Try again.');
+  assert.equal(await page.locator('#error').isVisible(),false);
+  assert.equal(await page.locator('aside').isVisible(),false);
+  await page.locator('#startup-retry').click();
+  await page.waitForFunction(()=>!document.querySelector('#startup-retry').hidden&&!document.querySelector('#startup-retry').disabled);
+  remove('startup-fail');touch('startup-hold');
+  await page.locator('#startup-retry').click();
+  assert.equal(await page.locator('#startup-retry').isDisabled(),true);
+  assert.equal(await page.locator('#startup-message').innerText(),'Checking setup…');
+  remove('startup-hold');
   await page.waitForFunction(()=>document.querySelector('#status').textContent==='Ready');
+  console.log('PASS startup timeout, repeated failure and retry with a delayed backend');
   await page.locator('#setup-later').click();
   await page.locator('#panel-toggle').click();
   await page.locator('#question').fill('Hello');await page.locator('#send').click();
@@ -85,7 +103,29 @@ service.main()
   remove('fail-voice');await page.locator('#voice-toggle').click();
   await page.getByRole('button',{name:'Stop voice mode',exact:true}).waitFor();
   assert.equal(await page.locator('#error').isVisible(),false);
+  remove('reply');
+  await page.evaluate(()=>{window.jarviss.command('chat',{text:'Voice question with a delayed answer'}).catch(()=>{});});
+  await page.waitForFunction(()=>document.querySelector('#voice-badge').textContent==='GENERATING RESPONSE…');
+  assert.equal(await page.locator('#orb').evaluate(el=>el.classList.contains('active')),true);
+  await page.locator('[data-page="atlas"]').click();
+  await page.locator('#map-fullscreen').click();
+  await page.waitForFunction(()=>document.body.classList.contains('map-fullscreen'));
+  assert.equal(await page.locator('#map-fullscreen').getAttribute('aria-pressed'),'true');
+  assert.equal(await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].isFullScreen()),true);
+  assert.equal(await page.locator('#status').innerText(),'Generating response…');
+  assert.equal(await page.locator('aside').isVisible(),false);
+  assert.equal(await page.locator('#map-search').isVisible(),true);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(()=>!document.body.classList.contains('map-fullscreen'));
+  await page.locator('#map-fullscreen').click();
+  await page.getByRole('button',{name:'Exit full screen',exact:true}).click();
+  await page.waitForFunction(()=>!document.body.classList.contains('map-fullscreen'));
+  assert.equal(await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].isFullScreen()),false);
+  await page.locator('[data-page="assistant"]').click();
   await page.locator('#voice-toggle').click();
+  assert.equal(await page.locator('#voice-badge').innerText(),'VOICE OFF');
+  touch('reply');await page.locator('#response-wait').waitFor({state:'detached'});
+  console.log('PASS full-screen map entry/button/Escape exits and voice generation feedback across pages; stopping voice clears its indicator');
   await page.locator('[data-page="settings"]').click();await page.locator('[data-settings="audio"]').click();
   await page.locator('#voice-name').selectOption('af_heart');
   await page.waitForFunction(()=>!document.querySelector('#voice-name').disabled);
@@ -111,6 +151,37 @@ service.main()
   assert.equal(await page.locator('#voice-name').inputValue(),'am_michael');
   assert.equal(await page.locator('#error').isVisible(),false);
   console.log('PASS voice controls: startup feedback, failure/retry, selected voice autosave, cancel, replace, completion and reload');
+  // Reference links open their exact offline section, including after a reload.
+  await page.locator('[data-page="assistant"]').click();
+  await page.locator('#question').fill('How do I boil river water at 7000 feet?');await page.locator('#send').click();
+  await page.locator('.answer-references button').first().waitFor();
+  await page.reload();await page.locator('#setup-later').click();
+  const reference=page.locator('.answer-references button').last();
+  const sourceLabel=await reference.innerText();await reference.click();
+  await page.locator('.reference-selected').waitFor();
+  assert.equal(await page.locator('#reference-reader').isVisible(),true);
+  assert.equal(await page.locator('.reference-selected > h3').innerText(),sourceLabel.split(' · ').slice(1).join(' · '));
+  await page.locator('#reference-back').click();
+  assert.equal(await page.locator('#assistant').isVisible(),true);
+  await page.locator('[data-page="docs"]').click();
+  await page.locator('#docs-search').fill('bowline');
+  await page.locator('#reference-results button').filter({hasText:'Knots, rope and lashings'}).first().click();
+  assert.equal(await page.locator('#docs-search').inputValue(),'bowline');
+  await page.locator('.reference-selected').filter({hasText:'Bowline'}).waitFor();
+  // Save dialog cancellation does not write; both exports preserve provenance.
+  await app.evaluate(({dialog})=>{dialog.showSaveDialog=async()=>({canceled:true});});
+  assert.equal(await page.evaluate(()=>window.jarviss.saveReference('field-water')),false);
+  const markdown=path.join(test,'water.md'),pdf=path.join(test,'rope.pdf');
+  await app.evaluate(({dialog},filePath)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath});},markdown);
+  assert.equal(await page.evaluate(()=>window.jarviss.saveReference('field-water')),true);
+  assert.match(fs.readFileSync(markdown,'utf8'),/https:\/\/www.cdc.gov/);
+  await app.evaluate(({dialog},filePath)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath});},pdf);
+  assert.equal(await page.evaluate(()=>window.jarviss.saveReference('army-rope','pdf')),true);
+  assert.deepEqual(fs.readFileSync(pdf),fs.readFileSync(path.join(root,'resources/references/army-rope.pdf')));
+  assert.match(await page.evaluate(()=>window.jarviss.saveReference('../private').catch(e=>e.message)),/not in the installed library/);
+  if(process.env.JARVISS_DOCS_SCREENSHOT)await page.screenshot({path:process.env.JARVISS_DOCS_SCREENSHOT});
+  console.log('PASS offline reference links, persisted conversation, section search, cancelled export, attributed Markdown/PDF export, unknown document rejection');
+
  }finally{
   for(const name of ['reply','start-voice','finish-preview'])fs.writeFileSync(path.join(test,name),'');
   if(app)await app.close();fs.rmSync(test,{recursive:true,force:true});

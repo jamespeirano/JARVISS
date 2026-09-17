@@ -77,7 +77,7 @@ def planning_context(question):
     return result
 
 
-def messages(profile, history, question, area=None, route=None, settings=None, spoken=False):
+def messages(profile, history, question, area=None, route=None, settings=None, spoken=False, documents=None):
     point = location(profile)
     spatial = {'status': 'No offline map loaded.'}
     if area and point:
@@ -88,8 +88,14 @@ def messages(profile, history, question, area=None, route=None, settings=None, s
         spatial = {'status': 'Map loaded, but the user has not confirmed their position in Maps.'}
     # The guides' prompts and follow-up questions belong to the Docs UI. Sending
     # those to the model makes smaller models repeat questions already answered.
-    notes = [{'title':g['title'], 'text':g['text']} for g in relevant_guides(question)]
-    context = {'person': profile, 'map': spatial, 'reference_notes': notes, 'local_documents': retrieve(question), 'planner':planning_context(question)}
+    documents = retrieve(question) if documents is None else documents
+    # Detailed passages replace overlapping quick checklists, keeping the small
+    # models' context focused. User instructions and the model remain unchanged.
+    notes = [] if any(d.get('id') for d in documents) else [{'title':g['title'], 'text':g['text']} for g in relevant_guides(question)]
+    # Citation IDs, export paths and long URLs belong to the interface, not the
+    # small model's context. Keep source titles and complete passage wording.
+    passages = [{k:d[k] for k in ('title','heading','text') if k in d} for d in documents]
+    context = {'person': profile, 'map': spatial, 'reference_notes': notes, 'local_documents': passages, 'planner':planning_context(question)}
     preferences = {**PROMPT_DEFAULTS, **(settings or {})}
     prompt = preferences['system_prompt']
     if re.search(r'\bdaily plan\b|\bsaved tasks\b.*\btoday\b',question,re.I):

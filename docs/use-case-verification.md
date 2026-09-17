@@ -46,6 +46,8 @@ These use isolated test records. Full-map integration tests skip when downloaded
 
 Keep each result tied to its source revision, installer checksum, platform and model. Reuse evidence only for unchanged behavior. Rebuilt installers still need signature and startup checks. Changes to setup, dependencies or packaging need clean-machine checks.
 
+See [the detailed library evaluation](library-evaluation.md) for source-driven model tests, remaining mistakes and reproduction commands.
+
 ## Recorded results and limits
 
 Earlier map testing sampled **102 offline walks across all 50 states and DC**, plus cross-state and long-distance routes. This does not prove every road is connected or passable.
