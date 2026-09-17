@@ -140,12 +140,15 @@ service.main()
   await page.reload();await page.locator('#setup-later').click();
   const reference=page.locator('.answer-references button').last();
   const sourceLabel=await reference.innerText();await reference.click();
-  await page.locator('.reference-selected[open]').waitFor();
-  assert.equal(await page.locator('#docs').isVisible(),true);
-  assert.equal(await page.locator('.reference-selected > summary').innerText(),sourceLabel.split(' · ').slice(1).join(' · '));
+  await page.locator('.reference-selected').waitFor();
+  assert.equal(await page.locator('#reference-reader').isVisible(),true);
+  assert.equal(await page.locator('.reference-selected > h3').innerText(),sourceLabel.split(' · ').slice(1).join(' · '));
+  await page.locator('#reference-back').click();
+  assert.equal(await page.locator('#assistant').isVisible(),true);
+  await page.locator('[data-page="docs"]').click();
   await page.locator('#docs-search').fill('bowline');
   await page.locator('#reference-results button').filter({hasText:'Knots, rope and lashings'}).first().click();
-  assert.equal(await page.locator('#docs-search').inputValue(),'');
+  assert.equal(await page.locator('#docs-search').inputValue(),'bowline');
   await page.locator('.reference-selected').filter({hasText:'Bowline'}).waitFor();
   // Save dialog cancellation does not write; both exports preserve provenance.
   await app.evaluate(({dialog})=>{dialog.showSaveDialog=async()=>({canceled:true});});

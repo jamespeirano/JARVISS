@@ -1,6 +1,8 @@
 # Offline field library
 
-Open **Docs** to search the library. In chat, click a **Reference passage** to open the section supplied to the model. **Save a copy** exports the text with its sources. The shelter, navigation and rope chapters also have **Save illustrated PDF**.
+Open **Docs**, then **Read full document**. The complete text appears in one reader; **Jump to section** moves within it. In chat, click a **Reference passage** to open and highlight the section supplied to the model. **Back to chat** returns to the conversation.
+
+Choose **Illustrated PDFs** to find the three shelter, navigation and rope chapters. **Open illustrated PDF** opens the complete excerpt in a separate app window. **View illustrated page** opens the page for the selected section. **Save PDF** and **Save text (.md)** export copies; saving is not required to read them.
 
 The library is bundled with the app. Reading, searching, asking about a passage and exporting work offline. No account or separate download is required.
 
@@ -44,4 +46,4 @@ The buttons below an answer identify passages actually supplied to the model. Th
 4. Test retrieval with different phrasings, conflicting facts, missing information and questions outside the document's coverage.
 5. Check the answer against the source, then click its passage in Docs. Confirm search, restart and export with networking disabled.
 
-Run `python -m unittest tests.test_references -v` for source integrity and reference-link tests, plus `node electron/tests/feedback.cjs` for the desktop flow. Clinical accuracy requires qualified review beyond software tests.
+Run `python -m unittest tests.test_references -v` for source integrity and reference-link tests, `node electron/tests/feedback.cjs` for chat citations, and `node electron/tests/references.cjs` for the reader, search, PDF pages, navigation and failure recovery. Clinical accuracy requires qualified review beyond software tests.

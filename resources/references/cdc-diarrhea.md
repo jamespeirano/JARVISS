@@ -32,8 +32,6 @@ Español
 
 If boiling, bring your water to a complete boil and keep boiling for at least 1 minute. To disinfect your water, use unscented household liquid chlorine bleach. If your water is clear, add 8 drops to 1 gallon of water. If your water is cloudy, use 16 drops to 1 gallon of water. Wait 30 minutes before drinking.
 
-Keep Reading How to Make Water Safe in an Emergency
-
 ### Wash your hands often
 
 Wash your hands with soap and safe water:
@@ -71,8 +69,6 @@ Throw out:
 * Cans or food containers that spurt liquid or foam when you open them or contain food that is discolored, moldy, or smells bad.
 
 * Food with an unusual odor, color, or texture.
-
-Keep Reading Keep Food Safe After a Disaster or Emergency
 
 ### Clean up safely
 

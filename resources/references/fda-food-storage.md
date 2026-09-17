@@ -2,10 +2,6 @@
 
 Storing food properly can help prevent foodborne illnesses. Here are tips for safely storing food in your refrigerator, freezer, and cupboards.
 
-Image
-
-Español
-
 Whether putting food in the refrigerator, the freezer, or the cupboard, you have plenty of opportunities to prevent foodborne illnesses.
 
 The goal is to keep yourself and others from being sickened by microorganisms such as Salmonella, E. coli O157:H7, and C. botulinum, which causes botulism. Keeping foods chilled at proper temperatures is one of the best ways to prevent or slow the growth of these bacteria.

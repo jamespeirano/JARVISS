@@ -124,10 +124,6 @@ Since skin may be numb, victims of frostbite can harm themselves further. Use ca
 
 4) Do not rub or massage areas with frostbite.
 
-Show Text Description
-
-Download Infographic
-
 Hypothermia is a medical emergency. If you notice any of the above signs, take the person's temperature. If it is below 95° F, get medical attention immediately!
 
 ### If you are not able to get medical help right away, try to warm the person up.

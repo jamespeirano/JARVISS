@@ -1,6 +1,6 @@
 const $=s=>document.querySelector(s);
 let state={},busy=false,voice=false,route=null,searchTimer,pendingMethod=null,remoteOperation=null;
-let chatFinished=false,voiceStarting=false,preview=false,audioSaving=false;
+let chatFinished=false,voiceStarting=false,preview=false,audioSaving=false,pageSequence=0;
 let voicePhase='Voice off';
 const exclusiveMethods=new Set(['setup_run','chat','route','clear','start_model','download_model','download_voice','download_us_maps']);
 const operationLabels={setup_run:'Preparing JARVISS',download_model:'Preparing model and voice',download_voice:'Preparing offline voice',download_us_maps:'Preparing US offline maps',start_model:'Loading local model',chat:'Thinking',route:'Calculating walking directions',clear:'Clearing conversation'};
@@ -59,7 +59,7 @@ async function call(method,args){
  try{return await window.jarviss.command(method,args);}catch(e){error(e);throw e;}
  finally{if(exclusive){pendingMethod=null;renderOperation();}}
 }
-function page(name){if(name!=='atlas'&&document.body.classList.contains('map-fullscreen')){window.jarviss.mapFullscreen(false).catch(error);mapFullscreen(false);}document.body.classList.toggle('setup-screen',name==='setup'||name==='startup');document.querySelectorAll('.page').forEach(el=>el.classList.toggle('visible',el.id===name));document.querySelectorAll('[data-page]').forEach(el=>el.classList.toggle('selected',el.dataset.page===name));if(name==='atlas'){draw();window.offlineAtlas?.resize();}}
+function page(name){pageSequence++;if(name!=='atlas'&&document.body.classList.contains('map-fullscreen')){window.jarviss.mapFullscreen(false).catch(error);mapFullscreen(false);}document.body.classList.toggle('setup-screen',name==='setup'||name==='startup');document.querySelectorAll('.page').forEach(el=>el.classList.toggle('visible',el.id===name));document.querySelectorAll('[data-page]').forEach(el=>el.classList.toggle('selected',el.dataset.page===(name==='reference-reader'?'docs':name)));if(name==='atlas'){draw();window.offlineAtlas?.resize();}}
 document.querySelectorAll('[data-page]').forEach(el=>el.onclick=()=>page(el.dataset.page));
 function message(role,text,references=[]){const node=document.createElement('div');node.className='message '+role;const label=document.createElement('span');label.className='speaker';label.textContent=role==='user'?'YOU':'JARVISS';node.append(label,document.createTextNode(text));if(references.length){const sources=document.createElement('div');sources.className='answer-references';const heading=document.createElement('small');heading.textContent='Reference passages';sources.append(heading);for(const ref of references){const button=document.createElement('button');button.textContent=ref.title+' · '+ref.heading;button.onclick=()=>openReference(ref.id,ref.section).catch(error);sources.append(button);}node.append(sources);}$('#messages').insertBefore(node,$('#response-wait'));$('#messages').scrollTop=$('#messages').scrollHeight;document.body.classList.add('has-history');}
 function card(title,text,detail){const el=document.createElement('div');el.className='panel';for(const [tag,value] of [['h3',title],['p',text],['small',detail]]){const n=document.createElement(tag);n.textContent=value||'';el.append(n);}return el;}
@@ -204,51 +204,6 @@ function docEntry(title,text,detail,prompt,plan){
 }
 
 function askDocument(title){page('assistant');$('#question').value=`Using the document "${title}", `;$('#question').focus();}
-const referenceEntries=new Map();
-function renderReferences(){
- const docs=state.references||[];
- $('#reference-summary').textContent=`${docs.length} documents · ${Math.round(docs.reduce((n,d)=>n+d.words,0)/1000).toLocaleString()}k words · Available offline`;
- // Keep expanded sections and their scroll position when unrelated state changes.
- if(referenceEntries.size===docs.length)return;
- referenceEntries.clear();$('#references').replaceChildren();
- for(const doc of docs){
-  const entry=document.createElement('details');entry.className='doc-entry';
-  const summary=document.createElement('summary'),title=document.createElement('span'),meta=document.createElement('small');
-  title.textContent=doc.title;meta.textContent=`${doc.topic} · ${doc.publisher} · ${doc.words.toLocaleString()} words`;summary.append(title,meta);entry.append(summary);
-  const body=document.createElement('div');body.className='reference-body';entry.append(body);
-  const item={entry,body,sections:new Map(),loaded:null};referenceEntries.set(doc.id,item);
-  entry.addEventListener('toggle',()=>{if(entry.open)loadReference(doc.id).catch(error);});
-  $('#references').append(entry);
- }
-}
-async function loadReference(id){
- const item=referenceEntries.get(id);if(!item)throw new Error('This reference is not in the installed library.');
- if(item.loaded)return item.loaded;
- item.loaded=(async()=>{
-  const doc=await call('reference',{id});
-  const metadata=document.createElement('p');metadata.className='reference-note';metadata.textContent=`${doc.publisher} · Edition ${doc.date}\n${doc.note||''}`;item.body.append(metadata);
-  const save=document.createElement('button');save.textContent='Save a copy';save.onclick=async()=>{try{if(await window.jarviss.saveReference(id)){save.textContent='Saved';setTimeout(()=>save.textContent='Save a copy',2000);}}catch(e){error(e);}};item.body.append(save);
-  if(doc.pdf){const pdf=document.createElement('button');pdf.textContent='Save illustrated PDF';pdf.onclick=()=>window.jarviss.saveReference(id,'pdf').catch(error);item.body.append(pdf);}
-  for(const section of doc.sections){
-   const block=document.createElement('details');block.className='reference-section';block.id='reference-'+id+'-'+section.id;
-   const heading=document.createElement('summary');heading.textContent=section.heading;
-   const text=document.createElement('div');text.className='doc-body';text.textContent=section.text;
-   const ask=document.createElement('button');ask.className='doc-ask';ask.textContent='Ask about this';ask.onclick=()=>askDocument(doc.title+' · '+section.heading);
-   block.append(heading,text,ask);item.body.append(block);item.sections.set(section.id,block);
-  }
-  const source=document.createElement('details');source.className='reference-source';const heading=document.createElement('summary');heading.textContent='Source and reuse';
-  const text=document.createElement('p');text.textContent=[...(doc.sources||[doc.url]),doc.attribution||'',doc.license_note].filter(Boolean).join('\n');source.append(heading,text);item.body.append(source);
- })().catch(e=>{item.loaded=null;throw e;});return item.loaded;
-}
-async function openReference(id,section){
- page('docs');$('#docs-search').value='';filterDocs();
- const item=referenceEntries.get(id);if(!item)throw new Error('This reference is not in the installed library.');
- item.entry.open=true;await loadReference(id);
- const target=item.sections.get(section)||item.entry;
- if(target!==item.entry)target.open=true;
- target.scrollIntoView({block:'start'});target.classList.add('reference-selected');
- setTimeout(()=>target.classList.remove('reference-selected'),4000);
-}
 const recoveryAsk=document.createElement('button');recoveryAsk.className='doc-ask';recoveryAsk.textContent='Ask about this';recoveryAsk.onclick=()=>askDocument('Regroup and rebuild');$('.recovery-entry').append(recoveryAsk);
 
 async function audioDevices(){const list=await call('audio_devices');for(const [id,kind,key] of [['input-device','input','input_device'],['output-device','output','output_device']]){const select=$('#'+id);select.replaceChildren(new Option('System default',''));for(const d of list.filter(d=>d[kind])){const o=new Option(`${d.name} · ${d.host}`,d.id);select.add(o);if(state.settings?.[key]?.name===d.name&&state.settings[key].host===d.host)o.selected=true;}}$('#voice-name').value=state.settings?.voice_name||'bm_george';}
@@ -293,18 +248,3 @@ $('#situation-find').onclick=async()=>{try{state.profile=await call('save_profil
 $('#paste-document').onclick=()=>{$('#note-form').hidden=false;$('#note-form input').focus();};
 $('#cancel-note').onclick=()=>{$('#note-form').hidden=true;};
 $('#note-form').onsubmit=async e=>{e.preventDefault();try{await call('import_note',Object.fromEntries(new FormData(e.target)));e.target.reset();e.target.hidden=true;await refresh();filterDocs();}catch{}};
-let referenceSearch=0,referenceTimer;
-function filterDocs(){
- const q=$('#docs-search').value.trim().toLowerCase(),sequence=++referenceSearch;
- for(const d of document.querySelectorAll('#guides .doc-entry,#documents .doc-entry,.recovery-entry'))d.hidden=!!q&&!d.textContent.toLowerCase().includes(q);
- clearTimeout(referenceTimer);$('#references').hidden=!!q;$('#reference-results').hidden=!q;
- if(!q){$('#reference-results').replaceChildren();return;}
- referenceTimer=setTimeout(async()=>{
-  try{const results=await call('reference_search',{query:q});if(sequence!==referenceSearch)return;
-   const nodes=results.map(ref=>{const b=document.createElement('button');b.className='reference-result';b.textContent=ref.title+' · '+ref.heading;b.onclick=()=>openReference(ref.id,ref.section).catch(error);return b;});
-   if(!nodes.length){const p=document.createElement('p');p.textContent='No matching field references.';nodes.push(p);}
-   $('#reference-results').replaceChildren(...nodes);
-  }catch{}
- },180);
-}
-$('#docs-search').oninput=filterDocs;

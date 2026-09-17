@@ -61,17 +61,22 @@ def references():
 def sections(text):
     result = []
     occurrences = Counter()
-    heading, body = 'Overview', []
+    heading, body, parents = 'Overview', [], {}
     def finish():
         value = '\n'.join(body).strip()
         if value:
             # Adding another chapter must not invalidate saved chat links.
             anchor = hashlib.sha256((heading + str(occurrences[heading])).encode()).hexdigest()[:12]
             occurrences[heading] += 1
-            result.append({'id': anchor, 'heading': heading, 'text': value})
+            result.append({'id': anchor, 'heading': heading, 'text': value,
+                           'path': list(parents.values()) or [heading]})
     for line in text.splitlines():
-        if re.match(r'^#{1,3} ', line):
+        match = re.match(r'^(#{1,3}) ', line)
+        if match:
             finish(); heading = line.lstrip('# ').strip(); body = []
+            level = len(match[1])
+            parents = {depth: value for depth, value in parents.items() if depth < level}
+            parents[level] = heading
         else:
             body.append(line)
     finish()

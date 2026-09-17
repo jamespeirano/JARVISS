@@ -68,8 +68,6 @@ Never use a portable gas camp stove indoors. Do not use portable flameless chemi
 
 ### Portable generators
 
-Download
-
 Operate your generator outdoors more than 20 feet from windows, doors, and vents to avoid CO poisoning
 
 Never use a generator inside your home or garage, even if doors and windows are open.
@@ -77,12 +75,6 @@ Never use a generator inside your home or garage, even if doors and windows are 
 Only use generators outside, more than 20 feet away from any windows, doors, and vents.
 
 When using a generator, use a battery-powered or battery backup CO detector in your home.
-
-### If you have a had a poisoning incident related to any generator...
-
-Let the Consumer Product Safety Commission know!
-
-Report it now
 
 ### Automobile
 

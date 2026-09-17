@@ -1,27 +1,5 @@
 # Protect Food and Water During Hurricanes and Other Storms
 
-Food Safety During Emergencies
-
-Hurricanes and other severe storms are dangerous and destructive – destroying homes and compromising communities. Floods and power outages from hurricanes, tornadoes, and snow storms can cut off water supplies and quickly contaminate food. Protect yourself, your family, and your pets from foodborne illnesses. Following are steps you can take to preserve your food and water during storms.
-
-- Before a Storm
-
-- During a Storm
-
-- After a Storm
-
-- WATCH a Video on Food Safety During Power Outages
-
-- Links for Consumer
-
-- Links for Industry
-
-Questions?
-
-Call the Food and Cosmetic Information Center: 1-888-SAFE-FOOD Monday-Friday 10:00 a.m.-4:00 p.m.
-
-Get Assistance from the FDA Human Food Program (HFP)
-
 ## Before a Storm
 
 Prepare for unpredictable weather emergencies. Have these supplies on hand:
@@ -87,45 +65,3 @@ If your freezer does not include a thermometer, then check the temperature of ea
 Discard any perishable food—for example, meat, poultry, fish, eggs, milk—that has been in a refrigerator or freezer at or above 40 F 2 hours or more.
 
 When in doubt, throw it out.
-
-## Video on Food Safety During Power Outages
-
-## Links for Consumers
-
-- Hurricanes: Health and Safety
-
-- After a Storm or Flooding: Key Tips for Consumers About Food Safety
-
-- Power Outages: Key Tips for Consumers About Food Safety
-
-- Floods: Key Tips for Consumers About Food and Water Safety
-
-- Food and Water Safety During Hurricanes, Power Outages, and Floods (Printable Fact Sheet in English, En español, and En Français)
-
-- National Hurricane Center (NOAA)
-
-- In an Emergency (FoodSafety.gov)
-
-## Links for Industry
-
-- Safety of Food and Animal Food Crops Affected by Hurricanes, Flooding, and Power Outages
-
-- Restaurants and Grocers Reopening After Hurricanes and Flooding
-
-- Resources for Human and Animal Food Producers Affected by Flooding - includes Emergency Response Coordinator contact information
-
-- Guidance for Industry: Evaluating the Safety of Flood-affected Food Crops for Human Consumption
-
-- Guidance for Industry: Use of Water by Food Manufacturers in Areas Subject to a Boil-Water Advisory
-
-- Guidance for Industry: A Notice to Growers, Food Manufacturers, Food Warehouse Managers, and Transporters of Food Products on Decontamination of Transport Vehicles
-
-- A Notice to Growers, Food Manufacturers, Food Warehouse Managers, and Transporters of Food Products on How to Dispose of Contaminated Food
-
-- A Notice to Growers, Food Manufacturers, Food Warehouse Managers, and Transporters of Food Products About the Safety of Food Affected by Hurricanes, Flooding, and Power Outages
-
-- Disposition of Food From Flood-Affected Crops Letter to the Vermont Agency of Agriculture September 16, 2011 Letter to State Agriculture Departments/Agencies September 27, 2011
-
-For more information on safe food handling, go to Food Safety in a Disaster or Emergency | Foodsafety.gov
-
-Industry and Consumer Assistance

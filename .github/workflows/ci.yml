@@ -37,6 +37,8 @@ jobs:
         run: |
           python -m venv .venv --system-site-packages
           node electron/tests/feedback.cjs
+      - name: Check offline document reader and PDF pages
+        run: node electron/tests/references.cjs
   public-source:
     name: Public source checks
     runs-on: ubuntu-latest
