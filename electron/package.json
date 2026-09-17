@@ -1,7 +1,7 @@
 {
   "name": "jarviss",
   "productName": "JARVISS",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Offline survival planning assistant",
   "main": "main.cjs",
   "license": "MIT",

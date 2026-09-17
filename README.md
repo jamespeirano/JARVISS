@@ -6,7 +6,9 @@ Jarvis Survival is an offline assistant for extended outages: local AI, voice, U
 
 ## Download
 
-**Version 0.2.3** · [What's new and known issues](docs/releases/0.2.3.md)
+[Get JARVISS at jarviss.live](https://jarviss.live)
+
+**Version 0.2.4** · [What's new and known issues](docs/releases/0.2.4.md)
 
 ### [Download for Windows](https://github.com/jamespeirano/JARVISS/releases/latest/download/JARVISS-Windows-x64.exe)
 
