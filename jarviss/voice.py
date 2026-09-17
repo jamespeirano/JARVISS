@@ -68,6 +68,8 @@ class Voice:
         self.epoch = 0
         self.load_lock = threading.Lock()
         self.start_lock = threading.Lock()
+        self.speech_lock = threading.RLock()
+        self.previewing = False
         self.last_meter = 0
 
     def configure(self, settings):
@@ -111,9 +113,17 @@ class Voice:
                 self.enabled.clear(); self.on_status('Voice off'); raise
 
     def pause(self):
-        self.enabled.clear(); self.epoch += 1
-        self._drain(self.speech)
+        self.enabled.clear()
+        self.stop_speaking()
         self.on_status('Voice off'); self.on_event('mic_level', 0)
+
+    def stop_speaking(self):
+        with self.speech_lock:
+            self.epoch += 1
+            self._drain(self.speech)
+            self.speaking.clear()
+            self.previewing = False
+            self.on_event('voice_preview', False)
 
     @staticmethod
     def _drain(q):
@@ -121,13 +131,20 @@ class Voice:
             try: q.get_nowait()
             except queue.Empty: break
 
-    def speak(self, text):
+    def speak(self, text, *, preview=False):
         text = re.sub(r'https?://\S+|[*#`]', '', text).strip()
         if not text: return
-        self.speaking.set()
-        self.speech.put((self.epoch, text))
-        if not self.speaker or not self.speaker.is_alive():
-            self.speaker = threading.Thread(target=self._speak, daemon=True); self.speaker.start()
+        with self.speech_lock:
+            if self.closed.is_set(): return
+            if preview:
+                # A new preview replaces old speech and cannot feed the microphone.
+                self.pause()
+                self.previewing = True
+                self.on_event('voice_preview', True)
+            self.speaking.set()
+            self.speech.put((self.epoch, text, self.voice_name, self.output_device))
+            if not self.speaker or not self.speaker.is_alive():
+                self.speaker = threading.Thread(target=self._speak, daemon=True); self.speaker.start()
 
     def make_recognizer(self, rate):
         from vosk import Model, KaldiRecognizer, SetLogLevel
@@ -161,29 +178,48 @@ class Voice:
             import sounddevice as sd
             import numpy as np
             device = resolve_device(self.input_device, 'input')
-            rate = int(sd.query_devices(device, kind='input')['default_samplerate'])
+            info = sd.query_devices(device, kind='input')
+            rate = int(info['default_samplerate'])
+            maximum = int(info['max_input_channels'])
+            if maximum < 1:
+                raise RuntimeError('No microphone is available. Connect one and choose it in Settings → Voice.')
             recognizer = self.make_recognizer(rate)
             self._drain(self.audio)
             def callback(data, frames, timing, status):
                 if not self.enabled.is_set(): return
+                samples = np.frombuffer(data, dtype=np.int16)
+                if channels > 1:
+                    samples = samples.reshape(-1, channels).astype(np.float32).mean(axis=1).astype(np.int16)
                 now = time.monotonic()
                 if now-self.last_meter > .1:
                     self.last_meter = now
-                    samples = np.frombuffer(data, dtype=np.int16).astype(np.float32)
-                    self.on_event('mic_level', min(1.0, float(np.sqrt(np.mean(samples*samples))) / 5000))
+                    level = samples.astype(np.float32)
+                    self.on_event('mic_level', min(1.0, float(np.sqrt(np.mean(level*level))) / 5000))
                 if not self.busy.is_set() and not self.speaking.is_set():
-                    try: self.audio.put_nowait(bytes(data))
+                    try: self.audio.put_nowait(samples.tobytes())
                     except queue.Full: pass
             stream = None
-            for attempt in range(3):
-                try:
-                    stream = sd.RawInputStream(device=device, samplerate=rate, blocksize=int(rate*.08), dtype='int16', channels=1, callback=callback)
-                    stream.start()
-                    break
-                except sd.PortAudioError:
-                    if stream: stream.close()
-                    if attempt == 2: raise
-                    self.closed.wait(.4)
+            channel_options = list(dict.fromkeys([1, min(2, maximum), maximum]))
+            for channels in channel_options:
+                for attempt in range(3):
+                    try:
+                        stream = sd.RawInputStream(device=device, samplerate=rate, blocksize=int(rate*.08), dtype='int16', channels=channels, callback=callback)
+                        stream.start()
+                        break
+                    except sd.PortAudioError as error:
+                        if stream: stream.close()
+                        stream = None
+                        # Some Windows shared endpoints only accept their native
+                        # channel count. Retrying mono cannot fix paInvalidChannelCount.
+                        if len(error.args) > 1 and error.args[1] == -9998:
+                            if channels == channel_options[-1]: raise
+                            break
+                        if attempt == 2: raise
+                        self.closed.wait(.4)
+                if stream: break
+            if not self.enabled.is_set() or self.closed.is_set():
+                if stream: stream.close()
+                return
             with closing(stream):
                 self.on_status('Listening'); self.started.set(); paused = False
                 while self.enabled.is_set() and not self.closed.is_set():
@@ -210,7 +246,7 @@ class Voice:
             import sounddevice as sd
             self.prepare_tts()
             while not self.closed.is_set():
-                try: epoch, text = self.speech.get(timeout=.15)
+                try: epoch, text, voice_name, output_device = self.speech.get(timeout=.15)
                 except queue.Empty: continue
                 if epoch != self.epoch: continue
                 self.speaking.set(); self.on_status('Preparing speech')
@@ -219,27 +255,31 @@ class Voice:
                 sentences = re.split(r'(?<=[.!?])\s+|\n+', text)
                 for sentence in sentences:
                     if not sentence.strip() or self.closed.is_set() or epoch != self.epoch: continue
-                    audio, rate = self.tts.create(sentence, voice=self.voice_name, lang='en-gb' if self.voice_name.startswith('b') else 'en-us', speed=1.05)
+                    audio, rate = self.tts.create(sentence, voice=voice_name, lang='en-gb' if voice_name.startswith('b') else 'en-us', speed=1.05)
                     self.on_event('speech_timing', {'synthesis_seconds':round(time.monotonic()-started,3), 'audio_seconds':round(len(audio)/rate,3)})
                     if self.closed.is_set() or epoch != self.epoch: break
                     self.on_status('Speaking')
-                    self.play_audio(audio, rate, epoch)
+                    self.play_audio(audio, rate, epoch, output_device)
                     started = time.monotonic()
-                if self.speech.empty():
-                    self.closed.wait(.3); self.speaking.clear()
-                    self.on_status('Thinking' if self.busy.is_set() else 'Listening' if self.enabled.is_set() else 'Voice off')
+                if self.speech.empty(): self.closed.wait(.3)
+                with self.speech_lock:
+                    if epoch == self.epoch and self.speech.empty():
+                        self.speaking.clear()
+                        self.previewing = False
+                        self.on_event('voice_preview', False)
+                        self.on_status('Thinking' if self.busy.is_set() else 'Listening' if self.enabled.is_set() else 'Voice off')
         except Exception as error:
             self.on_error(f'Speech output: {error}. Check the speaker selection in Settings.')
             self.enabled.clear(); self.on_status('Voice off')
         finally:
-            self.speaking.clear()
+            self.stop_speaking()
             if sys.platform == 'win32': pythoncom.CoUninitialize()
 
-    def play_audio(self, audio, rate, epoch=None):
+    def play_audio(self, audio, rate, epoch=None, output_device=None):
         import sounddevice as sd
         import numpy as np
         import soxr
-        device = resolve_device(self.output_device, 'output')
+        device = resolve_device(output_device if epoch is not None else self.output_device, 'output')
         info = sd.query_devices(device, kind='output')
         target_rate = int(info['default_samplerate'])
         channels = min(2, info['max_output_channels'])

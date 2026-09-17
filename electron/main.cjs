@@ -11,7 +11,7 @@ let archivePath;
 let win, child, startup, sequence=0, quitting=false;
 const pending=new Map();
 app.setPath('userData',process.env.JARVISS_APP_DATA||path.join(app.getPath('appData'),'JARVISS'));
-const allowed=new Set(['setup_plan','setup_run','setup_pause','location_parts','import_note','planner_save','planner_delete','planner_done','planner_energy','board_start','board_stop','board_state','board_send','state','chat','save_profile','set_map_position','search_locations','use_basemap','voice','clear','start_model','nearest','route','example_map','download_model','download_voice','download_us_maps','download_map','audio_devices','audio_settings','test_speaker','prompt_settings']);
+const allowed=new Set(['setup_plan','setup_run','setup_pause','location_parts','import_note','planner_save','planner_delete','planner_done','planner_energy','board_start','board_stop','board_state','board_send','state','chat','save_profile','set_map_position','search_locations','use_basemap','voice','clear','start_model','nearest','route','example_map','download_model','download_voice','download_us_maps','download_map','audio_devices','audio_settings','test_speaker','stop_speaker','prompt_settings']);
 if(!app.requestSingleInstanceLock()) app.quit();
 app.on('second-instance',()=>{if(win){win.show();win.focus();}});
 function rpc(method,args={}){
