@@ -1,5 +1,7 @@
 # Releases
 
+[0.2.3: downloads, changes and known issues](releases/0.2.3.md)
+
 ## Official downloads
 
 Official installers are attached to a versioned [GitHub release](https://github.com/jamespeirano/JARVISS/releases). The Mac installer is signed by Abito Inc. and notarized by Apple. The Windows installer is signed by James Peirano.
