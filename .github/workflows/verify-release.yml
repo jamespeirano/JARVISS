@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: 3efc55da6824c9214b728798cefcd19287a16782
+          ref: 4dd2612c09a446cb007407212a2126853f1b6dcf
           persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -63,4 +63,4 @@ jobs:
         with:
           name: windows-installed-startup
           retention-days: 7
-          path: ${{ runner.temp }}/jarvis-signed-startup.png
+          path: ${{ runner.temp }}/jarvis-signed-startup*.png
