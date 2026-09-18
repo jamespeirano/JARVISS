@@ -32,7 +32,10 @@ const {expect} = require(require.resolve('playwright/test', {
     assert.ok(plan.models.length >= 2);
     assert.equal(plan.components.guides, true);
     assert.equal(plan.selected, plan.recommended || plan.models[0].id);
-    assert.ok(await page.locator('#hardware-summary').innerText());
+    await page.locator('.setup-storage summary').click();
+    await expect(page.locator('#hardware-summary')).toContainText('GB memory');
+    await expect(page.locator('#hardware-summary')).toContainText('free storage');
+    await page.locator('.setup-storage summary').click();
     assert.ok(plan.download_bytes > 0, 'Fresh setup must require downloads');
     assert.equal(state.ready, false, 'No model should already be running');
     assert.equal(state.voiceReady, false, 'Voice must not come from host downloads');
