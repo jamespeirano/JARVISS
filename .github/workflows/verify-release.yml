@@ -1,4 +1,4 @@
-name: Verify published Windows installer
+name: Verify signed Windows candidate
 on:
   workflow_dispatch:
     inputs:
@@ -10,6 +10,10 @@ on:
         description: Expected installer SHA-256
         required: true
         type: string
+      download_url:
+        description: Short-lived download URL for the signed candidate
+        required: true
+        type: string
 permissions:
   contents: read
 jobs:
@@ -18,13 +22,16 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: 3efc55da6824c9214b728798cefcd19287a16782
+          persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.12.10'
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
-      - name: Download public installer
+      - name: Download signed candidate
         shell: pwsh
         env:
           RELEASE_TAG: ${{ inputs.tag }}
@@ -34,7 +41,13 @@ jobs:
           if ($env:RELEASE_TAG -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') { throw 'Expected a version tag' }
           if ($env:EXPECTED_SHA256 -notmatch '^[a-f0-9]{64}$') { throw 'Expected a SHA-256 checksum' }
           New-Item -ItemType Directory -Force "$env:RUNNER_TEMP/signed" | Out-Null
-          Invoke-WebRequest -Uri "https://github.com/$env:RELEASE_REPOSITORY/releases/download/$env:RELEASE_TAG/JARVISS-Windows-x64.exe" -OutFile "$env:RUNNER_TEMP/signed/JARVISS-Windows-x64.exe"
+          $event = Get-Content $env:GITHUB_EVENT_PATH -Raw | ConvertFrom-Json
+          $download = [string]$event.inputs.download_url
+          Write-Output "::add-mask::$download"
+          $uri = [Uri]$download
+          if ($uri.Scheme -ne 'https' -or $uri.Host -ne 'release-assets.githubusercontent.com') { throw 'Unexpected candidate host' }
+          try { Invoke-WebRequest -Uri $uri -OutFile "$env:RUNNER_TEMP/signed/JARVISS-Windows-x64.exe" }
+          catch { throw 'Candidate download failed; the short-lived link may have expired' }
       - name: Check signature and install
         shell: pwsh
         env:
