@@ -58,6 +58,8 @@ const {expect} = require(require.resolve('playwright/test', {
     assert.equal(await page.locator('#voice-panel').isVisible(),true);
     assert.equal(await page.locator('.sidebar-resize').count(),2);
     console.log('PASS packaged sidebar controls collapse and restore both panels');
+    await require('../electron/tests/orb.cjs')(page);
+    console.log('PASS packaged idle/listening/thinking/speaking animation, hidden panel pause/resume and reduced motion');
     await page.locator('[data-page="docs"]').click();
     assert.ok(await page.locator('#references .doc-row').count() >= 38);
     await page.locator('[data-reference="fda-food-flood"] .doc-row-main').click();

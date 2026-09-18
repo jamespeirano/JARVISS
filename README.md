@@ -8,7 +8,7 @@ JARVISS is an offline assistant for extended outages: local AI, voice, US maps, 
 
 [Get JARVISS at jarviss.live](https://jarviss.live)
 
-**Version 0.2.5** · [What's new and known issues](docs/releases/0.2.5.md)
+**Version 0.2.6** · [What's new and known issues](docs/releases/0.2.6.md)
 
 ### [Download for Windows](https://github.com/jamespeirano/JARVISS/releases/latest/download/JARVISS-Windows-x64.exe)
 

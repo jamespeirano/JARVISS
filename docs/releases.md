@@ -1,6 +1,8 @@
 # Releases
 
-[0.2.5: downloads, changes and known issues](releases/0.2.5.md)
+[0.2.6: downloads, changes and known issues](releases/0.2.6.md)
+
+[Previous release: 0.2.5](releases/0.2.5.md)
 
 [Previous release: 0.2.4](releases/0.2.4.md)
 
