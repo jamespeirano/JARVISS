@@ -8,15 +8,15 @@ JARVISS is an offline assistant for extended outages: local AI, voice, US maps, 
 
 [Get JARVISS at jarviss.live](https://jarviss.live)
 
-**Version 0.2.4** · [What's new and known issues](docs/releases/0.2.4.md)
+**Version 0.2.5** · [What's new and known issues](docs/releases/0.2.5.md)
 
 ### [Download for Windows](https://github.com/jamespeirano/JARVISS/releases/latest/download/JARVISS-Windows-x64.exe)
 
-**278 MB.** Windows 10 or 11, 64-bit Intel/AMD. Open the installer. Publisher: **James Peirano**.
+**About 280 MB.** Windows 10 or 11, 64-bit Intel/AMD. Open the installer. Publisher: **James Peirano**.
 
 ### [Download for Mac](https://github.com/jamespeirano/JARVISS/releases/latest/download/JARVISS-Mac-Apple-Silicon.dmg)
 
-**338 MB.** Apple silicon (M1 or newer), macOS 13 or newer. Open the disk image and drag JARVISS to Applications. Publisher: **Abito Inc.**; notarized by Apple.
+**About 340 MB.** Apple silicon (M1 or newer), macOS 13 or newer. Open the disk image and drag JARVISS to Applications. Publisher: **Abito Inc.**; notarized by Apple.
 
 Exact sizes and SHA-256 checksums are on the [release page](https://github.com/jamespeirano/JARVISS/releases/latest). These downloads contain the software engines. Models, voice and maps download during setup.
 
@@ -27,7 +27,7 @@ Exact sizes and SHA-256 checksums are on the [release page](https://github.com/j
 1. Install and open JARVISS. No Python, Node, terminal or separate model app is needed.
 2. Choose **Download everything** while you have internet.
 3. Wait for **Ready offline**.
-4. In **Docs → Situation**, describe your group. In **Maps**, enter a street or landmark, city and state, then confirm your point on the map. Coordinates are not required.
+4. In **Chat → Situation → Edit**, describe your group. In **Maps**, enter a street or landmark, city and state, then confirm your point on the map. Coordinates are not required.
 
 ## Use it
 
