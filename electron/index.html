@@ -45,7 +45,7 @@
  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></symbol>
 </svg>
 
-<aside inert>
+<aside id="navigation-panel" inert>
  <div class="wordmark"><span>JARVISS</span><span id="app-version" class="chip"></span></div>
  <nav aria-label="Pages">
   <button data-page="assistant"><svg class="icon" aria-hidden="true"><use href="#i-chat"/></svg><span>Chat</span></button>
@@ -54,11 +54,15 @@
   <button data-page="docs"><svg class="icon" aria-hidden="true"><use href="#i-docs"/></svg><span>Docs</span></button>
  </nav>
  <div class="rail-bottom"><button data-page="settings"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg><span>Settings</span></button></div>
+ <div id="navigation-resize" class="sidebar-resize" role="separator" aria-label="Resize navigation sidebar" aria-orientation="vertical" aria-controls="navigation-panel" tabindex="0"></div>
 </aside>
 
 <main>
 <header>
+ <div class="header-start">
+ <button id="navigation-toggle" class="quiet header-tool icon-only" aria-label="Hide navigation sidebar" aria-controls="navigation-panel" aria-expanded="true" title="Hide navigation sidebar"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg></button>
  <button id="reference-back" class="quiet header-tool back-tool"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg><span id="reference-back-label">Back to Docs</span></button>
+ </div>
  <button id="panel-toggle" class="quiet header-tool" aria-controls="voice-panel" aria-expanded="true" title="Show or hide the voice panel"><svg class="icon" aria-hidden="true"><use href="#i-voice"/></svg><span>Voice</span></button>
  <button id="view-setup" class="quiet compact header-tool" hidden>View setup</button>
  <div class="status-pill" role="status"><span id="status-dot" class="status-dot"></span><span id="status">Connecting to local service</span></div>
@@ -105,6 +109,7 @@
    <div class="chat-footer"><button id="clear" class="quiet compact">Clear conversation</button></div>
   </div>
   <div class="inspector" id="voice-panel">
+   <div id="voice-resize" class="sidebar-resize" role="separator" aria-label="Resize voice sidebar" aria-orientation="vertical" aria-controls="voice-panel" tabindex="0"></div>
    <div class="voice-card">
     <div class="orb" id="orb"></div>
     <div id="voice-badge" class="eyebrow" role="status">Voice off</div>
@@ -332,6 +337,7 @@
 <script src="jarvis.js"></script>
 <script src="map-bundle.js"></script>
 <script src="renderer.js"></script>
+<script src="sidebars.js"></script>
 <script src="references.js"></script>
 <script src="planner.js"></script>
 <script src="setup.js"></script>

@@ -1,7 +1,8 @@
 #note-form{margin-top:var(--s-5)}
 /* Drop target: the whole page. references.js adds .over to #docs while a file is dragged across it; the overlay only paints. */
 #docs{position:relative}
-.drop-overlay{display:none;position:fixed;top:var(--header-h);left:var(--rail-w);right:0;bottom:0;z-index:30;flex-direction:column;align-items:center;justify-content:center;gap:var(--s-2);font-size:var(--fs-md);font-weight:var(--fw-semibold);color:var(--fg-1);background:rgb(20 20 22/.85);outline:2px dashed var(--accent);outline-offset:-16px;pointer-events:none}
+.drop-overlay{display:none;position:fixed;top:var(--header-h);left:var(--rail-size,var(--rail-w));right:0;bottom:0;z-index:30;flex-direction:column;align-items:center;justify-content:center;gap:var(--s-2);font-size:var(--fs-md);font-weight:var(--fw-semibold);color:var(--fg-1);background:rgb(20 20 22/.85);outline:2px dashed var(--accent);outline-offset:-16px;pointer-events:none}
+body.navigation-hidden .drop-overlay{left:0}
 #docs.over .drop-overlay,.drop-overlay.show{display:flex}
 .drop-overlay .icon{width:24px;height:24px;color:var(--accent)}
 .drop-overlay .meta{max-width:none}

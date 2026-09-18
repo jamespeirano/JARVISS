@@ -13,6 +13,7 @@ const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),asse
   const page=await app.firstWindow();const errors=[];page.on('pageerror',e=>errors.push(e.message));
   page.on('console',m=>{if(m.type()==='error')console.error('renderer:',m.text());});
   await page.waitForFunction(()=>document.querySelector('#status').textContent==='Model off');await page.locator('#setup-later').click();
+  await page.locator('#assistant.visible').waitFor();
   await page.locator('[data-page="atlas"]').click();
   await page.waitForFunction(()=>window.jarvisDetailMap?.isStyleLoaded(),{},{timeout:30000});
   assert.match(await page.locator('#map-local-status').innerText(),/Offline/);

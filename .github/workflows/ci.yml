@@ -41,6 +41,10 @@ jobs:
         run: node electron/tests/setup.cjs
       - name: Check offline document reader and PDF pages
         run: node electron/tests/references.cjs
+      - name: Check chat layout and voice indicator
+        run: node electron/tests/smoke.cjs
+      - name: Check navigation, sidebar resizing and responsive layouts
+        run: node electron/tests/ui.cjs
   public-source:
     name: Public source checks
     runs-on: ubuntu-latest

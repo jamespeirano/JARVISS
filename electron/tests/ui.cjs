@@ -41,6 +41,82 @@ service.main()
   await page.waitForFunction(()=>document.querySelector('#status').textContent==='Model off');
   await page.locator('#setup-later').click();
   await page.locator('#assistant.visible').waitFor();
+  // Native title-bar clearance and responsive page bounds on the supported Mac window sizes.
+  for(const [width,height,zoom] of [[900,600,1],[1024,768,1.25],[1440,900,1.5]]){
+   await app.evaluate(({BrowserWindow},{width,height,zoom})=>{const win=BrowserWindow.getAllWindows()[0];win.setSize(width,height);win.webContents.setZoomFactor(zoom);},{width,height,zoom});
+   for(const name of ['assistant','atlas','plan','docs','settings']){
+    await page.locator(`[data-page="${name}"]`).click();
+    await page.waitForTimeout(100);
+    const bounds=await page.evaluate(()=>{
+     const main=document.querySelector('main'),active=document.querySelector('.page.visible'),brand=document.querySelector('.wordmark');
+     const range=document.createRange();range.selectNodeContents(brand);const brandTop=range.getBoundingClientRect().top;
+     return {overflow:main.scrollWidth-main.clientWidth,pageOverflow:active.scrollWidth-active.clientWidth,brandTop};
+    });
+    assert.ok(bounds.overflow<=1&&bounds.pageOverflow<=1,`${name} overflows at ${width}x${height}, zoom ${zoom}: ${JSON.stringify(bounds)}`);
+    if(name==='assistant'){
+     const fits=await page.evaluate(()=>{const column=document.querySelector('.conversation-column').getBoundingClientRect();return [...document.querySelectorAll('#quick-actions button')].every(b=>{const r=b.getBoundingClientRect();return r.left>=column.left-1&&r.right<=column.right+1;});});
+     assert.ok(fits,`Chat prompts stay inside their column at ${width}, zoom ${zoom}`);
+    }
+    if(process.platform==='darwin')assert.ok(bounds.brandTop*zoom>=30,'Brand clears the macOS traffic lights');
+   }
+  }
+  await app.evaluate(({BrowserWindow})=>{const win=BrowserWindow.getAllWindows()[0];win.setSize(1440,900);win.webContents.setZoomFactor(1);});
+  await page.locator('[data-page="assistant"]').click();
+  console.log('PASS Mac title-bar clearance and page bounds at 900/1024/1440 widths and 100/125/150% zoom');
+  // Both sidebars resize independently, collapse to Chat, and retain their preferences.
+  const panelWidth=id=>page.locator(id).evaluate(el=>el.getBoundingClientRect().width);
+  const dragDivider=async(id,delta)=>{
+   const box=await page.locator(id).boundingBox(),x=box.x+box.width/2,y=box.y+Math.min(box.height/2,180);
+   await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+delta,y,{steps:8});await page.mouse.up();
+  };
+  const navStart=await panelWidth('#navigation-panel'),voiceStart=await panelWidth('#voice-panel');
+  await dragDivider('#navigation-resize',40);
+  assert.ok(Math.abs(await panelWidth('#navigation-panel')-navStart-40)<2,'Dragging navigation divider widens navigation');
+  await dragDivider('#voice-resize',-40);
+  assert.ok(Math.abs(await panelWidth('#voice-panel')-voiceStart-40)<2,'Dragging voice divider left widens voice');
+  const navSaved=await panelWidth('#navigation-panel'),voiceSaved=await panelWidth('#voice-panel');
+  const narrowChat=await panelWidth('.conversation-column'),narrowArea=await panelWidth('.assistant-grid');
+  await page.locator('#navigation-toggle').click();await page.locator('#panel-toggle').click();
+  assert.equal(await page.locator('#navigation-panel').isVisible(),false);
+  assert.equal(await page.locator('#voice-panel').isVisible(),false);
+  assert.ok(await panelWidth('.assistant-grid')>narrowArea+100,'Collapsing navigation expands the Chat area');
+  assert.ok(await panelWidth('.conversation-column')>=narrowChat,'Chat keeps its reading width when both panels are hidden');
+  assert.equal(await page.locator('.assistant-grid').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length),1,'Collapsed Chat has a single column');
+  assert.equal(await page.locator('#navigation-toggle').getAttribute('aria-expanded'),'false');
+  if(process.platform==='darwin')assert.ok((await page.locator('#navigation-toggle').boundingBox()).x>=80,'Restore control clears Mac traffic lights');
+  await page.reload();await page.locator('#assistant.visible').waitFor();
+  assert.equal(await page.locator('#navigation-panel').isVisible(),false,'Hidden navigation persists');
+  assert.equal(await page.locator('#voice-panel').isVisible(),false,'Hidden voice panel persists');
+  await page.locator('#navigation-toggle').click();await page.locator('#panel-toggle').click();
+  assert.ok(Math.abs(await panelWidth('#navigation-panel')-navSaved)<2,'Navigation width persists');
+  assert.ok(Math.abs(await panelWidth('#voice-panel')-voiceSaved)<2,'Voice width persists');
+  const divider=await page.locator('#navigation-resize').boundingBox();
+  await page.mouse.move(divider.x+4,divider.y+160);await page.mouse.down();await page.mouse.move(divider.x+44,divider.y+160);
+  await page.keyboard.press('Escape');await page.mouse.up();
+  assert.ok(Math.abs(await panelWidth('#navigation-panel')-navSaved)<2,'Escape cancels an unfinished resize');
+  assert.equal(await page.locator('body').evaluate(el=>el.classList.contains('resizing-sidebar')),false);
+  await page.locator('#navigation-resize').focus();await page.keyboard.press('Home');
+  assert.equal(await panelWidth('#navigation-panel'),160);
+  await page.keyboard.press('ArrowRight');assert.equal(await panelWidth('#navigation-panel'),170);
+  await page.keyboard.press('End');assert.equal(await panelWidth('#navigation-panel'),320);
+  await page.locator('#voice-resize').focus();await page.keyboard.press('Home');
+  assert.equal(await panelWidth('#voice-panel'),240);
+  await page.keyboard.press('ArrowLeft');assert.equal(await panelWidth('#voice-panel'),250);
+  await page.keyboard.press('End');assert.equal(await panelWidth('#voice-panel'),440);
+  await page.locator('[data-page="docs"]').click();
+  assert.equal(await page.locator('#voice-panel').isVisible(),false,'Voice sidebar stays on Chat');
+  assert.equal(await page.locator('#panel-toggle').isVisible(),false);
+  await page.locator('[data-page="assistant"]').click();
+  await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(900,600));
+  await page.waitForFunction(()=>innerWidth<=900);
+  assert.equal(await page.locator('#voice-resize').isVisible(),false,'Stacked voice panel has no horizontal resize handle');
+  assert.ok(await page.evaluate(()=>document.querySelector('main').scrollWidth-document.querySelector('main').clientWidth<=1),'Saved widths fit a smaller window');
+  await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1440,900));
+  await page.waitForFunction(()=>innerWidth>980);
+  await page.locator('#navigation-resize').dblclick();await page.locator('#voice-resize').dblclick();
+  assert.ok(Math.abs(await panelWidth('#navigation-panel')-navStart)<2,'Double-click restores navigation width');
+  assert.ok(Math.abs(await panelWidth('#voice-panel')-voiceStart)<2,'Double-click restores voice width');
+  console.log('PASS both sidebars: drag, keyboard, cancellation, collapse, reload, smaller windows and reset');
   // Idle: the pill says "Model off" with an idle dot, and Start voice mode is not the primary action.
   assert.equal(await page.locator('#status-dot').getAttribute('class'),'status-dot idle');
   assert.equal(await page.locator('#status').isVisible(),true);

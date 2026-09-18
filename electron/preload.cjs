@@ -1,4 +1,5 @@
 const {contextBridge,ipcRenderer,webUtils}=require('electron');
+window.addEventListener('DOMContentLoaded',()=>{document.documentElement.dataset.platform=process.platform;});
 const listen=channel=>callback=>{const listener=(_event,data)=>callback(data);ipcRenderer.on(channel,listener);return()=>ipcRenderer.removeListener(channel,listener);};
 // Dropped File objects become paths here; the renderer never handles a path string itself.
 const filePath=file=>{try{return typeof file==='object'&&file?webUtils.getPathForFile(file):'';}catch{return '';}};

@@ -1,5 +1,5 @@
 #assistant.visible{padding-bottom:0}
-.assistant-grid{display:grid;grid-template-columns:minmax(0,1fr) var(--inspector-w);gap:var(--s-6);height:calc(100vh - var(--header-h));padding-bottom:var(--s-4)}
+.assistant-grid{display:grid;grid-template-columns:minmax(0,1fr) var(--inspector-size,var(--inspector-w));gap:var(--s-6);height:calc(100vh - var(--header-h));padding-bottom:var(--s-4)}
 body.voice-panel-hidden .inspector{display:none}
 body.voice-panel-hidden .assistant-grid{grid-template-columns:minmax(0,1fr)}
 .conversation-column{display:flex;flex-direction:column;min-height:0;width:100%;max-width:var(--chat-w);margin:0 auto}
@@ -11,8 +11,8 @@ body:not(.has-history) .chat-footer{display:none}
 .welcome-text{display:flex;flex-direction:column;align-items:center;gap:var(--s-2)}
 .greeting{font-size:var(--fs-2xl);font-weight:var(--fw-semibold);line-height:var(--lh-tight)}
 .greeting-sub{max-width:56ch;font-size:var(--fs-sm);line-height:1.5;color:var(--fg-3)}
-#quick-actions{display:grid;grid-template-columns:repeat(3,max-content);justify-content:center;gap:var(--s-2)} /* six prompts, always two rows of three */
-#quick-actions button{font-weight:var(--fw-regular);font-size:var(--fs-sm);border-radius:var(--r-pill);background:transparent}
+#quick-actions{display:grid;width:100%;max-width:560px;grid-template-columns:repeat(3,minmax(0,1fr));justify-content:center;gap:var(--s-2)}
+#quick-actions button{font-weight:var(--fw-regular);font-size:var(--fs-sm);border-radius:var(--r-pill);background:transparent;white-space:normal;min-height:var(--control-h);height:auto;padding:8px 12px;line-height:var(--lh-ui)}
 #quick-actions button:hover{background:var(--bg-3)}
 body.has-history .welcome{display:none}
 body:not(.has-history) #messages{display:none}
@@ -46,18 +46,17 @@ body:not(.has-history) #messages{display:none}
 #composer:has(#question:placeholder-shown) #send:hover{background:var(--bg-4);border-color:var(--line-3)}
 #composer-notice{margin-top:var(--s-3)}
 .chat-footer{display:flex;justify-content:flex-end;padding:var(--s-1) 0}
-/* Inspector: the situation first, then a compact voice row (96px orb | control + hint). The orb grows only while the voice is doing something. */
-.inspector{display:flex;flex-direction:column;gap:var(--s-4);min-height:0;overflow-y:auto;padding:0 var(--s-1) 0 var(--s-6);border-left:1px solid var(--line-1)} /* 4px right: a focus ring at the edge never clips */
+/* Voice indicator and situation beside the conversation. */
+.inspector{position:relative;display:flex;flex-direction:column;gap:var(--s-4);min-height:0;overflow-y:auto;padding:0 var(--s-1) 0 var(--s-6);border-left:1px solid var(--line-1)} /* 4px right: a focus ring at the edge never clips */
 /* The orb is the brand mark: centred at the top of the inspector, controls beneath, Situation card below. */
 .voice-card{display:flex;flex-direction:column;align-items:center;gap:var(--s-2);text-align:center;padding-top:var(--s-2)}
 .voice-card>*{margin:0}
-.voice-card>.orb{width:128px;height:128px;margin-bottom:var(--s-1);transition:width var(--motion-base),height var(--motion-base)}
+.voice-card>.orb{width:min(100%,237px);height:auto;aspect-ratio:1;margin-bottom:16px;flex-shrink:0}
 .voice-card>#voice-pack-note{align-self:stretch;text-align:left}
 .orb canvas{display:block;width:100%;height:100%}
 #mic-level{width:80px;height:4px}
 #heard-partial{min-height:20px;font-size:var(--fs-xs);color:var(--fg-2)}
 .voice-card:not(:has(#orb[data-state=listening])) :is(#mic-level,#heard-partial){display:none}
-.voice-card:has(#orb:is([data-state=listening],[data-state=thinking],[data-state=speaking]))>.orb{width:160px;height:160px}
 #voice-badge{display:inline-flex;align-items:center;gap:var(--s-2)}
 #voice-badge.generating{color:var(--accent-strong)}
 #voice-badge.generating::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1.2s ease-in-out infinite}
@@ -66,4 +65,10 @@ body:not(.has-history) #messages{display:none}
 #situation-card .card-heading .meta{display:block}
 #situation-card label{margin-bottom:var(--s-3)}
 .location-actions{margin-bottom:var(--s-3)}
-@media(max-height:760px){.voice-card>.orb{width:112px;height:112px}} /* short windows: keep the Situation card fully visible */
+@media(max-width:1160px){.voice-card>.orb{max-width:203px}}
+@media(max-width:980px){
+ .assistant-grid{grid-template-columns:minmax(0,1fr);height:auto}
+ .conversation-column{height:calc(100vh - var(--header-h) - var(--s-4))}
+ .inspector{border-left:0;border-top:1px solid var(--line-1);padding:var(--s-6) 0;overflow:visible}
+ #voice-resize{display:none}
+}

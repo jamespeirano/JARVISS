@@ -516,7 +516,7 @@ function initTabs(container,{onSelect}={}){
 window.initTabs=initTabs;
 const settingsTabs=initTabs($('#settings-tabs'));
 
-function setInspector(hidden){document.body.classList.toggle('voice-panel-hidden',hidden);$('#panel-toggle').setAttribute('aria-expanded',String(!hidden));try{localStorage.setItem('jarviss.inspector',hidden?'hidden':'shown');}catch{}}
+function setInspector(hidden){document.body.classList.toggle('voice-panel-hidden',hidden);$('#panel-toggle').setAttribute('aria-expanded',String(!hidden));$('#panel-toggle').title=hidden?'Show voice sidebar':'Hide voice sidebar';try{localStorage.setItem('jarviss.inspector',hidden?'hidden':'shown');}catch{}window.syncSidebars?.();}
 $('#panel-toggle').onclick=()=>setInspector(!document.body.classList.contains('voice-panel-hidden'));
 try{setInspector(localStorage.getItem('jarviss.inspector')==='hidden');}catch{}
 

@@ -182,8 +182,18 @@ dialog::backdrop{background:var(--bg-0);opacity:.7}
 @keyframes rise{from{opacity:0;translate:0 8px}}
 
 /* Shell: the title bar is hidden (main.cjs); the wordmark and header are drag regions and every control inside opts out. */
-aside{width:var(--rail-w);flex-shrink:0;display:flex;flex-direction:column;padding:0 var(--s-3) var(--s-4);background:var(--bg-1);border-right:1px solid var(--line-1)}
+aside{position:relative;width:var(--rail-size,var(--rail-w));flex-shrink:0;display:flex;flex-direction:column;padding:0 var(--s-3) var(--s-4);background:var(--bg-1);border-right:1px solid var(--line-1)}
+body.navigation-hidden aside{display:none}
+.sidebar-resize{position:absolute;z-index:12;top:0;bottom:0;width:8px;cursor:col-resize;touch-action:none;-webkit-app-region:no-drag}
+.sidebar-resize::after{content:'';position:absolute;left:3px;top:0;bottom:0;width:2px;background:transparent}
+.sidebar-resize:hover::after,.sidebar-resize:focus-visible::after,body.resizing-sidebar .sidebar-resize::after{background:var(--accent)}
+.sidebar-resize:focus-visible{box-shadow:none;outline:none}
+#navigation-resize{right:-4px}
+#voice-resize{left:0}
+body.resizing-sidebar,body.resizing-sidebar *{cursor:col-resize!important;user-select:none!important}
 .wordmark{display:flex;align-items:center;gap:var(--s-2);height:var(--header-h);padding:0 var(--s-3) 0 calc(env(titlebar-area-x,0px) + var(--s-3));font-weight:var(--fw-semibold);letter-spacing:.02em;-webkit-app-region:drag} /* macOS: env() is the space after the traffic lights */
+/* Hidden macOS title bars do not expose titlebar-area-x. Keep the brand below the native buttons. */
+html[data-platform=darwin] .wordmark{height:calc(var(--header-h) + 16px);padding-top:32px;flex-shrink:0}
 aside nav{display:flex;flex-direction:column;gap:2px;margin-top:var(--s-4)} /* scoped: the reader's section list is a nav too */
 aside button[data-page]{width:100%;height:var(--control-h);justify-content:flex-start;gap:var(--s-3);padding:0 var(--s-3);font-weight:var(--fw-regular);color:var(--fg-2);background:transparent;border-color:transparent}
 aside button[data-page]:hover{background:var(--bg-2);color:var(--fg-1)}
@@ -195,9 +205,13 @@ main{flex:1;min-width:0;overflow:auto;position:relative;scrollbar-gutter:stable}
 /* The window controls overlay sits at the top right: reserve its width from env() (falls back to the page gutter); fullscreen has no overlay. */
 header{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:flex-end;gap:var(--s-2);height:var(--header-h);padding:0 clamp(var(--page-x),calc(100vw - env(titlebar-area-x,0px) - env(titlebar-area-width,100vw) + var(--page-x)),200px) 0 var(--page-x);background:var(--bg-0);-webkit-app-region:drag}
 body.map-fullscreen header{padding-right:var(--page-x)}
+.header-start{display:flex;align-items:center;gap:var(--s-2);margin-right:auto;min-width:0;-webkit-app-region:no-drag}
+html[data-platform=darwin] body:is(.navigation-hidden,.map-fullscreen) header{padding-left:84px}
+body:is(.setup-screen,.map-fullscreen) #navigation-toggle{visibility:hidden}
 .header-tool{height:var(--control-h-compact);padding:0 10px;font-size:var(--fs-sm)}
 body:not(:has(#assistant.visible)) #panel-toggle{display:none}
-#reference-back{position:absolute;top:50%;translate:0 -50%;left:max(var(--page-x),calc((100% - var(--reader-w)) / 2));margin-left:-10px} /* the reader's back control lives in the header, aligned to the reader column */
+#reference-back{min-width:0}
+#reference-back-label{overflow:hidden;text-overflow:ellipsis}
 body:not(:has(#reference-reader.visible)) #reference-back{display:none}
 #error{margin:0 var(--page-x);max-width:var(--content-w)}
 .page{display:none;padding:0 var(--page-x) var(--s-8)}

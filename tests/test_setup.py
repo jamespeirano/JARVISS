@@ -214,7 +214,8 @@ class SetupTests(unittest.TestCase):
 
     def test_summary_failure_after_validation_keeps_the_model_ready(self):
         self.service.model.chat.return_value='Ready'
-        real=self.setup.plan('compact')
+        with patch('jarviss.setup.inspect',return_value=self.hardware()):
+            real=self.setup.plan('compact')
         with patch('jarviss.setup.inspect',return_value=self.hardware()),patch('jarviss.setup.prepare_runtime'),patch('jarviss.setup.prepare_model',return_value=self.root/'new.gguf'), \
              patch.object(self.setup,'plan',side_effect=[real,RuntimeError('Hardware probe failed')]):
             with self.assertRaisesRegex(RuntimeError,'summary could not be refreshed: Hardware probe failed'):self.setup.run('compact',only_model=True)
