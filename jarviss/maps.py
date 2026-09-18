@@ -27,7 +27,8 @@ CATEGORIES = {
 RESOURCE_CATEGORIES = {c.replace(' ', '_') for group in CATEGORIES.values() for c in group} | RESOURCE_TAGS.keys()
 ALIASES = {'grocery store': 'food', 'groceries': 'food', 'gas station': 'fuel', 'fire station': 'fire_station',
            'hardware store': 'hardware', 'drugstore': 'pharmacy', 'river': 'river', 'creek': 'stream',
-           'flowing water': 'running water'}
+           'flowing water': 'running water', 'water source': 'water', 'fresh water': 'water',
+           'clean water': 'drinking water', 'safe water': 'drinking water', 'urgent care': 'clinic'}
 
 
 def normalized(text):
@@ -49,7 +50,11 @@ def matches_place(place, query):
         return category in CATEGORIES[query] or place['kind'] in CATEGORIES[query]
     resource = query.replace(' ', '_')
     if resource in RESOURCE_CATEGORIES:
-        return resource in {str(category).replace(' ', '_'), place['kind'].replace(' ', '_')}
+        kinds = {str(category).replace(' ', '_'), place['kind'].replace(' ', '_')}
+        if resource in kinds: return True
+        # Basemaps label ponds, lakes and wells as plain "water": match those by name, but
+        # only within the same resource group, so "River Cafe" never answers "river".
+        if not any(resource in group and kinds & {c.replace(' ', '_') for c in group} for group in CATEGORIES.values()): return False
     return normalized(query.replace('_', ' ')) in normalized(' '.join(str(place.get(k, '')) for k in ('name', 'kind', 'category')).replace('_', ' '))
 
 
@@ -89,10 +94,11 @@ def route_steps(points, names):
         if meters < .1:
             continue
         heading = bearing(a, b)
-        if steps and steps[-1]['road'] == name:
+        delta = (heading - previous_heading + 180) % 360 - 180 if previous_heading is not None else 0
+        # Same-named roads still turn at corners and T-junctions; only merge straight continuations.
+        if steps and steps[-1]['road'] == name and abs(delta) <= 30:
             steps[-1]['distance_m'] += meters
         else:
-            delta = (heading - previous_heading + 180) % 360 - 180 if previous_heading is not None else 0
             action = ('Head ' + ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest'][round(heading/45) % 8]
                       if previous_heading is None else 'Turn around' if abs(delta) > 150 else
                       'Turn right' if delta > 30 else 'Turn left' if delta < -30 else 'Continue')
@@ -105,8 +111,12 @@ def route_steps(points, names):
 
 
 def coordinate(lat, lon):
-    lat, lon = float(lat), float(lon)
-    if not math.isfinite(lat) or not math.isfinite(lon) or not -85 <= lat <= 85 or not -180 <= lon <= 180:
+    try:
+        lat, lon = float(lat), float(lon)
+        valid = math.isfinite(lat) and math.isfinite(lon) and -85 <= lat <= 85 and -180 <= lon <= 180
+    except (TypeError, ValueError):
+        valid = False
+    if not valid:
         raise ValueError('Enter latitude −85 to 85 and longitude −180 to 180.')
     return lat, lon
 
@@ -307,10 +317,37 @@ class OfflineMap:
             raise ValueError('Route endpoint is outside this downloaded area.')
         if not self.segments:
             raise ValueError('No walking network in this map.')
+        # The nearest segment can be an isolated stub (a parking aisle or a
+        # clipped path). If that strands the search, retry on the main network.
+        result = self._route(origin, destination, None)
+        if result is None:
+            try: result = self._route(origin, destination, self.main_network())
+            except ValueError: result = None
+        if result is None: raise ValueError('No connected walking route in the downloaded map.')
+        return result
+
+    def main_network(self):
+        if not hasattr(self, '_main'):
+            links = {}
+            for a, b, *_ in self.segments:
+                links.setdefault(a, set()).add(b); links.setdefault(b, set()).add(a)
+            seen, self._main = set(), set()
+            for root in links:
+                if root in seen: continue
+                component, stack = {root}, [root]
+                while stack:
+                    for other in links[stack.pop()]:
+                        if other not in component: component.add(other); stack.append(other)
+                seen |= component
+                if len(component) > len(self._main): self._main = component
+        return self._main
+
+    def _route(self, origin, destination, allowed):
         def snap(point):
             best = None
             for index, segment in enumerate(self.segments):
                 a, b = segment[:2]
+                if allowed is not None and (a not in allowed or b not in allowed): continue
                 projected, t = project(point, self.nodes[a], self.nodes[b])
                 gap = distance(point, projected)
                 if best is None or gap < best[0]:
@@ -355,7 +392,7 @@ class OfflineMap:
                     previous[other] = (node, name)
                     heapq.heappush(queue, (candidate, other))
         if end not in costs:
-            raise ValueError('No connected walking route in the downloaded map.')
+            return None
         path, names = [end], []
         while path[-1] != start:
             parent, name = previous[path[-1]]
@@ -363,7 +400,10 @@ class OfflineMap:
         points = [nodes[n] for n in reversed(path)]
         names.reverse()
         steps = route_steps(points, names)
-        return {'points': points, 'roads': [s['road'] for s in steps], 'steps': steps,
+        if not steps:  # Both endpoints snapped to one spot: say so rather than return an empty 0 m walk.
+            steps = [{'road': self.segments[si][3], 'action': 'You are already at this point', 'distance_m': 0,
+                      'instruction': 'You are already at this point.'}]
+        return {'points': points, 'roads': [s['road'] for i, s in enumerate(steps) if not i or s['road'] != steps[i-1]['road']], 'steps': steps,
                 'distance_m': round(costs[end]), 'distance_miles': round(costs[end]/1609.344, 3),
                 'start_gap_m': round(start_gap), 'end_gap_m': round(end_gap),
                 'origin': list(origin), 'destination_point': list(destination),

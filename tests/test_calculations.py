@@ -40,6 +40,9 @@ class DurationTests(unittest.TestCase):
     def test_invalid_rates_do_not_divide_by_zero(self):
         self.assertIn('greater than zero', supply_duration('We have 12 litres and use 0 litres daily. How long will it last?'))
 
+    def test_small_rations_show_the_real_divisor(self):
+        self.assertEqual(supply_duration('How long will 1 kg of salt last at 0.005 kg a day?'), '200 days. 1 ÷ (0.005 per day) = 200 days.')
+
 
 if __name__ == '__main__':
     unittest.main()

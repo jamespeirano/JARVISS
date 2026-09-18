@@ -1,9 +1,12 @@
 import json
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from jarviss.service import Service
+from jarviss.storage import write_json
 from tests.test_core import fixture
 
 
@@ -26,6 +29,17 @@ class AtlasServiceTests(unittest.TestCase):
     def import_area(self,service,pack):
         p=self.data/'import.json';p.write_text(json.dumps(pack));service.command('import_map',{'path':str(p)})
 
+    def test_basemap_size_that_disagrees_with_its_record_is_reported_at_startup(self):
+        maps=self.data/'local-maps';maps.mkdir();target=maps/'us-z15.pmtiles';target.write_bytes(b'x'*10)
+        archive=Mock(path=target,pack={'label':'US','bounds':[24,-125,50,-66],'center':[37,-95]})
+        with patch('jarviss.service.TileArchive',return_value=archive),patch('jarviss.service.LocationIndex'):
+            for size,expected in ((20,'download record'),(10,None)):
+                write_json(maps/'manifest.json',{'file':target.name,'size_bytes':size,'sha256':'0'*64})
+                state=self.service().state()
+                self.assertEqual(state['basemap']['label'],'US')
+                if expected:self.assertIn(expected,state['mapError']);self.assertIn('Check setup',state['mapError'])
+                else:self.assertIsNone(state['mapError'])
+
     def test_packs_and_selected_position_survive_restart(self):
         service=self.service();first=fixture();self.import_area(service,first)
         second=fixture();second['bounds']=[39.98,-74.02,40.02,-73.98]
@@ -40,12 +54,13 @@ class AtlasServiceTests(unittest.TestCase):
         self.assertFalse(restarted.ready)
         self.assertEqual(restarted.route['destination'],'Recorded fountain')
 
-    def test_failed_map_request_clears_route_and_changing_position_clears_route(self):
+    def test_failed_map_request_keeps_route_and_changing_position_clears_route(self):
         service=self.service();self.import_area(service,fixture())
         service.command('set_map_position',{'lat':40,'lon':-74})
-        service.command('chat',{'text':'nearest water'});self.assertIsNotNone(service.route)
-        service.command('chat',{'text':'nearest spacesuit'});self.assertIsNone(service.route)
-        service.command('chat',{'text':'nearest water'});self.assertIsNotNone(service.route)
+        service.command('chat',{'text':'nearest water'});route=service.route;self.assertIsNotNone(route)
+        # Directions in use survive an unsuccessful lookup; only a new successful answer replaces them.
+        service.command('chat',{'text':'nearest spacesuit'});self.assertEqual(service.route,route)
+        service.command('route',{'point':[40.001,-73.999],'name':'Fountain corner'});self.assertEqual(service.route['destination'],'Fountain corner')
         service.command('set_map_position',{'lat':40.0001,'lon':-74});self.assertIsNone(service.route)
 
     def test_unrelated_answers_keep_the_displayed_route(self):
@@ -94,13 +109,74 @@ class AtlasServiceTests(unittest.TestCase):
         service.command('set_map_position',{'lat':rows[0]['point'][0],'lon':rows[0]['point'][1]})
         self.assertTrue((self.data/'profile.json').exists())
 
-    def test_stale_search_result_cannot_route_to_a_different_place(self):
+    def test_earlier_search_results_stay_routable_until_the_map_changes(self):
         service=self.service();self.import_area(service,fixture())
         service.command('set_map_position',{'lat':40,'lon':-74})
         found=service.command('nearest',{'query':'water'})[0]
         service.command('nearest',{'query':'medical'})
+        self.assertEqual(service.command('route',{'id':found['id']})['destination'],'Recorded fountain')
+        service.command('use_basemap',{})
         with self.assertRaisesRegex(ValueError,'Search again'):
             service.command('route',{'id':found['id']})
+
+    def test_routable_places_are_capped(self):
+        service=self.service();self.import_area(service,fixture())
+        service.command('set_map_position',{'lat':40,'lon':-74})
+        catalog=service.catalog()
+        for batch in range(20):
+            with patch.object(catalog,'nearest',return_value=[{'id':f'node/{batch}-{i}','name':'x','kind':'water','point':[40,-74]} for i in range(30)]), \
+                 patch.object(service,'catalog',return_value=catalog):
+                service.command('nearest',{'query':'water'})
+        self.assertEqual(len(service.places_by_id),300)
+        self.assertIn('node/19-29',service.places_by_id);self.assertNotIn('node/0-0',service.places_by_id)
+
+    def test_map_swap_during_routing_rejects_the_old_result(self):
+        service=self.service();self.import_area(service,fixture())
+        service.command('set_map_position',{'lat':40,'lon':-74})
+        started=threading.Event();release=threading.Event();failures=[]
+        def route(*_):
+            started.set()
+            if not release.wait(5):raise RuntimeError('Test did not release routing')
+            return {'distance_m':100,'steps':[]}
+        catalog=Mock();catalog.route.side_effect=route
+        def run():
+            try:service.command('route',{'point':[40.001,-74]})
+            except Exception as e:failures.append(e)
+        with patch.object(service,'catalog',return_value=catalog):
+            worker=threading.Thread(target=run);worker.start()
+            try:
+                self.assertTrue(started.wait(3))
+                service.command('use_basemap',{})
+            finally:release.set();worker.join(5)
+        self.assertEqual(len(failures),1);self.assertIn('map changed',str(failures[0]))
+        self.assertIsNone(service.route)
+
+    def test_close_waits_for_a_running_operation_and_stops_the_router(self):
+        service=self.service();self.services.remove(service)
+        service.us_router=Mock()
+        service.lock.acquire()
+        threading.Timer(0.4,service.lock.release).start()
+        started=time.monotonic();service.close()
+        self.assertGreaterEqual(time.monotonic()-started,0.35)
+        service.us_router.close.assert_called_once()
+
+    def test_concurrent_situation_and_position_saves_keep_both_on_disk(self):
+        service=self.service();failures=[]
+        def situations():
+            for i in range(25):service.command('save_profile',{'situation':f'S{i}','supplies':'water','location_text':'Austin'})
+        def positions():
+            for i in range(25):service.command('set_map_position',{'lat':30+i*.001,'lon':-97.7})
+        def guard(fn):
+            try:fn()
+            except Exception as e:failures.append(e)
+        threads=[threading.Thread(target=guard,args=(fn,)) for fn in (situations,positions)]
+        for t in threads:t.start()
+        for t in threads:t.join(10)
+        self.assertEqual(failures,[])
+        saved=json.loads((self.data/'profile.json').read_text(encoding='utf-8'))
+        self.assertEqual(saved,service.profile)
+        self.assertEqual(saved['situation'],'S24');self.assertEqual(saved['supplies'],'water')
+        self.assertIn(saved.get('lat'),[30+i*.001 for i in range(25)])
 
 
 if __name__=='__main__':unittest.main()

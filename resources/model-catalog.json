@@ -13,7 +13,7 @@
       "sha256": "55044454df35c2e3b9f4ca7a52b27cc7b057b3b3547cd114183196c31f5062a8",
       "license": "apache-2.0",
       "memory_gib": 5,
-      "context": 4096,
+      "context": 8192,
       "url": "https://huggingface.co/mradermacher/Huihui-gemma-4-E2B-it-abliterated-GGUF/resolve/5a6514c29dea768a06908b509a5027ec7f084028/Huihui-gemma-4-E2B-it-abliterated.Q4_K_M.gguf"
     },
     {
@@ -27,7 +27,7 @@
       "sha256": "d793116ec11cacac0228e7c907a40e9765969d76dd45708f0f638df008718f87",
       "license": "apache-2.0",
       "memory_gib": 8,
-      "context": 4096,
+      "context": 8192,
       "url": "https://huggingface.co/mradermacher/Huihui-gemma-4-E4B-it-abliterated-GGUF/resolve/8cf05b48c08d09b5f5601169fc639e8b7425bddf/Huihui-gemma-4-E4B-it-abliterated.Q4_K_M.gguf"
     },
     {

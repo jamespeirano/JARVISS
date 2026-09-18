@@ -1,6 +1,7 @@
 import re
 import hashlib
 import math
+import threading
 from collections import Counter
 from functools import lru_cache
 from datetime import datetime, timezone
@@ -8,16 +9,32 @@ from pathlib import Path
 from .storage import DATA, RESOURCES, read_json, write_json
 
 
+_LIBRARY = threading.Lock()  # Imports arrive on separate request threads.
+
+
+def _store(title, text):
+    with _LIBRARY:
+        docs = read_json(DATA/'library.json',[])
+        same = [d for d in docs if d['title'] == title]
+        if same and same[0]['text'] != text:
+            # Two manuals can share a file name (manual.pdf for different models);
+            # keep both rather than silently overwriting one with the other.
+            stem, suffix = re.match(r'^(.*?)((?:\.(?:txt|md|pdf))?)$', title, re.I).groups()
+            titles = {d['title'] for d in docs}
+            title = next(t for n in range(2, len(docs)+3) if (t := f'{stem} ({n}){suffix}') not in titles)
+            same = []
+        docs = [d for d in docs if d not in same]
+        if len(docs) >= 30: raise ValueError('The library has reached 30 documents.')
+        docs.append({'title':title,'imported_at':datetime.now(timezone.utc).isoformat(),'text':text})
+        write_json(DATA/'library.json',docs)
+    return title
+
+
 def import_note(title,text):
     title=str(title).strip();text=str(text).strip()
     if not title or len(title)>120:raise ValueError('Enter a document name of up to 120 characters.')
     if not text or len(text)>2000000:raise ValueError('Enter document text of up to 2 million characters.')
-    docs=read_json(DATA/'library.json',[])
-    docs=[d for d in docs if d['title']!=title]
-    if len(docs)>=30:raise ValueError('The library has reached 30 documents.')
-    docs.append({'title':title,'imported_at':datetime.now(timezone.utc).isoformat(),'text':text})
-    write_json(DATA/'library.json',docs)
-    return title
+    return _store(title, text)
 
 
 def import_text(path):
@@ -28,21 +45,20 @@ def import_text(path):
         raise ValueError('Use files smaller than 30 MB.')
     if path.suffix.lower()=='.pdf':
         from pypdf import PdfReader
-        pdf=PdfReader(path)
-        if pdf.is_encrypted: raise ValueError('This PDF is locked. Add an unlocked copy.')
-        if len(pdf.pages)>500: raise ValueError('Use a PDF with 500 pages or fewer.')
-        text='\n\n'.join(f'Page {i+1}\n'+(page.extract_text() or '') for i,page in enumerate(pdf.pages))
+        try:
+            pdf=PdfReader(path)
+            if pdf.is_encrypted: raise ValueError('This PDF is locked. Add an unlocked copy.')
+            if len(pdf.pages)>500: raise ValueError('Use a PDF with 500 pages or fewer.')
+            text='\n\n'.join(f'Page {i+1}\n'+(page.extract_text() or '') for i,page in enumerate(pdf.pages))
+        except ValueError: raise
+        except Exception as error:  # pypdf raises its own classes for damaged files.
+            raise ValueError('This PDF could not be read. Export it again, or add the words with Docs → Paste text.') from error
         if len(re.sub(r'Page \d+|\s','',text))<30: raise ValueError('This PDF contains pictures without readable text. Use Docs → Paste text to add the words you can read.')
     else:
-        text = path.read_text(encoding='utf-8-sig')
+        try: text = path.read_text(encoding='utf-8-sig')
+        except UnicodeDecodeError: text = path.read_text(encoding='cp1252', errors='replace')  # Older Notepad exports
     if len(text)>2000000: raise ValueError('Use a shorter document or split it into chapters.')
-    docs = read_json(DATA / 'library.json', [])
-    docs = [d for d in docs if d['title'] != path.name]
-    if len(docs) >= 30:
-        raise ValueError('The library has reached 30 documents.')
-    docs.append({'title': path.name, 'imported_at': datetime.now(timezone.utc).isoformat(), 'text': text})
-    write_json(DATA / 'library.json', docs)
-    return path.name
+    return _store(path.name, text)
 
 
 @lru_cache(maxsize=1)
@@ -60,18 +76,22 @@ def references():
 
 def sections(text):
     result = []
-    occurrences = Counter()
-    heading, body, parents = 'Overview', [], {}
+    seen = Counter()
+    heading, body, parents, fenced = 'Overview', [], {}, False
     def finish():
         value = '\n'.join(body).strip()
         if value:
-            # Adding another chapter must not invalidate saved chat links.
-            anchor = hashlib.sha256((heading + str(occurrences[heading])).encode()).hexdigest()[:12]
-            occurrences[heading] += 1
+            # The id follows the section's own words, so adding or moving other
+            # chapters never invalidates saved chat links; only exact duplicates
+            # (same heading and text) get an occurrence suffix to stay distinct.
+            key = heading + '\n' + ' '.join(value.split())
+            anchor = hashlib.sha256((key + (str(seen[key]) if seen[key] else '')).encode()).hexdigest()[:12]
+            seen[key] += 1
             result.append({'id': anchor, 'heading': heading, 'text': value,
                            'path': list(parents.values()) or [heading]})
     for line in text.splitlines():
-        match = re.match(r'^(#{1,3}) ', line)
+        if re.match(r'^ {0,3}(```|~~~)', line): fenced = not fenced
+        match = None if fenced else re.match(r'^(#{1,3}) ', line)  # "# comment" inside a code block is not a heading
         if match:
             finish(); heading = line.lstrip('# ').strip(); body = []
             level = len(match[1])
@@ -138,6 +158,11 @@ def _chunks(section, maximum=2400):
         yield '\n\n'.join(current)
 
 
+def _indexed(chunk):
+    """A chunk with its token counts, so unchanged documents are never re-tokenized per chat."""
+    return chunk, Counter(_tokens(chunk['text'])), set(_tokens(chunk['heading'])), set(_tokens(chunk['title']))
+
+
 @lru_cache(maxsize=1)
 def _reference_chunks():
     chunks = []
@@ -146,23 +171,48 @@ def _reference_chunks():
             continue
         for section in doc['sections']:
             for text in _chunks(section):
-                chunks.append({'id': doc['id'], 'section': section['id'], 'title': doc['title'],
+                chunks.append(_indexed({'id': doc['id'], 'section': section['id'], 'title': doc['title'],
                     'heading': section['heading'], 'text': text, 'url': doc['url'],
                     'imported_at': doc['reviewed'], 'priority': doc.get('priority', 1),
-                    'status': f"{doc['publisher']}; {doc['date']}. {doc.get('note', '')}".strip()})
+                    'status': f"{doc['publisher']}; {doc['date']}. {doc.get('note', '')}".strip()}))
     return chunks
+
+
+def _document_chunks(doc):
+    return [_indexed({'title':doc['title'], 'heading':section['heading'], 'imported_at':doc.get('imported_at',''),
+                      'text':text, 'status':'User-supplied reference; not independently verified.'})
+            for section in sections(doc['text']) for text in _chunks(section)]
+
+
+@lru_cache(maxsize=1)
+def _recovery_chunks():
+    recovery = RESOURCES / 'collective-recovery.md'
+    if not recovery.exists(): return []
+    return _document_chunks({'title': 'Regroup and rebuild', 'imported_at': 'Bundled planning draft',
+                             'text': recovery.read_text(encoding='utf-8')})
+
+
+_USER = {}  # Parsed library.json, keyed on the file's identity: imports rewrite it, chats only read it.
+
+
+def _library_chunks():
+    path = DATA / 'library.json'
+    try: info = path.stat()
+    except OSError: return []
+    key = (str(path), info.st_mtime_ns, info.st_size)
+    with _LIBRARY:
+        if _USER.get('key') != key:
+            _USER['chunks'] = [c for doc in read_json(path, []) for c in _document_chunks(doc)]
+            _USER['key'] = key
+        return _USER['chunks']
 
 
 def retrieve(question, docs=None, limit=3, budget=5600):
     if docs is None:
-        docs = read_json(DATA / 'library.json', [])
-        recovery = RESOURCES / 'collective-recovery.md'
-        if recovery.exists():
-            docs = docs + [{'title': 'Regroup and rebuild',
-                            'imported_at': 'Bundled planning draft',
-                            'text': recovery.read_text(encoding='utf-8')}]
-        bundled = list(_reference_chunks())
+        chunks = _library_chunks() + _recovery_chunks()
+        bundled = _reference_chunks()
     else:
+        chunks = [c for doc in docs for c in _document_chunks(doc)]
         bundled = []
     words = set(_tokens(question))
     # A shared fault code must not retrieve a different equipment model's manual.
@@ -171,22 +221,15 @@ def retrieve(question, docs=None, limit=3, budget=5600):
     models={w for w in words if re.fullmatch(r'[a-z]+\d+[a-z0-9]*',w)
             and not re.fullmatch(r'e\d+',w) and w not in fault_codes}
     if models:
-        docs=[d for d in docs if models & set(_tokens(d['title']+' '+d['text']))]
-        bundled=[d for d in bundled if models & set(_tokens(d['title']+' '+d['text']))]
-    chunks = bundled
-    for doc in docs:
-        for section in sections(doc['text']):
-            for chunk in _chunks(section):
-                chunks.append({'title':doc['title'], 'heading':section['heading'],
-                    'imported_at':doc.get('imported_at',''), 'text':chunk,
-                    'status':'User-supplied reference; not independently verified.'})
-    counts = [Counter(_tokens(c['text'])) for c in chunks]
-    frequencies = Counter(w for c in counts for w in c)
-    average = sum(sum(c.values()) for c in counts) / max(1,len(counts))
+        # A user manual is kept whole: any chunk naming the model keeps the entire document.
+        titles={c['title'] for c,terms,heading,title in chunks if models & (terms.keys()|heading|title)}
+        chunks=[item for item in chunks if item[0]['title'] in titles]
+        bundled=[item for item in bundled if models & (item[1].keys()|item[3])]
+    chunks = bundled + chunks
+    frequencies = Counter(w for _, terms, *_ in chunks for w in terms)
+    average = sum(sum(terms.values()) for _, terms, *_ in chunks) / max(1,len(chunks))
     scored = []
-    for chunk, terms in zip(chunks, counts):
-        heading = set(_tokens(chunk['heading']))
-        title = set(_tokens(chunk['title']))
+    for chunk, terms, heading, title in chunks:
         matched = words & (terms.keys() | heading | title)
         if not matched:
             continue

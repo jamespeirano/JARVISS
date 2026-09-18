@@ -27,6 +27,7 @@ Straight-line distance is labeled separately from walking miles. Gaps between th
 
 - `local-maps/us-z15.pmtiles`, `manifest.json`, `us-coverage.geojson`: independent copy of the local CRM Protomaps archive, with source and snapshot metadata.
 - `local-maps/routing-us/`: all routing graph files, per-file receipts, and completion manifest. Missing/truncated files prevent a ready status. Partial downloads resume with checked HTTP byte ranges. Completed files are retained. Local SHA-256 hashes are recorded; these are not provider-signed checksums.
+- Integrity: neither provider publishes checksums, so the hashes recorded at download time are the only reference. Startup only compares the basemap size with its manifest and reports a difference on the Maps tab; **Check setup** on a complete install re-hashes the basemap and every routing tile against those records (pausable, shown as “Checking US map files… N%”), deletes anything that no longer matches or lacks a receipt, and downloads only those files again.
 - `runtime/brouter/`: pinned BRouter release and platform-specific Temurin Java 21 runtime, whose download is checked against the publisher's SHA-256.
 - `resources/routing/`: versioned walking profile, lookup schema, coverage and BRouter license, included in packaged backend resources.
 - `local-data/map-index/`: city/town index rebuilt entirely from the archive, offline.

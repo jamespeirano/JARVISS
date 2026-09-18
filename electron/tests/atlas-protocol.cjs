@@ -14,6 +14,9 @@ const {atlasHandler}=require('../atlas-protocol.cjs');
   r=await request('/archive.pmtiles',null,'POST');assert.equal(r.status,405);
   r=await request('/..%2f..%2fprivate.txt');assert.equal(r.status,404);
   r=await request('/missing.pbf');assert.equal(r.status,404);
-  console.log('PASS: local byte ranges, HEAD, invalid ranges, unavailable assets and traversal protection');
+  fs.writeFileSync(path.join(dir,'empty.json'),'');
+  r=await request('/empty.json');assert.equal(r.status,200);assert.equal(r.headers.get('content-length'),'0');assert.equal(await r.text(),'');
+  r=await request('/empty.json','bytes=0-');assert.equal(r.status,416);
+  console.log('PASS: local byte ranges, HEAD, invalid ranges, empty files, unavailable assets and traversal protection');
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 })().catch(e=>{console.error(e);process.exitCode=1;});

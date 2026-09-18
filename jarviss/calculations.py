@@ -60,8 +60,9 @@ def supply_duration(question):
         count = Decimal(1)
     total = daily * count
     days = available / total
-    def number(value):
-        return format(value, '.2f').rstrip('0').rstrip('.')
+    def number(value, places=2):
+        return format(value, f'.{places}f').rstrip('0').rstrip('.')
     approximate = 'About ' if days != Decimal(format(days, '.2f')) else ''
-    usage_calculation = f'{number(count)} × {number(daily)}' if per_person else number(daily)
+    # Small rations (5 g of salt a day) must not display as "÷ (0 per day)".
+    usage_calculation = f'{number(count)} × {number(daily, 6)}' if per_person else number(daily, 6)
     return f'{approximate}{number(days)} days. {number(available)} ÷ ({usage_calculation} per day) = {number(days)} days.'

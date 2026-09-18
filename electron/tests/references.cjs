@@ -64,6 +64,12 @@ service.main()
     assert.equal(words(shown),words(source),`${entry.id}: all words and quantities must survive formatting (${doc.sections[i].heading})`);
    }
    assert.equal(await page.locator('#reference-text details').count(),0,'No collapsed advice');
+   // A page cited only by number takes its first sub-heading as the jump-menu title.
+   for(const [id,heading,title] of [['army-navigation','7-3 · PDF page 155','Desert Movement'],['army-shelter','6-2 · PDF page 136','SHELTER CONSIDERATIONS']]){
+    if(entry.id!==id)continue;
+    const bare=doc.sections.find(s=>s.heading===heading);assert.ok(bare,`${id} still has ${heading}`);
+    assert.equal(await page.locator(`#reference-section-list button[data-target="reference-${id}-${bare.id}"]`).textContent(),`${title} · ${heading}`);
+   }
    if(process.env.JARVISS_UX_SCREENSHOTS&&['fda-food-flood','cdc-respirators','fema-preparedness','cert-4'].includes(entry.id)){
     const target=entry.id==='cert-4'?doc.sections.find(s=>s.text.includes('1. Head;')):entry.id==='fema-preparedness'?doc.sections.find(s=>s.heading==='PDF page 10'):null;
     if(target)await page.evaluate(({id,section})=>openReference(id,section),{id:entry.id,section:target.id});
@@ -185,7 +191,12 @@ service.main()
   await latestViewer.close();
   console.log('PASS three real offline PDFs, first/middle/last cited pages, cover opening, close/reopen and rapid requests');
   // Stale saved citation remains understandable, and untrusted text stays literal.
-  await page.evaluate(()=>openReference('field-water','removed-section'));
+  const water=await page.evaluate(()=>window.jarviss.command('reference',{id:'field-water'})),cited=water.sections[1];
+  await page.evaluate(heading=>openReference('field-water','removed-section',heading),cited.heading);
+  await page.locator('.reference-selected').waitFor();
+  assert.equal(await page.locator('.reference-selected').getAttribute('data-section'),cited.id,'A stale section id must fall back to the cited heading');
+  assert.equal(await page.locator('#reference-link-status').isVisible(),false);
+  await page.evaluate(()=>openReference('field-water','removed-section','No such heading'));
   assert.equal(await page.locator('#reference-link-status').isVisible(),true);
   assert.ok(await page.locator('#reference-text > section').count());
   const escaped=await page.evaluate(()=>{

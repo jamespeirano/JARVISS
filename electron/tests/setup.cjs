@@ -36,7 +36,7 @@ def voice(progress):
 setup.prepare_voice=voice
 def basemap(progress,cancel=None):
  while (ROOT/'hold-map').exists():
-  progress('US map: downloading');time.sleep(.03)
+  progress('US map · 12%');time.sleep(.03)
  return ROOT/'fixture.pmtiles'
 setup.prepare_basemap=basemap
 def routing(progress):
@@ -115,7 +115,7 @@ service.main()
   assert.match(await page.locator('#setup-warning').innerText(),/Download interrupted/);
   fs.unlinkSync(path.join(test,'fail'));fs.writeFileSync(path.join(test,'hold-map'),'');
   await page.locator('#setup-download').click();
-  await page.waitForFunction(()=>document.querySelector('#setup-detail').textContent==='US map: downloading');
+  await page.waitForFunction(()=>document.querySelector('#setup-detail').textContent==='US map · 12%');
   await page.locator('#setup-later').click();
   await page.waitForFunction(()=>!document.querySelector('#send').disabled);
   await page.locator('#question').fill('Hello Jarvis');await page.locator('#send').click();
@@ -124,7 +124,12 @@ service.main()
   assert.equal(await page.locator('#city-search-form button').isDisabled(),true);
   assert.match(await page.locator('#location-search-status').innerText(),/Map not ready/);
   await page.locator('#map-view-setup').click();
+  // An unfinished basemap extract restarts from zero, so the first click only asks.
   await page.locator('#setup-pause').click();
+  assert.equal(await page.locator('#setup-pause').innerText(),'Restart map later? Pause anyway');
+  await page.waitForTimeout(150);assert.equal(await page.locator('#setup-pause').innerText(),'Restart map later? Pause anyway','Progress ticks must not clear the confirmation');
+  assert.equal(await page.locator('#status').innerText(),'Ready');assert.notEqual(await page.locator('#setup-download').innerText(),'Continue setup','The first click must not pause');
+  await page.locator('#setup-pause').focus();await page.keyboard.press('Enter');
   await page.waitForFunction(()=>document.querySelector('#setup-download').textContent==='Continue setup');
   assert.equal(await page.locator('#status').innerText(),'Ready','Pause must keep the validated model running');
   await app.close();
@@ -143,6 +148,6 @@ service.main()
   const model=JSON.parse(fs.readFileSync(path.join(test,'data/settings.json'))).model;
   fs.unlinkSync(path.resolve(test,model));
   await page.reload();await page.locator('#setup').waitFor({state:'visible'});
-  console.log('PASS: startup hides chat, fresh setup first, explicit skip, failed setup/relaunch/retry, missing model recovery, recommendation, low storage, two window sizes, pause/reload, all components, unchanged conversation');
+  console.log('PASS: startup hides chat, fresh setup first, explicit skip, failed setup/relaunch/retry, missing model recovery, recommendation, low storage, two window sizes, pause/reload, basemap pause confirmation, all components, unchanged conversation');
  }finally{fs.writeFileSync(path.join(test,'release'),'');fs.rmSync(path.join(test,'hold-map'),{force:true});if(app)await app.close();fs.rmSync(test,{recursive:true,force:true});}
 })().catch(e=>{console.error(e);process.exitCode=1;});

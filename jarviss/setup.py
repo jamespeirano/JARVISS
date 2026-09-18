@@ -3,20 +3,41 @@ import hashlib
 import ssl
 import threading
 import time
+import traceback
 import urllib.error
 from pathlib import Path
-from .storage import ROOT, DATA, MODELS, RESOURCES, read_json, write_json, portable_path
-from .hardware import inspect, recommend, GIB
-from .assets import prepare_runtime, prepare_voice, VOICE_NAME
-from .map_setup import prepare_basemap, prepare_routing, download_file, remaining_bytes, SEGMENTS_URL
+from .storage import ROOT, DATA, MODELS, RESOURCES, read_json, write_json, portable_path, model_path
+from .hardware import inspect, recommend, GIB, gb
+from .assets import prepare_runtime, prepare_voice, VOICE_NAME, find_server
+from .map_setup import prepare_basemap, prepare_routing, verify_us, basemap_path, download_file, remaining_bytes, SEGMENTS_URL
 
 
-class SetupPaused(Exception):
-    pass
+class SetupPaused(RuntimeError):  # A pause is expected, not a defect, when reported to the UI.
+    def __init__(self, message='Download paused. Continue from setup to reuse saved files.', note=''):
+        super().__init__(message+note); self.note = note
+
+
+# The llama runtime archive plus the voice zip while its copy is extracted.
+TRANSIENT_BYTES = 400_000_000
 
 
 def model_catalog():
-    return read_json(RESOURCES / 'model-catalog.json', {})['models']
+    catalog = read_json(RESOURCES / 'model-catalog.json', {})
+    models = catalog.get('models') if isinstance(catalog, dict) else None
+    if not isinstance(models, list) or not models:
+        raise RuntimeError('The model catalog is missing or damaged. Reinstall Jarvis to restore its resources.')
+    return models
+
+
+def friendly(error):
+    if isinstance(error, ssl.SSLCertVerificationError) or (
+            isinstance(error, urllib.error.URLError) and isinstance(error.reason, ssl.SSLCertVerificationError)):
+        return RuntimeError('Could not verify the download server. Check this computer’s date and internet connection, then retry.')
+    if not str(error):
+        # A bare StopIteration (release asset or map build missing) must not show an empty warning.
+        traceback.print_exc()
+        return RuntimeError(f'Setup stopped at an unexpected {type(error).__name__}. Details are in service.log.')
+    return error
 
 
 def choose(model_id):
@@ -80,9 +101,10 @@ class Setup:
             if len(files) == len(manifest['files']):
                 routing_bytes = sum(remaining_bytes(directory/'segments4'/f['name'],SEGMENTS_URL+f['name'],f['size']) for f in files)
         shared_bytes = (0 if basemap else 21_000_000_000) + routing_bytes + (0 if voice else 520_000_000)
+        required = model_bytes+shared_bytes+2*GIB + (0 if voice and find_server() else TRANSIENT_BYTES)
         return {'hardware':hardware, 'models':rows, 'recommended':recommended, 'selected':selected,
-                'download_bytes':model_bytes+shared_bytes, 'required_bytes':model_bytes+shared_bytes+2*GIB,
-                'space_ok':hardware['disk'] >= model_bytes+shared_bytes+2*GIB,
+                'download_bytes':model_bytes+shared_bytes, 'required_bytes':required,
+                'space_ok':hardware['disk'] >= required,
                 'components':{'model':row['installed'], 'voice':voice, 'map':basemap, 'directions':routing, 'guides':True},
                 'directory':str(ROOT), 'run':self.snapshot()}
 
@@ -95,17 +117,40 @@ class Setup:
         self.info.update(detail=text)
         self.service.setup_progress()
 
+    def restore(self, settings, replaced, running):
+        """Put the previous selection back in memory, on disk and, if it was running, in service."""
+        self.service.settings.update({k:v for k,v in settings.items() if k in ('model','model_id','gpu_layers','model_context')})
+        write_json(DATA / 'settings.json', self.service.settings)
+        if not replaced: return ''
+        self.service.model.stop()
+        if not running or not settings.get('model'): return ''
+        try:
+            self.service.model.start(model_path(settings['model']), settings.get('gpu_layers','auto'), context=settings.get('model_context',8192))
+            self.service.ready = True
+            return ''
+        except Exception as error:
+            traceback.print_exc()
+            return f' The previous model did not restart: {error}'
+
+    def complete(self):
+        try: return bool(self.service.archive and self.service.us_router.status()['ready'] and self.service.state()['voiceReady'])
+        except Exception:
+            # An unreadable component counts as missing; the validated model stays usable.
+            traceback.print_exc(); return False
+
     def run(self, model_id, only_model=False, background=None):
+        choose(model_id)
         plan = self.plan(model_id)
         row = next(r for r in plan['models'] if r['id'] == model_id)
         if not row['fits']: raise ValueError(row['reason'])
         needed = (0 if row['installed'] else row['bytes'])+2*GIB if only_model else plan['required_bytes']
         if plan['hardware']['disk'] < needed:
-            raise ValueError(f'Free at least {needed/GIB:.1f} GB in the data folder before downloading.')
+            raise ValueError(f'Free at least {gb(needed)} in the data folder before downloading.')
         self.cancel.clear()
         self.save(status='downloading', model_id=model_id, stage=0, detail='Preparing files', error=None, model_ready=False)
         previous_settings = dict(self.service.settings)
-        validated = False
+        previous_running = bool(self.service.ready)
+        validated = replaced = False
         try:
             prepare_runtime(self.progress)
             self.save(stage=1); self.progress('Downloading model')
@@ -117,7 +162,7 @@ class Setup:
             self.save(status='testing', stage=2)
             self.service.voice.pause()
             self.service.ready = False
-            self.service.model.stop()
+            self.service.model.stop(); replaced = True
             if not only_model:
                 self.progress('Checking voice files')
                 self.service.voice.prepare_tts()
@@ -137,6 +182,10 @@ class Setup:
             if background: background()
             if not only_model:
                 self.save(stage=3); self.progress('Preparing US map and walking directions')
+                if self.service.archive and self.service.us_router.status()['ready']:
+                    # Only an explicit Check setup on a complete install re-hashes the map data; a first run never does.
+                    if basemap_path() in verify_us(self.progress):
+                        self.service.swap_map(archive=None, location_index=None, archive_error='The saved US map failed verification and is being downloaded again.')
                 if not self.service.archive:
                     archive = prepare_basemap(self.progress, cancel=self.cancel)
                     self.service.command('import_basemap', {'path':str(archive)})
@@ -144,26 +193,21 @@ class Setup:
                 prepare_routing(self.progress)
                 from .us_routing import USRouter
                 self.service.us_router = USRouter()
-            full = bool(self.service.archive and self.service.us_router.status()['ready'] and self.service.state()['voiceReady'])
+            full = self.complete()
             self.save(status='ready' if full else 'model_ready', stage=5, seconds=round(elapsed,1),
                       detail='Ready offline' if full else 'Model is ready', error=None)
             return self.plan(model_id)
-        except SetupPaused:
-            if self.info.get('status') == 'testing': self.service.model.stop()
-            detail = 'Setup paused. Continue to reuse downloaded files.'
-            if (ROOT/'local-maps/us-z15.partial').exists():
-                detail += ' The unfinished US map must restart; other files are kept.'
-            self.save(status='paused', detail=detail)
+        except SetupPaused as paused:
+            note = '' if validated else self.restore(previous_settings, replaced, previous_running)
+            self.save(status='paused', detail='Setup paused. Continue to reuse downloaded files.'+paused.note+note)
             return self.plan(model_id)
         except Exception as error:
+            error = friendly(error)
+            if self.info.get('status') in ('ready','model_ready'):
+                # Everything is installed and the model answers; only the closing summary failed.
+                self.save(error=f'Setup finished, but its summary could not be refreshed: {error}')
+                raise RuntimeError(self.info['error'])
             # Keep the user's last selected model if validation of the new one failed.
-            if not self.service.ready: self.service.model.stop()
-            if not validated:
-                self.service.settings.update({k:v for k,v in previous_settings.items() if k in ('model','model_id','gpu_layers','model_context')})
-            if isinstance(error, ssl.SSLCertVerificationError) or (
-                    isinstance(error, urllib.error.URLError) and isinstance(error.reason, ssl.SSLCertVerificationError)):
-                error = RuntimeError('Could not verify the download server. Check this computer’s date and internet connection, then retry.')
-                self.save(status='failed', error=str(error), detail='Setup stopped. Retry to reuse downloaded files.')
-                raise error
-            self.save(status='failed', error=str(error), detail='Setup stopped. Retry to reuse downloaded files.')
-            raise
+            note = '' if validated else self.restore(previous_settings, replaced, previous_running)
+            self.save(status='failed', error=str(error), detail='Setup stopped. Retry to reuse downloaded files.'+note)
+            raise error

@@ -31,8 +31,24 @@ function renderOperation(){
  $('#status-dot').classList.toggle('working',waiting);
  renderVoiceActivity(waiting);
  $('#model-setup-status').textContent=active?`${label}. ${remoteOperation?.progress||'Please wait for this operation to finish.'}`:state.ready?'Model is running locally.':state.settings?.model?state.modelAvailable===false?'The selected model file is missing. Choose an existing GGUF or prepare the model again.':'Model selected. Ready to start.':'Choose an existing GGUF or prepare the model and voice files first.';
- if(remoteOperation?.progress)$('#progress').textContent=remoteOperation.progress;
+ if(remoteOperation?.progress){$('#progress').textContent=remoteOperation.progress;if(remoteOperation.method==='download_us_maps')$('#map-progress').textContent=remoteOperation.progress;}
+ renderMapPause();
 }
+// A basemap extract cannot resume, so a pause during that phase asks once before discarding it.
+function pauseButton(button,{onPause,onPaused}={}){
+ button.onclick=async()=>{
+  if(button.dataset.phase==='basemap'&&!button.dataset.confirm){button.dataset.confirm='1';button.textContent='Restart map later? Pause anyway';return;}
+  button.disabled=true;delete button.dataset.confirm;button.textContent='Pausing…';button.dataset.pausing='1';onPause?.();
+  try{await call('setup_pause');}catch{}
+ };
+ return (active,basemap)=>{ // Reset when the operation ends or the extract phase moves on, never mid-pause.
+  button.hidden=!active;button.dataset.phase=basemap?'basemap':'';
+  if(!active&&button.dataset.pausing){delete button.dataset.pausing;onPaused?.();} // A reloaded window gets no reply for the paused request.
+  if(!active||(button.dataset.confirm&&!basemap)){button.disabled=false;button.textContent='Pause';delete button.dataset.confirm;}
+ };
+}
+const syncMapPause=pauseButton($('#map-pause'),{onPaused:()=>{$('#map-progress').textContent='Download paused.';}});
+function renderMapPause(){syncMapPause((pendingMethod||remoteOperation?.method)==='download_us_maps',/^US map ·/.test($('#map-progress').textContent));}
 function renderVoiceActivity(waiting=(pendingMethod||remoteOperation?.method)==='chat'&&!chatFinished){
  const generating=voice&&waiting&&!['Preparing speech','Speaking'].includes(voicePhase);
  $('#voice-badge').textContent=generating?'GENERATING RESPONSE…':voicePhase.toUpperCase();
@@ -47,8 +63,9 @@ function mapFullscreen(enabled){
 }
 $('#map-fullscreen').onclick=async()=>{const button=$('#map-fullscreen'),enabled=!document.body.classList.contains('map-fullscreen');button.disabled=true;try{await window.jarviss.mapFullscreen(enabled);mapFullscreen(enabled);}catch(e){error(e);}finally{button.disabled=false;}};
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.body.classList.contains('map-fullscreen')){window.jarviss.mapFullscreen(false).then(()=>mapFullscreen(false)).catch(error);}});
+const errorText=e=>(e.message||String(e)).replace(/^Error invoking remote method '[^']+': (?:Error: )?/,'');
 function error(e){
- const text=(e.message||String(e)).replace(/^Error invoking remote method '[^']+': (?:Error: )?/,'');
+ const text=errorText(e);
  if($('#startup').classList.contains('visible')){
   $('#error').hidden=true;
   $('#startup-message').textContent=text==='Operation timed out. Check Settings.'?'Connecting took too long. Try again.':text;
@@ -73,7 +90,7 @@ async function call(method,args){
 }
 function page(name){pageSequence++;if(name!=='atlas'&&document.body.classList.contains('map-fullscreen')){window.jarviss.mapFullscreen(false).catch(error);mapFullscreen(false);}document.body.classList.toggle('setup-screen',name==='setup'||name==='startup');document.querySelectorAll('.page').forEach(el=>el.classList.toggle('visible',el.id===name));document.querySelectorAll('[data-page]').forEach(el=>el.classList.toggle('selected',el.dataset.page===(name==='reference-reader'?'docs':name)));if(name==='atlas'){draw();window.offlineAtlas?.resize();}}
 document.querySelectorAll('[data-page]').forEach(el=>el.onclick=()=>page(el.dataset.page));
-function message(role,text,references=[]){const node=document.createElement('div');node.className='message '+role;const label=document.createElement('span');label.className='speaker';label.textContent=role==='user'?'YOU':'JARVISS';node.append(label,document.createTextNode(text));if(references.length){const sources=document.createElement('div');sources.className='answer-references';const heading=document.createElement('small');heading.textContent='Reference passages';sources.append(heading);for(const ref of references){const button=document.createElement('button');button.textContent=ref.title+' · '+ref.heading;button.onclick=()=>openReference(ref.id,ref.section).catch(error);sources.append(button);}node.append(sources);}$('#messages').insertBefore(node,$('#response-wait'));$('#messages').scrollTop=$('#messages').scrollHeight;document.body.classList.add('has-history');}
+function message(role,text,references=[]){const node=document.createElement('div');node.className='message '+role;const label=document.createElement('span');label.className='speaker';label.textContent=role==='user'?'YOU':'JARVISS';node.append(label,document.createTextNode(text));if(references.length){const sources=document.createElement('div');sources.className='answer-references';const heading=document.createElement('small');heading.textContent='Reference passages';sources.append(heading);for(const ref of references){const button=document.createElement('button');button.textContent=ref.title+' · '+ref.heading;button.onclick=()=>openReference(ref.id,ref.section,ref.heading).catch(error);sources.append(button);}node.append(sources);}$('#messages').insertBefore(node,$('#response-wait'));$('#messages').scrollTop=$('#messages').scrollHeight;document.body.classList.add('has-history');}
 function card(title,text,detail){const el=document.createElement('div');el.className='panel';for(const [tag,value] of [['h3',title],['p',text],['small',detail]]){const n=document.createElement(tag);n.textContent=value||'';el.append(n);}return el;}
 function renderState(initial=false){
  if(Object.hasOwn(state,'operation'))remoteOperation=state.operation;remoteSetup=!!state.setupRunning;renderOperation();
@@ -98,10 +115,10 @@ $('#voice-toggle').onclick=async()=>{const button=$('#voice-toggle');voiceStarti
 $('#clear').onclick=async()=>{try{await call('clear');$('#messages').replaceChildren();document.body.classList.remove('has-history');}catch{}};
 $('#start-model').onclick=async()=>{try{await call('start_model',{layers:$('#gpu').value===''?'auto':Number($('#gpu').value),path:state.settings?.model});await refresh();}catch{}};
 $('#choose-model').onclick=async()=>{try{const path=await window.jarviss.pick('model');if(path){state.settings.model=path;$('#model-name').textContent=path;state.modelAvailable=true;renderOperation();}}catch(e){error(e);}};
-for(const [id,method] of [['download-voice','download_voice'],['download-us-maps','download_us_maps']])$('#'+id).onclick=async()=>{const b=$('#'+id);b.disabled=true;try{await call(method,{});$('#progress').textContent='Download complete.';if(method==='download_us_maps')$('#map-progress').textContent='US map and walking directions are ready offline.';await refresh();}catch{}finally{renderOperation();}};
+for(const [id,method] of [['download-voice','download_voice'],['download-us-maps','download_us_maps']])$('#'+id).onclick=async()=>{const b=$('#'+id);b.disabled=true;try{await call(method,{});$('#progress').textContent='Download complete.';if(method==='download_us_maps')$('#map-progress').textContent='US map and walking directions are ready offline.';await refresh();}catch(e){if(method==='download_us_maps')$('#map-progress').textContent=errorText(e);}finally{renderOperation();}};
 $('#import-document').onclick=async()=>{try{await window.jarviss.pick('document');await refresh();}catch(e){error(e);}};
 $('#map-search').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(places,180);};
-let searchSequence=0,locationSequence=0,locationCenter=null;
+let searchSequence=0,locationSequence=0,locationCenter=null,placesKey=null;
 const miles=m=>`${(m/1609.344).toFixed(2)} miles (${Math.round(m).toLocaleString()} m)`;
 function renderRoute(){
  const container=$('#route-info');container.replaceChildren();
@@ -141,8 +158,11 @@ function renderAtlas(){
 }
 async function places(){
  const sequence=++searchSequence;
- if(!state.basemap&&!state.map){$('#places').textContent='Map not ready. Open setup to download it or check progress.';return;}
- if(!state.profile||state.profile.lat===''||state.profile.lat==null){$('#places').textContent='Set your position to search nearby.';return;}
+ if(!state.basemap&&!state.map){placesKey=null;$('#places').textContent='Map not ready. Open setup to download it or check progress.';return;}
+ if(!state.profile||state.profile.lat===''||state.profile.lat==null){placesKey=null;$('#places').textContent='Set your position to search nearby.';return;}
+ // Background refreshes must not re-query and replace result ids a user is about to route to.
+ const key=JSON.stringify([$('#map-search').value,state.profile.lat,state.profile.lon,state.basemap?.path,state.basemap?.enabled,state.map?.label]);
+ if(key===placesKey)return;placesKey=key;
  $('#places').textContent='Searching local map…';
  try{
   const rows=await call('nearest',{query:$('#map-search').value});if(sequence!==searchSequence)return;
@@ -158,7 +178,7 @@ async function places(){
    const walk=document.createElement('button');walk.textContent='Directions';walk.onclick=async()=>{route=null;renderRoute();try{route=await call('route',{id:p.id});renderRoute();draw();}catch{route=null;renderRoute();draw();}};
    actions.append(show,walk);item.append(title,info,coords,actions);$('#places').append(item);
   }
- }catch{}
+ }catch{if(sequence===searchSequence){placesKey=null;$('#places').textContent='Nearby search did not finish. Check the message above.';}}
 }
 $('#find-location').onclick=()=>{$('#location-picker').open=true;$('#city-search').focus();};
 $('#locate-this-view').onclick=()=>{locationCenter=window.offlineAtlas?.viewCenter();$('#location-area-name').textContent=locationCenter?'Searching the area currently shown · not your saved position':'Choose a basemap first.';$('#landmark-search').focus();};
@@ -207,7 +227,7 @@ window.jarviss.subscribe(({event,data})=>{
  window.jarvisState?.(event,data);
  if(event==='setup'){const milestone=data.model_ready&&!state.setup?.model_ready||data.mapReady&&!state.basemap;remoteSetup=!!data.running;state.setup=data;if(data.modelReady)state.ready=true;renderOperation();window.setupProgress?.(data.detail);$('#progress').textContent=data.detail||'';if(data.stage>=3)$('#map-progress').textContent=data.detail||'';if(!remoteSetup||milestone)refresh().then(()=>window.refreshSetup?.()).catch(()=>{});}
  if(event==='operation'){setupStarting=false;const completed=remoteOperation?.method;if(data?.method==='chat'&&completed!=='chat')chatFinished=false;remoteOperation=data;renderOperation();if(!data&&!pendingMethod&&(completed?.startsWith('download')||completed==='start_model'||completed==='setup_run')){refresh().catch(()=>{});if(completed==='setup_run')window.refreshSetup?.();}}
- if(event==='status'){if(data==='Ready'||data==='Model not started'){state.ready=data==='Ready';if(remoteOperation?.legacy){remoteOperation=null;refresh().catch(()=>{});}}renderOperation();}
+ if(event==='status'){if(data==='Ready'||data==='Model not started')state.ready=data==='Ready';renderOperation();}
  if(event==='voice'){voicePhase=data;if(data==='Voice off'){voice=false;$('#voice-toggle').textContent='Start voice mode';}renderOperation();}
  if(event==='map_fullscreen')mapFullscreen(data);
  if(event==='mic_level')$('#mic-level').value=data;
@@ -216,7 +236,8 @@ window.jarviss.subscribe(({event,data})=>{
  if(event==='answer'){chatFinished=true;renderOperation();message('assistant',data.text,data.references);route=data.route||null;renderRoute();draw();}
  if(event==='voice_preview'){preview=!!data;renderPreview();}
  if(event==='error'){if(data.startsWith('Local service stopped'))remoteOperation=null;error(data);}
- if(event==='progress'){window.setupProgress?.(data);if(!Object.hasOwn(state,'operation')&&!pendingMethod&&!/index/i.test(data)){remoteOperation={method:'download_model',label:'Preparing offline files',progress:data,legacy:true};renderOperation();}$('#progress').textContent=data;if((pendingMethod||remoteOperation?.method)==='download_us_maps')$('#map-progress').textContent=data;if(/index/i.test(data))$('#location-search-status').textContent=data;}
+ // Before the first `state` reply the running operation is unknown; it arrives with that reply.
+ if(event==='progress'){window.setupProgress?.(data);$('#progress').textContent=data;if((pendingMethod||remoteOperation?.method)==='download_us_maps'){$('#map-progress').textContent=data;renderMapPause();}if(/index/i.test(data))$('#location-search-status').textContent=data;}
 });
 let initializing=false;
 async function initialize(){

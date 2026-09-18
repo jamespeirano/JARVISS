@@ -6,7 +6,7 @@
 2. In **Settings → Voice**, select your microphone, speaker and voice. Changes save automatically. Use **Preview voice** to listen; **Stop preview** cancels it.
 3. Start the model, then select **Start voice mode**. Say “stop listening” to pause.
 
-The microphone meter shows input level; partial text shows what Vosk recognizes. Device choices are saved by name and audio host. An unavailable selected device produces an error. Changing audio settings stops the current preview and pauses voice mode.
+The microphone meter shows input level; partial text shows what Vosk recognizes. Device choices are saved by name and audio host. An unavailable selected device produces an error. Previewing a voice only pauses listening while the preview plays; voice mode stays on. Changing audio settings stops the current preview and pauses voice mode.
 
 ## Responses
 

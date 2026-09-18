@@ -7,7 +7,7 @@ import urllib.error
 from pathlib import Path
 from unittest.mock import Mock, patch
 from jarviss.hardware import recommend, GIB
-from jarviss.setup import Setup, SetupPaused, model_catalog, prepare_model, choose
+from jarviss.setup import Setup, SetupPaused, model_catalog, prepare_model, choose, TRANSIENT_BYTES
 from jarviss.storage import read_json
 
 
@@ -126,12 +126,129 @@ class SetupTests(unittest.TestCase):
         self.service.model.chat.return_value='Ready'
         self.service.archive=Mock(path=self.root/'map.pmtiles')
         self.service.us_router.status.return_value={'ready':True};self.service.state.return_value={'voiceReady':True}
-        with patch('jarviss.setup.inspect',return_value=self.hardware()),patch('jarviss.setup.prepare_runtime'),patch('jarviss.setup.prepare_model',return_value=self.root/'new.gguf'),patch('jarviss.setup.prepare_voice'),patch('jarviss.setup.prepare_routing'),patch('jarviss.us_routing.USRouter',return_value=self.service.us_router):
+        with patch('jarviss.setup.inspect',return_value=self.hardware()),patch('jarviss.setup.prepare_runtime'),patch('jarviss.setup.prepare_model',return_value=self.root/'new.gguf'),patch('jarviss.setup.prepare_voice'),patch('jarviss.setup.prepare_routing'),patch('jarviss.us_routing.USRouter',return_value=self.service.us_router), \
+             patch('jarviss.setup.verify_us',return_value=[]) as verify,patch('jarviss.setup.prepare_basemap') as basemap:
             result=self.setup.run('compact')
+        verify.assert_called_once_with(self.setup.progress);basemap.assert_not_called();self.service.swap_map.assert_not_called()
         self.assertEqual(result['run']['status'],'ready');self.assertTrue(self.service.ready)
         self.assertEqual(self.service.settings['model_id'],'compact')
-        self.service.model.start.assert_called_once_with(self.root/'new.gguf','auto',context=4096)
+        self.service.model.start.assert_called_once_with(self.root/'new.gguf','auto',context=choose('compact')['context'])
         self.assertFalse((self.root/'conversation.json').exists())
+
+    def installed(self):
+        self.service.model.chat.return_value='Ready'
+        self.service.archive=Mock(path=self.root/'local-maps'/'us-z15.pmtiles')
+        self.service.us_router.status.return_value={'ready':True};self.service.state.return_value={'voiceReady':True}
+        return [patch('jarviss.setup.inspect',return_value=self.hardware()),patch('jarviss.setup.prepare_runtime'),patch('jarviss.setup.prepare_model',return_value=self.root/'new.gguf'),
+                patch('jarviss.setup.prepare_voice'),patch('jarviss.setup.prepare_routing'),patch('jarviss.us_routing.USRouter',return_value=self.service.us_router)]
+
+    def test_check_setup_replaces_a_map_that_fails_verification(self):
+        patches=self.installed();archive=self.root/'local-maps'/'us-z15.pmtiles'
+        def clear(**fields):
+            self.assertEqual((fields['archive'],fields['location_index']),(None,None));self.assertIn('failed verification',fields['archive_error']);self.service.archive=None
+        self.service.swap_map.side_effect=clear
+        self.service.command.side_effect=lambda method,args:setattr(self.service,'archive',Mock(path=archive))
+        with patch('jarviss.setup.basemap_path',return_value=archive),patch('jarviss.setup.verify_us',return_value=[archive]) as verify, \
+             patch('jarviss.setup.prepare_basemap',return_value=archive) as basemap:
+            for p in patches:p.start();self.addCleanup(p.stop)
+            result=self.setup.run('compact')
+        verify.assert_called_once();basemap.assert_called_once_with(self.setup.progress,cancel=self.setup.cancel)
+        self.service.command.assert_called_once_with('import_basemap',{'path':str(archive)})
+        self.assertEqual(result['run']['status'],'ready')
+
+    def test_first_run_never_hashes_map_data(self):
+        patches=self.installed();self.service.archive=None
+        with patch('jarviss.setup.verify_us') as verify,patch('jarviss.setup.prepare_basemap',return_value=self.root/'map.pmtiles'):
+            for p in patches:p.start();self.addCleanup(p.stop)
+            self.setup.run('compact')
+        verify.assert_not_called()
+
+    def test_pause_during_the_map_extract_says_it_must_restart(self):
+        patches=self.installed();self.service.archive=None
+        with patch('jarviss.setup.prepare_basemap',side_effect=SetupPaused(note=' The unfinished US map must restart; other files are kept.')):
+            for p in patches:p.start();self.addCleanup(p.stop)
+            result=self.setup.run('compact')
+        self.assertEqual(result['run']['status'],'paused');self.assertEqual(result['run']['detail'],'Setup paused. Continue to reuse downloaded files. The unfinished US map must restart; other files are kept.')
+
+    def test_failed_validation_restarts_the_previous_model(self):
+        self.service.ready=True
+        self.service.settings={'model':'previous.gguf','model_id':'balanced','gpu_layers':'auto','model_context':4096}
+        self.service.model.chat.return_value=''
+        with patch('jarviss.setup.inspect',return_value=self.hardware()),patch('jarviss.setup.prepare_runtime'),patch('jarviss.setup.prepare_model',return_value=self.root/'new.gguf'):
+            with self.assertRaisesRegex(ValueError,'did not produce'):self.setup.run('compact',only_model=True)
+        starts=self.service.model.start.call_args_list
+        self.assertEqual(len(starts),2);self.assertEqual(starts[1].args[0].name,'previous.gguf');self.assertEqual(starts[1].kwargs,{'context':4096})
+        self.assertTrue(self.service.ready)
+        self.assertEqual(self.service.settings['model_id'],'balanced')
+        self.assertEqual(read_json(self.root/'settings.json',{})['model_id'],'balanced')
+        self.assertEqual(self.setup.snapshot()['status'],'failed')
+
+    def test_restart_failure_is_reported_and_leaves_chat_stopped(self):
+        self.service.ready=True;self.service.settings={'model':'previous.gguf','model_id':'balanced'}
+        self.service.model.start.side_effect=[RuntimeError('Not enough memory'),RuntimeError('Port busy')]
+        with patch('jarviss.setup.inspect',return_value=self.hardware()),patch('jarviss.setup.prepare_runtime'),patch('jarviss.setup.prepare_model',return_value=self.root/'new.gguf'),              patch('jarviss.setup.traceback.print_exc'):
+            with self.assertRaisesRegex(RuntimeError,'Not enough memory'):self.setup.run('compact',only_model=True)
+        self.assertFalse(self.service.ready)
+        self.assertIn('did not restart: Port busy',self.setup.snapshot()['detail'])
+
+    def test_download_failure_leaves_a_running_model_alone(self):
+        self.service.ready=True;self.service.settings={'model':'previous.gguf','model_id':'balanced'}
+        with patch('jarviss.setup.inspect',return_value=self.hardware()),patch('jarviss.setup.prepare_runtime'),patch('jarviss.setup.prepare_model',side_effect=OSError('Connection lost')):
+            with self.assertRaises(OSError):self.setup.run('compact',only_model=True)
+        self.service.model.stop.assert_not_called();self.service.model.start.assert_not_called()
+        self.assertTrue(self.service.ready)
+        self.assertEqual(read_json(self.root/'settings.json',{})['model'],'previous.gguf')
+
+    def test_pause_while_testing_restarts_the_previous_model(self):
+        self.service.ready=True;self.service.settings={'model':'previous.gguf','model_id':'balanced','model_context':4096}
+        self.service.model.start.side_effect=lambda *a,**k: self.cancel_after_first_start()
+        with patch('jarviss.setup.inspect',return_value=self.hardware()),patch('jarviss.setup.prepare_runtime'),patch('jarviss.setup.prepare_model',return_value=self.root/'new.gguf'):
+            result=self.setup.run('compact',only_model=True)
+        self.assertEqual(result['run']['status'],'paused')
+        self.assertEqual(self.service.model.start.call_args_list[-1].args[0].name,'previous.gguf')
+        self.assertTrue(self.service.ready);self.assertEqual(self.service.settings['model_id'],'balanced')
+
+    def cancel_after_first_start(self):
+        if not self.cancel_seen:self.cancel_seen=True;self.setup.cancel.set()
+    cancel_seen=False
+
+    def test_summary_failure_after_validation_keeps_the_model_ready(self):
+        self.service.model.chat.return_value='Ready'
+        real=self.setup.plan('compact')
+        with patch('jarviss.setup.inspect',return_value=self.hardware()),patch('jarviss.setup.prepare_runtime'),patch('jarviss.setup.prepare_model',return_value=self.root/'new.gguf'), \
+             patch.object(self.setup,'plan',side_effect=[real,RuntimeError('Hardware probe failed')]):
+            with self.assertRaisesRegex(RuntimeError,'summary could not be refreshed: Hardware probe failed'):self.setup.run('compact',only_model=True)
+        self.assertEqual(self.setup.snapshot()['status'],'model_ready')
+        self.assertTrue(self.service.ready);self.service.model.stop.assert_called_once()
+        self.assertEqual(self.service.settings['model_id'],'compact')
+        self.assertEqual(read_json(self.root/'settings.json',{})['model_id'],'compact')
+
+    def test_missing_selection_and_damaged_catalog_are_reported_as_advice(self):
+        with self.assertRaisesRegex(ValueError,'Choose a model'):self.setup.run(None)
+        for content in ('{}','[]','{"models":[]}'):
+            with self.subTest(content=content):
+                (self.root/'model-catalog.json').write_text(content)
+                with patch('jarviss.setup.RESOURCES',self.root),self.assertRaisesRegex(RuntimeError,'model catalog'):model_catalog()
+        with patch('jarviss.setup.RESOURCES',self.root/'missing'),self.assertRaisesRegex(RuntimeError,'model catalog'):model_catalog()
+
+    def test_required_space_includes_runtime_and_voice_extraction(self):
+        with patch('jarviss.setup.inspect',return_value=self.hardware()):
+            plan=self.setup.plan('compact')
+            self.assertEqual(plan['required_bytes']-plan['download_bytes'],2*GIB+TRANSIENT_BYTES)
+            self.service.state.return_value={'voiceReady':True}
+            with patch('jarviss.setup.find_server',return_value=Path('llama-server')):
+                plan=self.setup.plan('compact')
+            self.assertEqual(plan['required_bytes']-plan['download_bytes'],2*GIB)
+
+    def test_low_disk_message_uses_decimal_gigabytes(self):
+        hw=self.hardware();hw['disk']=GIB
+        with patch('jarviss.setup.inspect',return_value=hw):
+            needed=self.setup.plan('advanced')['required_bytes']
+            with self.assertRaisesRegex(ValueError,f'Free at least {needed/1e9:.1f} GB'):self.setup.run('advanced')
+
+    def test_pause_has_a_default_message(self):
+        self.assertEqual(str(SetupPaused()),'Download paused. Continue from setup to reuse saved files.')
+        self.assertIsInstance(SetupPaused(),RuntimeError)
 
 
 if __name__=='__main__':unittest.main()
