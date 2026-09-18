@@ -1,7 +1,7 @@
 const $=s=>document.querySelector(s);
 const SVG='http://www.w3.org/2000/svg';
 let state={},busy=false,voice=false,route=null,searchTimer,pendingMethod=null,remoteOperation=null,pendingSetup=false,setupStarting=false,remoteSetup=false;
-let chatFinished=false,voiceStarting=false,preview=false,audioSaving=false,pageSequence=0,lastQuestion='',serviceDown=false,mapClickMode=false,toastTimer;
+let chatFinished=false,voiceRequest=null,preview=false,audioSaving=false,pageSequence=0,lastQuestion='',serviceDown=false,mapClickMode=false,toastTimer;
 let voicePhase='Voice off';
 const exclusiveMethods=new Set(['chat','route','clear','start_model','stop_model','download_voice','download_us_maps']);
 const operationLabels={setup_run:'Preparing JARVISS',download_voice:'Preparing offline voice',download_us_maps:'Preparing US offline maps',start_model:'Loading local model',stop_model:'Stopping model',chat:'Thinking',route:'Calculating walking directions',clear:'Clearing conversation'};
@@ -56,8 +56,15 @@ function renderOperation(){
  $('#start-model').disabled=active||setupRunning||noModel||state.modelAvailable===false;
  $('#start-model').hidden=!!state.ready||noModel;$('#stop-model').hidden=!state.ready;$('#stop-model').disabled=active||setupRunning;
  $('#send').disabled=active||busy;
- $('#voice-toggle').disabled=voiceStarting||(!voice&&(active||!state.ready));
+ const changingVoice=voiceRequest!==null;
+ for(const id of ['voice-toggle','header-voice-toggle'])$('#'+id).disabled=changingVoice||(!voice&&(active||!state.ready));
+ $('#voice-toggle').textContent=changingVoice?(voiceRequest?'Starting voice…':'Stopping…'):voice?'Stop voice mode':'Start voice mode';
  $('#voice-toggle').classList.toggle('primary',!!state.ready);
+ const voiceButton=$('#header-voice-toggle');
+ voiceButton.querySelector('span').textContent=changingVoice?(voiceRequest?'Starting…':'Stopping…'):voice?'Stop voice':'Voice';
+ voiceButton.setAttribute('aria-pressed',String(voice));voiceButton.setAttribute('aria-busy',String(changingVoice));
+ voiceButton.setAttribute('aria-label',changingVoice?'Changing voice mode':voice?'Stop voice':'Start voice');
+ voiceButton.title=voice?'Stop voice mode':'Start voice mode';
  const waiting=method==='chat'&&!chatFinished;
  $('#messages').setAttribute('aria-busy',String(waiting));
  if(waiting)document.body.classList.add('has-history');
@@ -201,7 +208,8 @@ async function send(text){if(busy||pendingMethod||remoteOperation||setupStarting
 $('#composer').onsubmit=e=>{e.preventDefault();send($('#question').value).catch(()=>{});};
 $('#question').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#composer').requestSubmit();}};
 $('#profile-form').onsubmit=async e=>{e.preventDefault();const button=e.target.querySelector('button.primary');await guardFocus(button,async()=>{try{state.profile=await call('save_profile',Object.fromEntries(new FormData(e.target)));route=null;renderState();$('#situation-editor').open=false;$('#situation-edit').focus();showToast('Situation saved');}catch{}});};
-$('#voice-toggle').onclick=async()=>{const button=$('#voice-toggle');if(!voice&&!state.voiceReady){voicePackDismissed=false;renderVoicePack();}voiceStarting=true;button.disabled=true;button.textContent=voice?'Stopping…':'Starting voice…';$('#error').hidden=true;try{const result=await call('voice',{enabled:!voice});voice=result.enabled;}catch{voice=false;}finally{voiceStarting=false;button.textContent=voice?'Stop voice mode':'Start voice mode';renderOperation();if(document.activeElement===document.body)button.focus();}};
+async function toggleVoice(event){const button=event.currentTarget;if(voiceRequest!==null||button.disabled)return;if(!voice&&!state.voiceReady){voicePackDismissed=false;renderVoicePack();}voiceRequest=!voice;renderOperation();$('#error').hidden=true;try{const result=await call('voice',{enabled:voiceRequest});voice=result.enabled;}catch{voice=false;}finally{voiceRequest=null;renderOperation();if(document.activeElement===document.body&&button.offsetParent)button.focus();}}
+$('#voice-toggle').onclick=$('#header-voice-toggle').onclick=toggleVoice;
 $('#voice-pack-setup').onclick=()=>window.openSetup();
 // The missing-pack note shows once per session; pressing Start voice without the pack brings it back.
 let voicePackDismissed=false;
@@ -392,8 +400,8 @@ window.jarviss.subscribe(({event,data})=>{
   if(!remoteSetup||milestone)refresh().then(()=>window.refreshSetup?.()).catch(()=>{});
  }
  if(event==='operation'){setupStarting=false;const completed=remoteOperation?.method;if(data?.method==='chat'&&completed!=='chat')chatFinished=false;remoteOperation=data;renderOperation();if(!data&&!pendingMethod&&(completed?.startsWith('download')||completed==='start_model'||completed==='setup_run')){refresh().catch(()=>{});if(completed==='setup_run')window.refreshSetup?.();}}
- if(event==='status'){if(data==='Ready'||data==='Model not started'){state.ready=data==='Ready';if(!state.ready&&voice){voice=false;$('#voice-toggle').textContent='Start voice mode';}}renderOperation();}
- if(event==='voice'){voicePhase=data;if(data==='Voice off'){voice=false;$('#voice-toggle').textContent='Start voice mode';}renderOperation();}
+ if(event==='status'){if(data==='Ready'||data==='Model not started'){state.ready=data==='Ready';if(!state.ready)voice=false;}renderOperation();}
+ if(event==='voice'){voicePhase=data;if(data==='Voice off')voice=false;renderOperation();}
  if(event==='map_fullscreen')mapFullscreen(data);
  if(event==='mic_level')$('#mic-level').value=data;
  if(event==='partial')$('#heard-partial').textContent=data;
@@ -412,7 +420,7 @@ window.jarviss.onAppEvent(({event,data})=>{
  if($('#startup').classList.contains('visible')&&event!=='service-stopped'&&event!=='show-shortcuts')return;
  if(event==='open-page')page({chat:'assistant',maps:'atlas'}[data?.page]||data?.page||'assistant');
  if(event==='focus-composer'){page('assistant');$('#question').focus();}
- if(event==='toggle-voice'){if(!$('#voice-toggle').disabled)$('#voice-toggle').click();}
+ if(event==='toggle-voice'){if(!$('#header-voice-toggle').disabled)$('#header-voice-toggle').click();}
  if(event==='toggle-voice-panel')$('#panel-toggle').click();
  if(event==='show-shortcuts')$('#shortcuts-dialog').showModal();
  if(event==='service-stopped'){serviceDown=true;notice($('#error'),'The local service stopped. Chat, voice and maps are paused until it restarts.',{action:{label:'Restart local service',run:restartService}});renderOperation();}
@@ -438,7 +446,7 @@ async function initialize(){
  initializing=true;$('#startup-retry').disabled=true;$('#startup-retry').hidden=true;
  $('#error').hidden=true;$('#startup-message').textContent='Checking setup…';
  try{
-  state=await call('state');serviceDown=false;renderState(true);voice=!!state.voiceEnabled;voicePhase=voice?'Listening':'Voice off';preview=!!state.voicePreview;renderPreview();$('#voice-toggle').textContent=voice?'Stop voice mode':'Start voice mode';
+  state=await call('state');serviceDown=false;renderState(true);voice=!!state.voiceEnabled;voicePhase=voice?'Listening':'Voice off';preview=!!state.voicePreview;renderPreview();
   const skipped=!!state.setup?.skipped&&!!state.modelAvailable; // "Set up later" is remembered as long as chat can work
   const needsSetup=!skipped&&(state.setup?.status!=='ready'||!state.modelAvailable||!state.voiceReady||!state.basemap||!state.usRouting?.ready||remoteOperation?.method==='setup_run'||remoteSetup);
   if(needsSetup)await window.openSetup();else page('assistant');
@@ -516,7 +524,7 @@ function initTabs(container,{onSelect}={}){
 window.initTabs=initTabs;
 const settingsTabs=initTabs($('#settings-tabs'));
 
-function setInspector(hidden){document.body.classList.toggle('voice-panel-hidden',hidden);$('#panel-toggle').setAttribute('aria-expanded',String(!hidden));$('#panel-toggle').title=hidden?'Show voice sidebar':'Hide voice sidebar';try{localStorage.setItem('jarviss.inspector',hidden?'hidden':'shown');}catch{}window.syncSidebars?.();}
+function setInspector(hidden){document.body.classList.toggle('voice-panel-hidden',hidden);$('#panel-toggle').setAttribute('aria-expanded',String(!hidden));$('#panel-toggle').title=hidden?'Show voice sidebar':'Hide voice sidebar';$('#panel-toggle').setAttribute('aria-label',$('#panel-toggle').title);try{localStorage.setItem('jarviss.inspector',hidden?'hidden':'shown');}catch{}window.syncSidebars?.();}
 $('#panel-toggle').onclick=()=>setInspector(!document.body.classList.contains('voice-panel-hidden'));
 try{setInspector(localStorage.getItem('jarviss.inspector')==='hidden');}catch{}
 

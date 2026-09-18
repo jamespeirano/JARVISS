@@ -45,6 +45,7 @@
  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></symbol>
 </svg>
 
+<div class="navigation-tools"><button id="navigation-toggle" class="quiet header-tool icon-only" aria-label="Hide navigation sidebar" aria-controls="navigation-panel" aria-expanded="true" title="Hide navigation sidebar"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg></button></div>
 <aside id="navigation-panel" inert>
  <div class="wordmark"><span>JARVISS</span><span id="app-version" class="chip"></span></div>
  <nav aria-label="Pages">
@@ -60,12 +61,12 @@
 <main>
 <header>
  <div class="header-start">
- <button id="navigation-toggle" class="quiet header-tool icon-only" aria-label="Hide navigation sidebar" aria-controls="navigation-panel" aria-expanded="true" title="Hide navigation sidebar"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg></button>
  <button id="reference-back" class="quiet header-tool back-tool"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg><span id="reference-back-label">Back to Docs</span></button>
  </div>
- <button id="panel-toggle" class="quiet header-tool" aria-controls="voice-panel" aria-expanded="true" title="Show or hide the voice panel"><svg class="icon" aria-hidden="true"><use href="#i-voice"/></svg><span>Voice</span></button>
+ <button id="header-voice-toggle" class="quiet header-tool" aria-label="Start voice" aria-pressed="false" title="Start voice mode"><svg class="icon" aria-hidden="true"><use href="#i-voice"/></svg><span>Voice</span></button>
  <button id="view-setup" class="quiet compact header-tool" hidden>View setup</button>
  <div class="status-pill" role="status"><span id="status-dot" class="status-dot"></span><span id="status">Connecting to local service</span></div>
+ <button id="panel-toggle" class="quiet header-tool icon-only" aria-label="Hide voice sidebar" aria-controls="voice-panel" aria-expanded="true" title="Hide voice sidebar"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/></svg></button>
 </header>
 <div id="error" class="notice danger" role="alert" hidden></div>
 

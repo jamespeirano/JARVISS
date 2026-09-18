@@ -44,15 +44,7 @@ const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),asse
    assert.equal(await page.locator('#question').evaluate(el=>el===document.activeElement),true);
   }
   await page.locator('#question').fill('');
-  // The orb is a static frame when idle and animates only while voice is active.
-  const idleA=await page.locator('#orb canvas').screenshot();await page.waitForTimeout(250);
-  assert.deepEqual(idleA,await page.locator('#orb canvas').screenshot(),'Idle orb must not animate');
-  await page.evaluate(()=>window.jarvisState('voice','Listening'));
-  const first=await page.locator('#orb canvas').screenshot();await page.waitForTimeout(250);
-  assert.notDeepEqual(first,await page.locator('#orb canvas').screenshot(),'Listening orb must animate');
-  await page.evaluate(()=>window.jarvisState('voice','Speaking'));
-  assert.equal(await page.locator('#orb').getAttribute('data-state'),'speaking');
-  await page.evaluate(()=>window.jarvisState('voice','Voice off'));
+  await require('./orb.cjs')(page);
   await page.screenshot({path:path.join(shots,'electron-assistant.png')});
   // The Situation card summarises the profile; Edit reveals the form, Save updates the card.
   assert.equal(await page.locator('#situation-summary-text').innerText(),'Not set');
@@ -150,6 +142,6 @@ const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),asse
   assert.deepEqual(errors,[]);
   await page.setViewportSize({width:1024,height:720});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-  console.log('PASS: Electron isolation, navigation, situation card, map empty state, recovery document; empty chat at 1024/1440/2240px, quick prompts, static idle orb, history and clear transitions, inspector layouts');
+  console.log('PASS: Electron isolation, navigation, situation card, map empty state, recovery document; empty chat at 1024/1440/2240px, quick prompts, idle/active orb animation and reduced motion, history and clear transitions, inspector layouts');
  }finally{if(app)await app.close();fs.rmSync(data,{recursive:true,force:true});}
 })().catch(e=>{console.error(e);process.exitCode=1;});

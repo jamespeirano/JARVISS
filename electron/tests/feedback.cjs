@@ -139,14 +139,19 @@ service.main()
   await page.locator('#response-wait').waitFor({state:'hidden'});
   console.log('PASS quick prompts from state, list rendering, Copy, Retry, two-step Clear');
   touch('fail-voice');
-  await page.locator('#panel-toggle').click(); // the hidden inspector persisted across the reload
-  await page.locator('#voice-toggle').click();
-  await page.getByRole('button',{name:'Starting voice…',exact:true}).waitFor();
+  assert.equal(await page.locator('#voice-panel').isVisible(),false);
+  await page.locator('#header-voice-toggle').click();
+  await page.waitForFunction(()=>document.querySelector('#header-voice-toggle').getAttribute('aria-busy')==='true');
   assert.equal(await page.locator('#voice-toggle').isDisabled(),true);
+  assert.equal(await page.locator('#header-voice-toggle').isDisabled(),true);
+  assert.equal(await page.locator('#voice-panel').isVisible(),false,'Starting voice does not open the sidebar');
   touch('start-voice');
   await page.getByRole('alert').filter({hasText:'Microphone is unavailable'}).waitFor();
   await page.waitForFunction(()=>!document.querySelector('#voice-toggle').disabled);
-  remove('fail-voice');await page.locator('#voice-toggle').click();
+  remove('fail-voice');await page.locator('#header-voice-toggle').click();
+  await page.waitForFunction(()=>document.querySelector('#header-voice-toggle').getAttribute('aria-pressed')==='true');
+  assert.equal(await page.locator('#voice-panel').isVisible(),false,'Successful voice startup preserves the closed sidebar');
+  await page.locator('#panel-toggle').click();
   await page.getByRole('button',{name:'Stop voice mode',exact:true}).waitFor();
   assert.equal(await page.locator('#error').isVisible(),false);
   remove('reply');
@@ -167,10 +172,16 @@ service.main()
   await page.getByRole('button',{name:'Exit full screen',exact:true}).click();
   await page.waitForFunction(()=>!document.body.classList.contains('map-fullscreen'));
   assert.equal(await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].isFullScreen()),false);
-  await page.locator('[data-page="assistant"]').click();
-  await page.locator('#voice-toggle').click();
+  await page.locator('#header-voice-toggle').click(); // Stop directly from Maps, with the voice sidebar off-page.
+  await page.waitForFunction(()=>document.querySelector('#header-voice-toggle').getAttribute('aria-pressed')==='false');
   assert.equal(await page.locator('#voice-badge').evaluate(el=>el.textContent),'Voice off');
   touch('reply');await page.locator('#response-wait').waitFor({state:'hidden'});
+  await page.locator('[data-page="assistant"]').click();
+  await page.locator('#voice-toggle').click();
+  await page.waitForFunction(()=>document.querySelector('#header-voice-toggle').getAttribute('aria-pressed')==='true');
+  await page.locator('#voice-toggle').click();
+  await page.waitForFunction(()=>document.querySelector('#header-voice-toggle').getAttribute('aria-pressed')==='false');
+  console.log('PASS header voice start, failure/retry and stop with hidden/off-page sidebar; both voice controls stay synchronized');
   console.log('PASS full-screen map entry/button/Escape exits and voice generation feedback across pages; stopping voice clears its indicator');
   await page.locator('[data-page="settings"]').click();await page.locator('[data-settings="audio"]').click();
   await page.locator('#voice-name').selectOption('af_heart');
