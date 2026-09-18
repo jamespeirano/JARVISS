@@ -10,6 +10,10 @@ on:
         description: Expected installer SHA-256
         required: true
         type: string
+      download_url:
+        description: Short-lived download URL for the signed candidate
+        required: true
+        type: string
 permissions:
   contents: read
 jobs:
@@ -33,13 +37,17 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
           EXPECTED_SHA256: ${{ inputs.sha256 }}
           RELEASE_REPOSITORY: ${{ github.repository }}
-          GH_TOKEN: ${{ github.token }}
         run: |
           if ($env:RELEASE_TAG -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') { throw 'Expected a version tag' }
           if ($env:EXPECTED_SHA256 -notmatch '^[a-f0-9]{64}$') { throw 'Expected a SHA-256 checksum' }
           New-Item -ItemType Directory -Force "$env:RUNNER_TEMP/signed" | Out-Null
-          $headers = @{ Authorization = "Bearer $env:GH_TOKEN"; Accept = "application/octet-stream" }
-          Invoke-WebRequest -Uri "https://api.github.com/repos/$env:RELEASE_REPOSITORY/releases/assets/571933143" -Headers $headers -OutFile "$env:RUNNER_TEMP/signed/JARVISS-Windows-x64.exe"
+          $event = Get-Content $env:GITHUB_EVENT_PATH -Raw | ConvertFrom-Json
+          $download = [string]$event.inputs.download_url
+          Write-Output "::add-mask::$download"
+          $uri = [Uri]$download
+          if ($uri.Scheme -ne 'https' -or $uri.Host -ne 'release-assets.githubusercontent.com') { throw 'Unexpected candidate host' }
+          try { Invoke-WebRequest -Uri $uri -OutFile "$env:RUNNER_TEMP/signed/JARVISS-Windows-x64.exe" }
+          catch { throw 'Candidate download failed; the short-lived link may have expired' }
       - name: Check signature and install
         shell: pwsh
         env:
