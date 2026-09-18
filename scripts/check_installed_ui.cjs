@@ -60,6 +60,12 @@ const {expect} = require(require.resolve('playwright/test', {
     console.log('PASS packaged sidebar controls collapse and restore both panels');
     await require('../electron/tests/orb.cjs')(page);
     console.log('PASS packaged idle/listening/thinking/speaking animation, hidden panel pause/resume and reduced motion');
+    assert.equal(await page.locator('#header-voice-toggle').isVisible(),true);
+    assert.equal(await page.locator('#panel-toggle').getAttribute('aria-label'),'Hide voice sidebar');
+    const navigationToggle=await page.locator('#navigation-toggle').boundingBox();
+    assert.ok(navigationToggle.x<=24);
+    if(process.platform==='darwin')assert.ok(navigationToggle.y>=32);
+    await page.screenshot({path:screenshot.replace('.png','-sidebars.png')});
     await page.locator('[data-page="docs"]').click();
     assert.ok(await page.locator('#references .doc-row').count() >= 38);
     await page.locator('[data-reference="fda-food-flood"] .doc-row-main').click();

@@ -41,7 +41,7 @@ service.main()
   await page.waitForFunction(()=>document.querySelector('#status').textContent==='Model off');
   await page.locator('#setup-later').click();
   await page.locator('#assistant.visible').waitFor();
-  // Native title-bar clearance and responsive page bounds on the supported Mac window sizes.
+  // Native title-bar clearance and responsive page bounds on Mac and Windows.
   for(const [width,height,zoom] of [[900,600,1],[1024,768,1.25],[1440,900,1.5]]){
    await app.evaluate(({BrowserWindow},{width,height,zoom})=>{const win=BrowserWindow.getAllWindows()[0];win.setSize(width,height);win.webContents.setZoomFactor(zoom);},{width,height,zoom});
    for(const name of ['assistant','atlas','plan','docs','settings']){
@@ -58,11 +58,21 @@ service.main()
      assert.ok(fits,`Chat prompts stay inside their column at ${width}, zoom ${zoom}`);
     }
     if(process.platform==='darwin')assert.ok(bounds.brandTop*zoom>=30,'Brand clears the macOS traffic lights');
+    const toggle=await page.locator('#navigation-toggle').boundingBox();
+    assert.ok(toggle.x<=24&&toggle.y>=0,'Navigation toggle stays at the left edge');
+    assert.ok(toggle.y+toggle.height<=bounds.brandTop,'Navigation toggle sits above the brand');
+    if(process.platform==='darwin')assert.ok(toggle.y*zoom>=32,'Navigation toggle stays below the traffic lights');
+    if(name==='assistant'){
+     const controls=await page.evaluate(()=>['#header-voice-toggle','#panel-toggle'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};}));
+     assert.ok(controls[0].right<=controls[1].left,'Voice and right-sidebar buttons are separate and do not overlap');
+     assert.ok(controls[1].right<=await page.evaluate(()=>innerWidth-parseFloat(getComputedStyle(document.querySelector('header')).paddingRight))+1,'Sidebar toggle clears the native window-control area');
+     if(process.env.JARVISS_TEST_SHOTS){fs.mkdirSync(process.env.JARVISS_TEST_SHOTS,{recursive:true});await page.screenshot({path:path.join(process.env.JARVISS_TEST_SHOTS,`shell-${process.platform}-${width}-${zoom}.png`)});}
+    }
    }
   }
   await app.evaluate(({BrowserWindow})=>{const win=BrowserWindow.getAllWindows()[0];win.setSize(1440,900);win.webContents.setZoomFactor(1);});
   await page.locator('[data-page="assistant"]').click();
-  console.log('PASS Mac title-bar clearance and page bounds at 900/1024/1440 widths and 100/125/150% zoom');
+  console.log('PASS native title-bar clearance, separate sidebar/voice buttons and page bounds at 900/1024/1440 widths and 100/125/150% zoom');
   // Both sidebars resize independently, collapse to Chat, and retain their preferences.
   const panelWidth=id=>page.locator(id).evaluate(el=>el.getBoundingClientRect().width);
   const dragDivider=async(id,delta)=>{
@@ -83,7 +93,11 @@ service.main()
   assert.ok(await panelWidth('.conversation-column')>=narrowChat,'Chat keeps its reading width when both panels are hidden');
   assert.equal(await page.locator('.assistant-grid').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length),1,'Collapsed Chat has a single column');
   assert.equal(await page.locator('#navigation-toggle').getAttribute('aria-expanded'),'false');
-  if(process.platform==='darwin')assert.ok((await page.locator('#navigation-toggle').boundingBox()).x>=80,'Restore control clears Mac traffic lights');
+  const restore=await page.locator('#navigation-toggle').boundingBox();
+  assert.ok(restore.x<=24,'Restore control stays at the left edge');
+  if(process.platform==='darwin')assert.ok(restore.y>=32,'Restore control stays below Mac traffic lights');
+  assert.ok(restore.y+restore.height<=(await page.locator('header').boundingBox()).height,'Restore control stays clear of page content');
+  assert.equal(await page.locator('#header-voice-toggle').isVisible(),true,'Voice remains available when both sidebars are closed');
   await page.reload();await page.locator('#assistant.visible').waitFor();
   assert.equal(await page.locator('#navigation-panel').isVisible(),false,'Hidden navigation persists');
   assert.equal(await page.locator('#voice-panel').isVisible(),false,'Hidden voice panel persists');
