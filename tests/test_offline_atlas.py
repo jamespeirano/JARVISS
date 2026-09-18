@@ -226,6 +226,17 @@ class QuestionTests(unittest.TestCase):
         self.assertNotEqual(feature_key('Shoal Creek','untreated water',whole),feature_key('Waller Creek','untreated water',whole))
         self.assertNotEqual(feature_key('Shoal Creek','untreated water',whole),feature_key('Shoal Creek','road',whole))
 
+    def test_empty_query_returns_resources_only(self):
+        pack=fixture();pack['places']+=[{'id':'node/8','name':'Post box','kind':'post box','point':[40,-74]},
+                                        {'id':'node/9','name':'Bin','kind':'waste basket','category':'waste_basket','point':[40,-74]},
+                                        {'id':'node/10','name':'Shop','kind':'supermarket','category':'supermarket','point':[40,-74]}]
+        self.assertEqual([p['id'] for p in OfflineMap(pack).nearest([40,-74])],['node/10','node/3','node/5'])
+        self.assertEqual([p['id'] for p in OfflineMap(pack).nearest([40,-74],'post box')],['node/8'])
+        self.assertFalse(matches_place({'id':'tile/pois/1','name':'Post box','kind':'post box','category':'post_box'},''))
+        self.assertTrue(matches_place({'id':'tile/pois/2','name':'Creek','kind':'untreated water','category':'stream'},''))
+        archive=SimpleNamespace(pack={},contains=lambda p:True,nearest=lambda point,query='',limit=8:[])
+        self.assertEqual([p['id'] for p in MapCatalog([OfflineMap(pack)],archive).nearest([40,-74])],['node/10','node/3','node/5'])
+
     def test_catalog_merges_a_pack_place_with_its_basemap_copy(self):
         copy={'id':'tile/pois/1','name':'Recorded Fountain','kind':'untreated water','point':[40.0015,-73.999],'distance_m':170}
         other={'id':'tile/pois/2','name':'Recorded Fountain','kind':'untreated water','point':[40.004,-73.999],'distance_m':445}

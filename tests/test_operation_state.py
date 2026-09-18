@@ -49,6 +49,14 @@ class OperationStateTests(unittest.TestCase):
         self.assertIsNone(self.service.state()['operation'])
         self.assertFalse(self.service.lock.locked())
 
+    def test_stop_model_ends_the_session_and_reports_not_started(self):
+        self.service.ready=True
+        with patch.object(self.service.model,'stop') as stop,patch.object(self.service.voice,'pause') as pause:
+            self.assertTrue(self.service.command('stop_model',{}))
+            stop.assert_called_once();pause.assert_called_once()
+        self.assertFalse(self.service.ready);self.assertFalse(self.service.lock.locked())
+        self.assertIsNone(self.service.state()['operation'])
+
     def test_no_model_selection_does_not_stop_an_existing_model(self):
         with patch.object(self.service.model,'stop') as stop,patch.object(self.service.model,'start') as start:
             with self.assertRaisesRegex(ValueError,'Choose a GGUF'):
@@ -120,7 +128,7 @@ class OperationStateTests(unittest.TestCase):
         def prepare(progress,cancel=None):raise SetupPaused(note=' The unfinished US map must restart; other files are kept.')
         with patch('jarviss.service.prepare_us',prepare),self.assertRaisesRegex(SetupPaused,r'^Download paused\..*must restart'):
             self.service.command('download_us_maps',{})
-        self.assertFalse((self.root/'setup.json').exists());self.assertEqual(self.service.setup.snapshot(),{})
+        self.assertFalse((self.root/'setup.json').exists());self.assertEqual(self.service.setup.snapshot(),{'skipped':False,'percent':0,'eta':''})
         self.assertIsNone(self.service.operation);self.assertFalse(self.service.lock.locked())
         self.assertIsNone(self.events('operation')[-1])
 

@@ -8,8 +8,8 @@ from pathlib import Path
 from .storage import DATA, RESOURCES, MODELS, ROOT, read_json, write_json, model_path, portable_path
 from .model import LocalModel
 from .voice import Voice, devices
-from .assistant import messages, map_answer, reference_answer, location, GUIDES, PROMPT_DEFAULTS
-from .maps import OfflineMap, coordinate, download_area, route_to_place
+from .assistant import messages, map_answer, reference_answer, location, quick_prompts, GUIDES, PROMPT_DEFAULTS
+from .maps import OfflineMap, coordinate, download_area, route_to_place, format_distance, set_units, with_distance_text
 from .atlas import TileArchive, MapCatalog
 from .location_search import LocationIndex
 from .us_routing import USRouter
@@ -18,13 +18,13 @@ from . import planner
 from .local_board import LocalBoard
 from .assets import prepare_qwen, prepare_voice, VOICE_NAME
 from .setup import Setup
-from .library import import_text, import_note, retrieve, reference_catalog, reference_document, reference_pdf, search_references
+from .library import import_text, import_note, retrieve, reference_catalog, reference_document, reference_pdf, search_references, library_catalog, document, delete_document, rename_document
 from .calculations import supply_duration
 
 output_lock = threading.Lock()
 OPERATION_LABELS = {'download_model':'Preparing model and voice', 'download_voice':'Preparing offline voice',
-                    'setup_run':'Preparing Jarvis',
-                    'download_map':'Downloading walking area', 'download_us_maps':'Preparing US offline maps', 'start_model':'Loading local model',
+                    'setup_run':'Preparing JARVISS',
+                    'download_map':'Downloading walking area', 'download_us_maps':'Preparing US offline maps', 'start_model':'Loading local model', 'stop_model':'Stopping model',
                     'chat':'Thinking', 'route':'Calculating walking directions', 'clear':'Clearing conversation'}
 
 
@@ -76,6 +76,7 @@ class Service:
                            lambda text: emit({'event':'error', 'data':text}),
                            lambda kind, value: emit({'event':kind, 'data':value}))
         self.voice.configure(self.settings)
+        set_units(self.settings.get('units') if self.settings.get('units') in ('imperial','metric') else 'imperial')
         self.setup = Setup(self)
 
     def state(self):
@@ -95,7 +96,8 @@ class Service:
                     'center':a.pack['center'], 'downloaded_at':a.pack['downloaded_at'], 'roads':len(a.pack['roads']),
                     'places':len(a.pack['places'])} for a in self.areas],
                 'promptDefaults':PROMPT_DEFAULTS,
-                'documents':read_json(DATA / 'library.json', []), 'guides':GUIDES, 'references':reference_catalog(),
+                'documents':library_catalog(), 'guides':GUIDES, 'quick_prompts':quick_prompts(), 'references':reference_catalog(),
+                'paths':{'data':str(DATA), 'logs':str(ROOT / 'service.log')},
                 'planner':planner.state(), 'plannerSchemas':planner.SCHEMAS, 'board':self.board.state(),
                 'recovery':(RESOURCES / 'collective-recovery.md').read_text(encoding='utf-8')}
 
@@ -153,6 +155,10 @@ class Service:
         if method == 'reference_search': return search_references(args.get('query',''))
         if method == 'setup_plan': return self.setup.plan(args.get('model_id'))
         if method == 'setup_pause': self.setup.cancel.set(); return True
+        if method == 'setup_skip': self.setup.save(skipped=True); return self.setup.snapshot()
+        if method == 'document': return document(args.get('title'))
+        if method == 'library_delete': return delete_document(args.get('title'))
+        if method == 'library_rename': return rename_document(args.get('title'), args.get('new_title'))
         if method.startswith('planner_'): return planner.command(method,args)
         if method == 'board_start': return self.board.start()
         if method == 'board_stop': self.board.close(); return self.board.state()
@@ -173,6 +179,7 @@ class Service:
                 value = args.get(key)
                 if type(value) is not int or not low <= value <= high: raise ValueError(f'{key} must be between {low} and {high}.')
                 updated[key] = value
+            if 'units' in args: updated['units'] = set_units(args['units'])
             with self.settings_lock: self.settings.update(updated); write_json(DATA / 'settings.json', self.settings)
             return self.settings
         if method == 'voice':
@@ -247,12 +254,12 @@ class Service:
                 for place in rows:
                     key = (place['kind'], place['name']) if place['kind'] == 'road' else place['id']
                     found.setdefault(key, place)
-                return list(found.values())[:20]
+                return with_distance_text(list(found.values())[:20])
             if self.location_index:
                 return self.location_index.search(query, lambda text: emit({'event':'progress', 'data':text}))
             catalog = self.catalog()
             if not catalog: return []
-            return catalog.nearest(catalog.pack['center'], query, 20)
+            return with_distance_text(catalog.nearest(catalog.pack['center'], query, 20))
         if method == 'import_document': return import_text(chosen_file(args, 'document'))
         if method == 'import_note': return import_note(args.get('title',''),args.get('text',''))
         if method == 'nearest':
@@ -263,7 +270,7 @@ class Service:
             # The map re-runs this after every operation; a Directions click may target an earlier list.
             listed = {p['id']: p for p in rows}
             self.places_by_id = dict(list({**{k:v for k,v in self.places_by_id.items() if k not in listed}, **listed}.items())[-300:])
-            return rows
+            return with_distance_text(rows)
         if method == 'import_basemap':
             archive = TileArchive(chosen_file(args, 'map').resolve())
             index = LocationIndex(archive)
@@ -312,7 +319,7 @@ class Service:
                 # request cannot start changing model files between phases.
                 if not self.setup_lock.acquire(blocking=False): raise RuntimeError('Setup is already running.')
                 try:
-                    return self.setup.run(args.get('model_id'), background=release_foreground)
+                    return self.setup.run(args.get('model_id'), only_model=bool(args.get('only_model')), background=release_foreground)
                 finally:
                     self.setup_lock.release()
                     self.setup_progress()
@@ -335,6 +342,9 @@ class Service:
                 return result
             if method == 'clear':
                 self.history = []; write_json(DATA / 'conversation.json', []); return True
+            if method == 'stop_model':
+                self.voice.pause(); self.ready = False; self.model.stop()
+                return True
             if method == 'start_model':
                 layers = args.get('layers', self.settings.get('gpu_layers','auto'))
                 if layers != 'auto':
@@ -399,7 +409,7 @@ class Service:
                         if not self.stale(revision): self.route = route
                 if direct and self.voice.enabled.is_set():
                     # Keep full map records on screen; speak a short orientation only.
-                    summary = (f"The recorded destination is {route['destination']}; the mapped walk is {route['distance_m']/1609.344:.2f} miles. " + (route['steps'][0]['instruction'] if route.get('steps') else '') + ' Conditions and access are unverified; full directions are in chat.'
+                    summary = (f"The recorded destination is {route['destination']}; the mapped walk is {format_distance(route['distance_m']).split(' (')[0]}. " + (route['steps'][0]['instruction'] if route.get('steps') else '') + ' Conditions and access are unverified; full directions are in chat.'
                                if route else ' '.join(answer.splitlines()[:1]))
                     import re
                     self.voice.speak(' '.join(re.split(r'(?<=[.!?])\s+', summary)[:preferences['voice_max_sentences']]))

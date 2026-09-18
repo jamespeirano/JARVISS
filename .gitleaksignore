@@ -1,0 +1,5 @@
+# False positives: the public PMTiles filename "20260916.pmtiles" in a mocked
+# map listing's "key" field, tests/test_downloads.py:221. Not an API credential.
+# These exact historical findings cover the original and squash-merged commits.
+be5c7db47dceb444f444845042f5e99a22a051ff:tests/test_downloads.py:generic-api-key:221
+c16b2adf4012b3215c39266e01a3694afbd16da2:tests/test_downloads.py:generic-api-key:221

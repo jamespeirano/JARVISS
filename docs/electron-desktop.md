@@ -26,6 +26,12 @@ The sandboxed renderer has no Node access. A context-isolated preload exposes on
 
 These choices follow Electron's [security guidance](https://www.electronjs.org/docs/latest/tutorial/security) and [context isolation guidance](https://www.electronjs.org/docs/latest/tutorial/context-isolation). They reduce exposure; they are not a substitute for a security review.
 
+## Application menu and shortcuts
+
+The same menu appears on every platform: JARVISS (About, Open data folder, Show logs, Quit), Edit, View (pages, voice, zoom, full screen) and Help (Docs, Keyboard shortcuts, Report a problem). Reload and developer tools are listed only in unpackaged builds. Menu accelerators drive the renderer through the `app-event` channel: Ctrl/Cmd+1–5 open Chat, Maps, Plan, Docs and Settings (`open-page`), Ctrl/Cmd+L focuses the composer (`focus-composer`), Ctrl/Cmd+Shift+V starts or stops voice (`toggle-voice`); the View and Help items send `toggle-voice-panel` and `show-shortcuts`. Escape and `?` are handled inside the page.
+
+The window opens at 90% of the primary work area (at most 1440×940, never below 900×600) and remembers its bounds and maximized state in `window.json` under the user-data folder. After the first successful load, a renderer crash reloads the page; a backend exit reports `service-stopped`, and Settings → About can restart the local service without leaving the app. Dropped PDF, TXT and Markdown files are imported through the preload bridge, which resolves their paths; the renderer never sees a file system path. Open data folder and Show logs only ever open the workspace's data folder and `service.log`.
+
 ## Validation boundary
 
 Automated route and context checks cover the Python core. Electron integration tests check the actual Chromium renderer, navigation, profile persistence, example maps, and offline document display using isolated test data. Real model and speech tests are separate. A Windows pass does not establish a Mac pass. Full offline cold-start, power consumption, long-duration reliability, and emergency advice quality remain separate validation tasks.

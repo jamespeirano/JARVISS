@@ -127,7 +127,7 @@ def answer_map(question, profile, area, previous_route=None):
             lines.extend(f"{i}. {s['instruction']}" for i, s in enumerate(route.get('steps', [])[:4], 1))
             if len(route.get('steps',[]))>4:lines.append('Continue step by step in Maps, or open All directions.')
             if route['start_gap_m'] or route['end_gap_m']:
-                lines.append(f"Check unmapped connections: {format_distance(route['start_gap_m'])} at the start; {format_distance(route['end_gap_m'])} at the destination. These are excluded from walking miles.")
+                lines.append(f"Check unmapped connections: {format_distance(route['start_gap_m'])} at the start; {format_distance(route['end_gap_m'])} at the destination. These are excluded from the walking distance.")
         except ValueError as error:
             lines.append(str(error))
     if route and route.get('engine'): lines.append('Follow the map line and turn cues; street names are not in this routing dataset.')

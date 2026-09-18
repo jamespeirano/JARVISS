@@ -1,6 +1,29 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Group messages</title><style>body{font:18px system-ui;background:#181818;color:#eee;max-width:650px;margin:25px auto;padding:0 20px}input,textarea,button{font:inherit;box-sizing:border-box;padding:12px;margin:6px 0;width:100%;border-radius:8px;border:1px solid #666;background:#292929;color:white}article{border-bottom:1px solid #555;padding:16px 0}small{color:#aaa}p{white-space:pre-wrap}button{cursor:pointer}</style><h1>Group messages</h1><label>Board code<input id="code" autocomplete="off" placeholder="Shown in Jarvis"></label><button id="join">Read messages</button><section id="messages"></section><form id="form"><label>Your name<input id="name" maxlength="80" required></label><label>Message<textarea id="text" maxlength="2000" required></textarea></label><button>Send</button></form><p id="status" role="status"></p><script>
-const $=id=>document.getElementById(id);let joined=false;
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Group messages · JARVISS</title><style>
+:root{color-scheme:dark;--bg-0:#141416;--bg-2:#222226;--bg-3:#2a2a2f;--bg-4:#343439;--line-1:#2e2e33;--line-2:#3d3d44;--line-3:#5a5a63;--fg-1:#ececef;--fg-2:#b4b4bc;--fg-3:#8d8d96;--fg-inverse:#141416;--accent:#8fd3c4;--accent-strong:#b7ebdf;--danger:#f0a48b;--font:'Segoe UI Variable Text','Segoe UI',system-ui,-apple-system,'Helvetica Neue',sans-serif}
+*{box-sizing:border-box}
+body{margin:0;padding:24px 16px 48px;max-width:640px;margin-inline:auto;background:var(--bg-0);color:var(--fg-1);font:18px/1.5 var(--font)}
+h1{font-size:28px;font-weight:600;line-height:1.25;margin:0 0 4px}
+.brand{font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-3);margin:0 0 20px}
+label{display:block;font-size:15px;font-weight:600;color:var(--fg-2);margin:0 0 14px}
+input,textarea,button{font:inherit;width:100%;margin-top:6px;padding:12px 14px;min-height:48px;color:var(--fg-1);background:var(--bg-2);border:1px solid var(--line-2);border-radius:8px}
+textarea{min-height:110px;resize:vertical}
+button{margin-top:0;font-weight:600;color:var(--fg-inverse);background:var(--accent);border-color:var(--accent);cursor:pointer}
+button:hover{background:var(--accent-strong)}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:none;box-shadow:0 0 0 2px var(--bg-0),0 0 0 4px var(--accent)}
+#join{background:var(--bg-3);color:var(--fg-1);border-color:var(--line-2);margin-bottom:8px}
+#join:hover{background:var(--bg-4)}
+#messages{margin:24px 0}
+article{padding:16px 0;border-bottom:1px solid var(--line-1)}
+article strong{display:block;font-size:15px;color:var(--fg-2)}
+article p{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+article small,#status{display:block;font-size:14px;color:var(--fg-3)}
+#status{margin-top:12px;min-height:21px}
+#status.error{color:var(--danger)}
+</style><p class="brand">JARVISS</p><h1>Group messages</h1><label>Board code<input id="code" autocomplete="off" placeholder="Shown in JARVISS"></label><button id="join">Read messages</button><p id="status" role="status"></p><section id="messages" role="log" aria-live="polite" aria-label="Messages"></section><form id="form"><label>Your name<input id="name" maxlength="80" required></label><label>Message<textarea id="text" maxlength="2000" required></textarea></label><button>Send</button></form><script>
+const $=id=>document.getElementById(id);let joined=false;const seen=new Set();
+const status=(text,error)=>{$('status').textContent=text;$('status').className=error?'error':'';};
 async function request(method,data){const response=await fetch('/messages',{method,headers:{'X-Board-Code':$('code').value.trim().toUpperCase(),'Content-Type':'application/json'},...(data?{body:JSON.stringify(data)}:{})});const result=await response.json();if(!response.ok)throw Error(result.error);return result;}
-async function refresh(){try{const rows=await request('GET');$('messages').replaceChildren();for(const r of rows){const a=document.createElement('article'),n=document.createElement('strong'),p=document.createElement('p'),d=document.createElement('small');n.textContent=r.name;p.textContent=r.text;d.textContent=new Date(r.at).toLocaleString();a.append(n,p,d);$('messages').append(a);}joined=true;$('status').textContent='';}catch(e){$('status').textContent=e.message;}}
-$('join').onclick=refresh;$('form').onsubmit=async e=>{e.preventDefault();try{await request('POST',{name:$('name').value,text:$('text').value});$('text').value='';await refresh();}catch(e){$('status').textContent=e.message;}};setInterval(()=>{if(joined)refresh();},5000);
+// Append-only: a refresh never rebuilds messages already on screen.
+async function refresh(){try{const rows=await request('GET');for(const r of rows){const key=r.at+'\n'+r.name+'\n'+r.text;if(seen.has(key))continue;seen.add(key);const a=document.createElement('article'),n=document.createElement('strong'),p=document.createElement('p'),d=document.createElement('small');n.textContent=r.name;p.textContent=r.text;d.textContent=new Date(r.at).toLocaleString();a.append(n,p,d);$('messages').append(a);}joined=true;status(rows.length===1?'1 message':rows.length+' messages');}catch(e){status(e.message,true);}}
+$('join').onclick=refresh;$('form').onsubmit=async e=>{e.preventDefault();try{await request('POST',{name:$('name').value,text:$('text').value});$('text').value='';await refresh();}catch(e){status(e.message,true);}};setInterval(()=>{if(joined)refresh();},5000);
 </script></html>

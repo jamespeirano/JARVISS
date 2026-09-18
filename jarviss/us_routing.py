@@ -38,7 +38,7 @@ class USRouter:
         self.process = None; self.lock = threading.Lock()
 
     def close(self):
-        """Stop a calculation still running when Jarvis quits; nothing else can end the Java process."""
+        """Stop a calculation still running when JARVISS quits; nothing else can end the Java process."""
         with self.lock: process = self.process
         if process and process.poll() is None:
             process.kill()
@@ -105,7 +105,7 @@ class USRouter:
         if len(points) < 2: raise ValueError('No walking distance between these endpoints was found.')
         start_gap, end_gap = distance(origin, points[0]), distance(destination, points[-1])
         if max(start_gap, end_gap) > 250:
-            raise ValueError('An endpoint is more than 250 m from the recorded walking network. Select a point on a mapped road or path; Jarvis cannot assume the connection is passable.')
+            raise ValueError('An endpoint is more than 250 m from the recorded walking network. Select a point on a mapped road or path; JARVISS cannot assume the connection is passable.')
         cumulative = [0.0]
         for a,b in zip(points, points[1:]): cumulative.append(cumulative[-1] + distance(a,b))
         total = float(props['track-length'])

@@ -7,7 +7,7 @@ import threading
 from functools import lru_cache
 from pathlib import Path
 
-from .maps import coordinate, distance, matches_place, normalized
+from .maps import coordinate, distance, matches_place, normalized, format_distance
 from .storage import read_json
 
 SEARCH_RADIUS_M = 5000
@@ -238,5 +238,5 @@ class MapCatalog:
 
     def search_note(self):
         if self.archive:
-            return 'Basemap search covers 5 km (3.11 miles) around your position, plus all imported routing packs. Results are recorded features, not an exhaustive inventory.'
+            return f'Basemap search covers {format_distance(5000)} around your position, plus all imported routing packs. Results are recorded features, not an exhaustive inventory.'
         return 'Search covers the imported routing packs only. Results are recorded features, not an exhaustive inventory.'

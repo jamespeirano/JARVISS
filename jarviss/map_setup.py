@@ -240,7 +240,7 @@ def prepare_basemap(progress=print, cancel=None):
     target.parent.mkdir(parents=True,exist_ok=True)
     coverage=target.parent/'us-coverage.geojson';shutil.copyfile(RESOURCES/'routing'/'us-coverage.geojson',coverage)
     partial=target.with_suffix('.partial');partial.unlink(missing_ok=True)
-    progress('Downloading US map. Keep Jarvis open; chat is available once its model is ready.')
+    progress('Downloading US map. Keep JARVISS open; chat is available once its model is ready.')
     process=subprocess.Popen([str(executable),'extract',source,str(partial),f'--region={coverage}','--maxzoom=15','--download-threads=3'],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding='utf-8',errors='replace',
                              creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
     lines=queue.Queue()

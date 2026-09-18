@@ -5,7 +5,7 @@
 1. **Maps → Download US offline maps**, once while connected. An existing US archive is reused. The app installs the entire US walking dataset and its runtime; no radius, current position, example, or individual area selection is needed.
 2. Wait for **US map and walking directions are ready offline**. This machine has the 20,750,661,818-byte CRM basemap copied independently plus 1,865,911,232 bytes of routing data. Initial sizes on other dates may differ.
 3. **Find my location**: search a city or town, then a familiar road or landmark. Inspect the point and confirm **I am here**, or pin a point yourself. Searching and exploring never set your position. No default location, coordinates, GPS, or internet geocoder is required.
-4. Search nearby resources, select a destination point, or ask Jarvis:
+4. Search nearby resources, select a destination point, or ask JARVISS:
    - “Where is the nearest water?”
    - “How many miles to [recorded place]?”
    - “I'm on [road]. How do I get to [place]?”

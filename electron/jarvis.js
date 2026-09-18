@@ -1,27 +1,17 @@
-/* Procedural HUD: all geometry and motion are local, with no image/video assets. */
+/* Original blue JARVIS HUD, with idle and reduced-motion rendering kept static. */
 (() => {
   const host = document.getElementById('orb');
   host.replaceChildren();
   const canvas = document.createElement('canvas');
   canvas.setAttribute('role', 'img');
-  canvas.setAttribute('aria-label', 'JARVIS animated voice interface');
+  canvas.setAttribute('aria-label', 'JARVISS voice indicator');
   host.append(canvas);
   const ctx = canvas.getContext('2d');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-  let phase = 0, last = 0, frame;
-  let system = 'idle', voice = 'idle';
-  window.jarvisState = (kind, text) => {
-    if (kind === 'status') system = /Thinking|Loading/.test(text) ? 'thinking' : 'idle';
-    if (kind === 'voice') voice = text === 'Speaking' ? 'speaking' : text === 'Listening' ? 'listening' : 'idle';
-    if (kind === 'error') { system = 'idle'; voice = 'idle'; }
-    host.dataset.state = system === 'thinking' ? system : voice;
-  };
-  function resize() {
-    const side = host.clientWidth;
-    canvas.width = Math.round(side * Math.min(devicePixelRatio, 2));
-    canvas.height = canvas.width;
-  }
-  new ResizeObserver(resize).observe(host);
+  let phase = 0, last = 0, frame = 0, system = 'idle', voice = 'idle';
+  const mode = () => system === 'thinking' ? 'thinking' : voice;
+  const animated = () => mode() !== 'idle' && !reduced.matches;
+  const visible = () => !document.hidden && host.clientWidth > 0 && !!host.closest('.page')?.classList.contains('visible');
   function ring(radius, width, color, start=0, extent=Math.PI*2, glow=0) {
     ctx.beginPath(); ctx.arc(0, 0, radius, start, start+extent);
     ctx.lineWidth=width; ctx.strokeStyle=color; ctx.shadowColor=color; ctx.shadowBlur=glow;
@@ -48,15 +38,10 @@
     ctx.fillStyle=`rgba(203,250,255,${strength})`;ctx.fillRect(-13,-.6,26,1.2);
     ctx.restore();
   }
-  function draw(now) {
-    frame=requestAnimationFrame(draw);
-    if(document.hidden || !host.getBoundingClientRect().width || !host.closest('.page').classList.contains('visible')) {last=now;return;}
-    if(now-last<32)return; // Bound animation work to roughly 30 fps.
-    const dt=Math.min((now-last)/1000,.1);last=now;
-    const mode=host.dataset.state||'idle';
-    const speed=mode==='thinking'?1.8:mode==='speaking'?1.15:mode==='listening'?.8:.35;
-    if(!reduced.matches)phase+=dt*speed;
-    const pulse=reduced.matches?0:(Math.sin(phase*4)+1)/2;
+  function render() {
+    if (!canvas.width) return;
+    const mode = host.dataset.state || 'idle';
+    const pulse = reduced.matches || mode === 'idle' ? 0 : (Math.sin(phase * 4) + 1) / 2;
     ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.setTransform(canvas.width/480,0,0,canvas.height/480,canvas.width/2,canvas.height/2);
     const haze=ctx.createRadialGradient(0,0,55,0,0,238);
@@ -114,6 +99,36 @@
     for(let i=0;i<4;i++)flare(i*Math.PI/2+phase*.07,222,.7+pulse*.25);
     flare(-phase*.27,177,.7);
   }
-  resize();frame=requestAnimationFrame(draw);
-  window.addEventListener('beforeunload',()=>cancelAnimationFrame(frame));
+  function tick(now) {
+    frame = 0;
+    if (!animated() || !visible()) { render(); return; }
+    if (now - last < 32) { frame = requestAnimationFrame(tick); return; } // ~30 fps is plenty for a dial
+    const dt = Math.min((now - last) / 1000, .1); last = now;
+    phase += dt * (mode() === 'thinking' ? 1.6 : mode() === 'speaking' ? 1.2 : .7);
+    render(); frame = requestAnimationFrame(tick);
+  }
+  function schedule() {
+    if (frame) { cancelAnimationFrame(frame); frame = 0; }
+    if (animated() && visible()) { last = performance.now(); frame = requestAnimationFrame(tick); }
+    else render();
+  }
+  function resize() {
+    const side = host.clientWidth; if (!side) return;
+    const px = Math.round(side * Math.min(devicePixelRatio, 2));
+    if (canvas.width !== px) { canvas.width = px; canvas.height = px; }
+    schedule();
+  }
+  window.jarvisState = (kind, text) => {
+    if (kind === 'status') system = /Thinking|Loading/.test(text) ? 'thinking' : 'idle';
+    if (kind === 'voice') voice = /^(Speaking|Preparing speech)$/.test(text) ? 'speaking' : /^(Listening|Starting voice)$/.test(text) ? 'listening' : 'idle';
+    if (kind === 'error') { system = 'idle'; voice = 'idle'; }
+    host.dataset.state = mode();
+    schedule();
+  };
+  new ResizeObserver(resize).observe(host);
+  new MutationObserver(schedule).observe(host.closest('.page'), { attributes: true, attributeFilter: ['class'] });
+  document.addEventListener('visibilitychange', schedule);
+  reduced.addEventListener('change', schedule);
+  resize();
+  window.addEventListener('beforeunload', () => cancelAnimationFrame(frame));
 })();

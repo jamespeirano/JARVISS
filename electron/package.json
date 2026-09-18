@@ -3,6 +3,10 @@
   "productName": "JARVISS",
   "version": "0.2.4",
   "description": "Offline survival planning assistant",
+  "homepage": "https://github.com/jamespeirano/JARVISS",
+  "bugs": {
+    "url": "https://github.com/jamespeirano/JARVISS/issues/new/choose"
+  },
   "main": "main.cjs",
   "license": "MIT",
   "scripts": {

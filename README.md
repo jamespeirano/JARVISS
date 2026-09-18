@@ -2,7 +2,7 @@
 
 **Just A Rather Very Intelligent Survival System.**
 
-Jarvis Survival is an offline assistant for extended outages: local AI, voice, US maps, walking directions, practical guides and group planning.
+JARVISS is an offline assistant for extended outages: local AI, voice, US maps, walking directions, practical guides and group planning.
 
 ## Download
 

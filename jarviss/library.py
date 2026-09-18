@@ -30,6 +30,51 @@ def _store(title, text):
     return title
 
 
+def document_kind(title):
+    suffix = Path(str(title)).suffix.lower()
+    return 'pdf' if suffix == '.pdf' else 'text' if suffix in ('.txt', '.md') else 'note'
+
+
+def _summary(doc):
+    return {'title':doc['title'], 'kind':document_kind(doc['title']), 'imported_at':doc.get('imported_at',''), 'words':len(doc['text'].split())}
+
+
+def library_catalog():
+    """The imported list without its text; the reader fetches one document at a time."""
+    return [_summary(d) for d in read_json(DATA/'library.json',[])]
+
+
+def _find(docs, title):
+    found = next((d for d in docs if d['title'] == title), None)
+    if not found: raise ValueError('That document is no longer in your files.')
+    return found
+
+
+def document(title):
+    doc = _find(read_json(DATA/'library.json',[]), str(title))
+    return {**_summary(doc), 'sections':sections(doc['text'])}
+
+
+def delete_document(title):
+    with _LIBRARY:
+        docs = read_json(DATA/'library.json',[])
+        _find(docs, str(title))
+        write_json(DATA/'library.json',[d for d in docs if d['title'] != title])
+    return True
+
+
+def rename_document(title, new_title):
+    new_title = ' '.join(str(new_title).split())
+    if not new_title or len(new_title) > 120: raise ValueError('Enter a document name of up to 120 characters.')
+    with _LIBRARY:
+        docs = read_json(DATA/'library.json',[])
+        doc = _find(docs, str(title))
+        if any(d['title'] == new_title for d in docs if d is not doc): raise ValueError('Another document already has that name.')
+        doc['title'] = new_title
+        write_json(DATA/'library.json',docs)
+    return new_title
+
+
 def import_note(title,text):
     title=str(title).strip();text=str(text).strip()
     if not title or len(title)>120:raise ValueError('Enter a document name of up to 120 characters.')
