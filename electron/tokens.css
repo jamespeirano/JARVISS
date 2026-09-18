@@ -1,0 +1,24 @@
+:root{
+  color-scheme:dark;
+  --bg-0:#141416; --bg-1:#1b1b1e; --bg-2:#222226; --bg-3:#2a2a2f; --bg-4:#343439; --bg-5:#3f3f45;
+  --line-1:#2e2e33; --line-2:#3d3d44; --line-3:#5a5a63;
+  --fg-1:#ececef; --fg-2:#b4b4bc; --fg-3:#8d8d96; --fg-inverse:#141416;
+  --accent:#8fd3c4; --accent-strong:#b7ebdf; --accent-soft:#1f2f2b;
+  --danger:#f0a48b; --danger-soft:#3a2521; --warn:#e6c98a; --warn-soft:#332c1f; --ok:#8fd3c4;
+  --font:'Segoe UI Variable Text','Segoe UI',system-ui,-apple-system,'Helvetica Neue',sans-serif;
+  --fs-xs:12px; --fs-sm:13px; --fs-md:14px; --fs-lg:16px; --fs-xl:18px; --fs-2xl:22px; --fs-3xl:28px;
+  --lh-tight:1.25; --lh-ui:1.45; --lh-body:1.6; --lh-prose:1.7;
+  --fw-regular:400; --fw-semibold:600;           /* only weights Segoe ships */
+  --r-sm:6px; --r-md:8px; --r-lg:12px; --r-pill:999px;
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:20px; --s-6:24px; --s-8:32px; --s-10:40px; --s-12:48px;
+  --shadow-1:0 1px 2px rgb(0 0 0/.35); --shadow-2:0 6px 20px rgb(0 0 0/.45),0 0 0 1px var(--line-2); /* shadow-2 already rings: floating surfaces carry no border */
+  --ring:0 0 0 2px var(--bg-0),0 0 0 4px var(--accent);
+  --ring-input:0 0 0 1px var(--accent),0 0 0 4px var(--accent-soft);
+  --icon:16px; --control-h:36px; --control-h-compact:32px;
+  --rail-w:216px; --content-w:840px; --reader-w:680px; --chat-w:760px; --inspector-w:280px; --header-h:56px; --page-x:32px;
+  --motion-fast:120ms; --motion-base:180ms;
+  /* One chevron glyph (the sprite's i-chevron-down) for select, summary, menu and picker; CSS masks cannot reference an inline <symbol>, so the same path lives here once. */
+  --chevron:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  --glyph-info:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='16' x2='12' y2='12'/><line x1='12' y1='8' x2='12.01' y2='8'/></svg>");
+  --glyph-warning:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg>");
+}

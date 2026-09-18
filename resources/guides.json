@@ -8,7 +8,8 @@
     "text": "1. Prefer sealed drinking water.\n2. Fuel, chemicals or floodwater suspected? Find another source. Boiling does not remove those contaminants.\n3. For germ risk: settle cloudy water, filter through a clean cloth, then bring to a rolling boil for 1 minute; 3 minutes above 6,500 feet. Cool in a clean, covered container.\n4. Treatment tablets: follow that product’s label.\nA clear stream or mapped well is not proof of safe water.",
     "question": "What source is the water from, and could fuel, chemicals or floodwater have reached it?",
     "prompt": "Can I use this water? Source: ",
-    "plan": null
+    "plan": null,
+    "quick": 1
   },
   {
     "id": "food",
@@ -19,7 +20,8 @@
     "text": "1. Keep fridge and freezer doors closed.\n2. Without power or another cold source: a fridge keeps food cold for about 4 hours; a full freezer about 48 hours, half-full about 24.\n3. Discard refrigerated perishables after 4 hours without cooling. Never taste food to test safety.\n4. Frozen food can be refrozen if it still has ice crystals or is 40°F or colder.\nUse measured temperature and elapsed time, not smell.",
     "question": "What food is it, how long was cooling lost, and do you have a temperature reading?",
     "prompt": "Can I eat this food? Food and time without cooling: ",
-    "plan": null
+    "plan": null,
+    "quick": 2
   },
   {
     "id": "sanitation",
@@ -45,7 +47,8 @@
     "text": "Leave if you smell gas, see fire, hear structural movement, or see major leaning or collapse. Move clear of power lines and floodwater.\nDo not operate switches or make flames where gas may be leaking.\nDo not enter a damaged building until a qualified person has checked it. A photo or description cannot establish structural safety.\nFrom outside, record the damage, location and time in Plan → Log.",
     "question": "What damage or warning signs can you see from a safe place?",
     "prompt": "Can we stay in this building? I can see: ",
-    "plan": "log"
+    "plan": "log",
+    "quick": 4
   },
   {
     "id": "equipment",
@@ -53,7 +56,7 @@
     "keywords": "equipment warning fault code generator inverter manual model troubleshooting",
     "url": "https://www.victronenergy.com/media/pg/Manual_SmartSolar_MPPT_150-60_up_to_250-70/en/troubleshooting.html",
     "checked": "2026-09-15",
-    "text": "1. Write down the exact brand, model and warning code.\n2. Add its manual in Docs, or paste the warning text into Chat.\n3. Ask Jarvis to find that code in that manual and explain the listed checks.\n4. Stop using equipment that is smoking, leaking, sparking or overheating. Follow the manual’s shutdown procedure if safe.\nA code from a different model may mean something else. Do not bypass a protection device.\nRun generators outdoors, at least 20 feet from doors, windows and vents.",
+    "text": "1. Write down the exact brand, model and warning code.\n2. Add its manual in Docs, or paste the warning text into Chat.\n3. Ask JARVISS to find that code in that manual and explain the listed checks.\n4. Stop using equipment that is smoking, leaking, sparking or overheating. Follow the manual’s shutdown procedure if safe.\nA code from a different model may mean something else. Do not bypass a protection device.\nRun generators outdoors, at least 20 feet from doors, windows and vents.",
     "question": "What is the exact model and warning code?",
     "prompt": "Explain this warning. Model and code: ",
     "plan": null,
@@ -68,7 +71,7 @@
     "keywords": "solar panel battery batteries charger cable voltage volts amps compatibility compatible parts inverter",
     "url": "https://www.victronenergy.com/media/pg/Manual_SmartSolar_MPPT_75-10_up_to_100-20/en/installation.html",
     "checked": "2026-09-15",
-    "text": "Copy the labels and manuals for every part before connecting anything.\nCheck battery chemistry and voltage; charger battery settings; panel open-circuit voltage, including cold-weather rise; controller input limits; and cable, connector and fuse ratings.\nEvery limit must match the actual equipment and configuration. A matching plug alone proves nothing.\nJarvis can compare supplied ratings. Missing ratings mean compatibility is not established.",
+    "text": "Copy the labels and manuals for every part before connecting anything.\nCheck battery chemistry and voltage; charger battery settings; panel open-circuit voltage, including cold-weather rise; controller input limits; and cable, connector and fuse ratings.\nEvery limit must match the actual equipment and configuration. A matching plug alone proves nothing.\nJARVISS can compare supplied ratings. Missing ratings mean compatibility is not established.",
     "question": "What are the model numbers and the voltage/current ratings on each label?",
     "prompt": "Will these power parts work together? Labels: ",
     "plan": null
@@ -123,10 +126,11 @@
     "keywords": "task priority first daylight daily plan time water energy needs urgent",
     "url": "",
     "checked": "2026-09-15",
-    "text": "1. Address immediate danger and urgent care.\n2. Check drinking water, shelter, temperature and food.\n3. List the work in Plan → Today. Mark Now, Today or Later.\n4. Assign one person, a deadline and anything needed first.\n5. Use Plan → Supplies and Power to see constraints. Recheck after conditions change.\nPlan with observed weather and available daylight; Jarvis has no live forecast.",
+    "text": "1. Address immediate danger and urgent care.\n2. Check drinking water, shelter, temperature and food.\n3. List the work in Plan → Today. Mark Now, Today or Later.\n4. Assign one person, a deadline and anything needed first.\n5. Use Plan → Supplies and Power to see constraints. Recheck after conditions change.\nPlan with observed weather and available daylight; JARVISS has no live forecast.",
     "question": "What is the most urgent need, and how much daylight, water and battery power remain?",
     "prompt": "Using my saved situation and tasks, what should we do first?",
-    "plan": "tasks"
+    "plan": "tasks",
+    "quick": 5
   },
   {
     "id": "supplies",
@@ -134,10 +138,11 @@
     "keywords": "supply supplies inventory lasts food water fuel medication stock ration amount daily",
     "url": "",
     "checked": "2026-09-15",
-    "text": "In Plan → Supplies, enter the amount left, its unit and how much your group uses each day.\nDays left = amount left ÷ daily use. Keep both amounts in the same unit.\nUpdate the amount after use, losses or resupply. Estimates do not verify quality or availability.\nFor medication, record only an existing prescribed schedule. Do not change a dose to make stock last.\nAsk Jarvis which recorded supply will run out first.",
+    "text": "In Plan → Supplies, enter the amount left, its unit and how much your group uses each day.\nDays left = amount left ÷ daily use. Keep both amounts in the same unit.\nUpdate the amount after use, losses or resupply. Estimates do not verify quality or availability.\nFor medication, record only an existing prescribed schedule. Do not change a dose to make stock last.\nAsk JARVISS which recorded supply will run out first.",
     "question": "What amount is left, and how much is used per day?",
     "prompt": "Using my saved supplies, what will run out first?",
-    "plan": "supplies"
+    "plan": "supplies",
+    "quick": 6
   },
   {
     "id": "power",
@@ -156,10 +161,11 @@
     "keywords": "first aid bleeding injured injury medical care wound",
     "url": "https://www.redcross.org/take-a-class/resources/learn-first-aid/bleeding-life-threatening-external",
     "checked": "2026-09-15",
-    "text": "Make the scene safe before approaching.\nFor severe external bleeding, apply firm, steady direct pressure with a dressing or clean cloth; use a barrier against blood if available. Seek reachable trained help.\nFor other injuries, tell Jarvis what happened, symptoms, age group and available supplies. Use downloaded first-aid references.\nJarvis cannot examine someone, diagnose an injury or choose medication doses. Hands-free answers do not replace practical first-aid training.",
+    "text": "Make the scene safe before approaching.\nFor severe external bleeding, apply firm, steady direct pressure with a dressing or clean cloth; use a barrier against blood if available. Seek reachable trained help.\nFor other injuries, tell JARVISS what happened, symptoms, age group and available supplies. Use downloaded first-aid references.\nJARVISS cannot examine someone, diagnose an injury or choose medication doses. Hands-free answers do not replace practical first-aid training.",
     "question": "What happened, and what symptoms can you observe?",
     "prompt": "Help me find first-aid guidance. What happened: ",
-    "plan": null
+    "plan": null,
+    "quick": 3
   },
   {
     "id": "learn",

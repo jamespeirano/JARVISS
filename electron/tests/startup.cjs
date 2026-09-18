@@ -76,3 +76,47 @@ test('a forced stop kills the backend process group, then the child alone, then 
  assert.equal(killTree(child,{platform:'win32',spawn,kill:()=>calls.push(['kill'])}),'tree');
  assert.deepEqual(calls,[['spawn','taskkill',['/pid','4321','/T','/F'],{windowsHide:true}]]);
 });
+const {MIN_SIZE,defaultBounds,clampBounds,importable,openTarget,menuTemplate}=require('../startup.cjs');
+test('the default window is 90% of the work area, capped at 1440x940 and never below the minimum',()=>{
+ assert.deepEqual(defaultBounds({width:1920,height:1080}),{width:1440,height:940});
+ assert.deepEqual(defaultBounds({width:1280,height:800}),{width:1152,height:720});
+ assert.deepEqual(defaultBounds({width:800,height:500}),MIN_SIZE);
+});
+test('saved bounds are restored on a connected display and dropped otherwise',()=>{
+ const displays=[{x:0,y:0,width:1920,height:1040},{x:1920,y:0,width:1920,height:1040}];
+ const fallback={width:1440,height:940};
+ assert.deepEqual(clampBounds({x:2000,y:100,width:1000,height:700},displays,fallback),{x:2000,y:100,width:1000,height:700});
+ assert.deepEqual(clampBounds({x:100,y:100,width:400,height:300},displays,fallback),{x:100,y:100,width:900,height:600});
+ assert.deepEqual(clampBounds({x:5000,y:100,width:1000,height:700},displays,fallback),fallback);
+ assert.deepEqual(clampBounds({x:100,y:2000,width:1000,height:700},displays,fallback),fallback);
+ for(const saved of [null,{},{x:'1',y:0,width:1000,height:700},{x:NaN,y:0,width:1000,height:700}])assert.deepEqual(clampBounds(saved,displays,fallback),fallback);
+});
+test('dropped files are limited to documents and known folders are the only open targets',()=>{
+ assert.deepEqual(importable(['C:\a\manual.PDF','/b/notes.txt','/b/notes.txt','/c/plan.md','/c/app.exe','/c/photo.png','',7,null]),['C:\a\manual.PDF','/b/notes.txt','/c/plan.md']);
+ assert.deepEqual(importable('/b/notes.txt'),[]);
+ assert.equal(importable(Array.from({length:40},(_,i)=>`/d/${i}.md`)).length,30);
+ const paths={data:'/root/local-data',logs:'/root/service.log'};
+ assert.deepEqual(openTarget('data',paths),{method:'openPath',target:'/root/local-data'});
+ assert.deepEqual(openTarget('logs',paths),{method:'showItemInFolder',target:'/root/service.log'});
+ for(const kind of ['/etc/passwd','..','',undefined,'data/../x'])assert.equal(openTarget(kind,paths),null);
+ assert.equal(openTarget('data',{}),null);
+});
+test('the application menu carries the shortcuts and hides developer items when packaged',()=>{
+ const actions=[];
+ const template=menuTemplate({packaged:true,platform:'win32',act:(name,data)=>actions.push([name,data])});
+ assert.deepEqual(template.map(m=>m.label),['JARVISS','Edit','View','Help']);
+ const items=template.flatMap(m=>m.submenu);
+ const roles=items.map(i=>i.role).filter(Boolean);
+ for(const role of ['about','quit','undo','redo','cut','copy','paste','selectAll','zoomIn','zoomOut','resetZoom','togglefullscreen'])assert.ok(roles.includes(role),role);
+ assert.ok(!roles.includes('toggleDevTools')&&!roles.includes('reload'));
+ const dev=menuTemplate({packaged:false,platform:'linux',act(){}}).flatMap(m=>m.submenu).map(i=>i.role);
+ assert.ok(dev.includes('toggleDevTools')&&dev.includes('reload'));
+ assert.ok(menuTemplate({packaged:true,platform:'darwin',act(){}})[0].submenu.some(i=>i.role==='hide'));
+ const accelerators=Object.fromEntries(items.filter(i=>i.accelerator).map(i=>[i.accelerator,i]));
+ for(const [key,expected] of [['CmdOrCtrl+1',['open-page',{page:'chat'}]],['CmdOrCtrl+2',['open-page',{page:'maps'}]],['CmdOrCtrl+3',['open-page',{page:'plan'}]],['CmdOrCtrl+4',['open-page',{page:'docs'}]],['CmdOrCtrl+5',['open-page',{page:'settings'}]],['CmdOrCtrl+L',['focus-composer',undefined]],['CmdOrCtrl+Shift+V',['toggle-voice',undefined]]]){
+  actions.length=0;accelerators[key].click();assert.deepEqual(actions,[expected],key);
+ }
+ for(const [label,expected] of [['Toggle voice panel',['toggle-voice-panel',undefined]],['Open data folder',['open-data-folder',undefined]],['Show logs',['show-logs',undefined]],['Docs',['open-page',{page:'docs'}]],['Keyboard shortcuts',['show-shortcuts',undefined]],['Report a problem',['report-problem',undefined]]]){
+  actions.length=0;items.find(i=>i.label===label).click();assert.deepEqual(actions,[expected],label);
+ }
+});

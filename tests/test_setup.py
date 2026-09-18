@@ -223,6 +223,52 @@ class SetupTests(unittest.TestCase):
         self.assertEqual(self.service.settings['model_id'],'compact')
         self.assertEqual(read_json(self.root/'settings.json',{})['model_id'],'compact')
 
+    def test_catalog_names_carry_no_abliterated_label(self):
+        for m in model_catalog(): self.assertNotIn('bliterated', m['name'])
+
+    def test_progress_percent_is_weighted_by_bytes_and_eta_covers_the_whole_run(self):
+        events=[]
+        self.service.setup_progress.side_effect=lambda: events.append(dict(self.setup.info))
+        self.service.model.chat.return_value='Ready'
+        model=choose('compact');archive=self.root/'map.pmtiles'
+        def download_model(_id,progress):
+            progress('AI model · 1.7 GB / 3.4 GB · 50% · 10.0 MB/s · about 3 min left');return self.root/'new.gguf'
+        def basemap(progress,cancel=None):
+            progress('US map · 10.5 GB / 21.0 GB · 50% · 20.0 MB/s');return archive
+        def routing(progress):
+            progress('US directions: 1 / 4 files saved');progress('US directions · Walking directions · 1 MB / 2 MB · 50%');progress('US directions: 4 / 4 files saved')
+        with patch('jarviss.setup.inspect',return_value=self.hardware()),patch('jarviss.setup.prepare_runtime',side_effect=lambda p:p('Model engine · 5 MB / 10 MB · 50%')), \
+             patch('jarviss.setup.prepare_model',side_effect=download_model),patch('jarviss.setup.prepare_voice',side_effect=lambda p:p('Voice engine · 100 MB / 200 MB · 50%')), \
+             patch('jarviss.setup.prepare_basemap',side_effect=basemap),patch('jarviss.setup.prepare_routing',side_effect=routing),patch('jarviss.us_routing.USRouter',return_value=self.service.us_router):
+            result=self.setup.run('compact')
+        total=model['bytes']+520_000_000+21_000_000_000+2_000_000_000
+        by_detail={e['detail']:e for e in events}
+        self.assertEqual(by_detail['Model engine · 5 MB / 10 MB · 50%']['percent'],0)
+        self.assertEqual(by_detail['AI model · 1.7 GB / 3.4 GB · 50% · 10.0 MB/s · about 3 min left']['percent'],int(50*model['bytes']/total))
+        self.assertEqual(by_detail['AI model · 1.7 GB / 3.4 GB · 50% · 10.0 MB/s · about 3 min left']['eta'],f'about {(round((total-model["bytes"]/2)/1e7)+59)//60} min left')
+        self.assertEqual(by_detail['Voice engine · 100 MB / 200 MB · 50%']['percent'],int(100*(model['bytes']+260_000_000)/total))
+        self.assertEqual(by_detail['US map · 10.5 GB / 21.0 GB · 50% · 20.0 MB/s']['percent'],int(100*(model['bytes']+520_000_000+10_500_000_000)/total))
+        self.assertEqual(by_detail['US directions: 1 / 4 files saved']['percent'],int(100*(total-1_500_000_000)/total))
+        self.assertEqual(by_detail['US directions · Walking directions · 1 MB / 2 MB · 50%']['percent'],int(100*(total-1_500_000_000)/total))
+        self.assertEqual(by_detail['US directions: 4 / 4 files saved']['percent'],100)
+        self.assertEqual((result['run']['percent'],result['run']['eta'],result['run']['skipped']),(100,'',False))
+        percents=[e['percent'] for e in events]
+        self.assertEqual(percents,sorted(percents))
+
+    def test_chat_only_run_counts_only_the_model_and_skip_is_forgotten(self):
+        self.service.model.chat.return_value='Ready'
+        self.setup.save(skipped=True)
+        self.assertTrue(Setup(self.service).snapshot()['skipped'])
+        with patch('jarviss.setup.inspect',return_value=self.hardware()),patch('jarviss.setup.prepare_runtime'), \
+             patch('jarviss.setup.prepare_model',side_effect=lambda _id,progress:(progress('AI model · 1.7 GB / 3.4 GB · 50%'),self.root/'new.gguf')[1]), \
+             patch('jarviss.setup.prepare_voice') as voice:
+            result=self.setup.run('compact',only_model=True)
+        voice.assert_not_called()
+        self.assertEqual(self.setup.weights,{'model':choose('compact')['bytes']})
+        self.assertEqual((result['run']['status'],result['run']['percent'],result['run']['skipped']),('model_ready',100,False))
+        self.assertFalse(read_json(self.root/'setup.json',{})['skipped'])
+        self.assertEqual(result['component_bytes']['model'],choose('compact')['bytes'])
+
     def test_missing_selection_and_damaged_catalog_are_reported_as_advice(self):
         with self.assertRaisesRegex(ValueError,'Choose a model'):self.setup.run(None)
         for content in ('{}','[]','{"models":[]}'):

@@ -17,6 +17,13 @@ try{
  await a.waitForFunction(()=>document.querySelector('#messages').textContent.includes('<b>Received</b>'),null,{timeout:10000});
  assert.equal(await a.locator('#messages b').count(),0);assert.equal(await a.locator('#messages article').count(),2);
  assert.equal(await a.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
- await a.screenshot({path:path.join(root,'local-data/board.png')});
+ await a.screenshot({path:path.join(temp,'board.png')});
  console.log('PASS: two board browser clients; wrong-code recovery; posting; automatic receipt; text escaping; phone-width layout');
+ // The page reports how many messages it shows, keeps the list append-only, and exposes it as a log.
+ assert.equal(await a.locator('#status').innerText(),'2 messages');assert.equal(await a.locator('#status.error').count(),0);
+ assert.equal(await a.locator('#messages').getAttribute('role'),'log');assert.match(await a.locator('.brand').innerText(),/^JARVISS$/);
+ await a.evaluate(()=>{document.querySelector('#messages article').dataset.marker='kept';});await a.evaluate(()=>refresh());
+ assert.equal(await a.locator('#messages article').count(),2);assert.equal(await a.locator('#messages article[data-marker="kept"]').count(),1);
+ await a.locator('#code').fill('WRONG');await a.locator('#join').click();await a.locator('#status.error').waitFor();assert.equal(await a.locator('#messages article').count(),2);
+ console.log('PASS: message count status, append-only refresh, log role, error styling');
 }finally{if(app)await app.close();if(server){server.stdin.end();await new Promise(resolve=>server.once('exit',resolve));}fs.rmSync(temp,{recursive:true,force:true});}})().catch(e=>{console.error(e);process.exitCode=1;});

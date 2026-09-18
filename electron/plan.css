@@ -1,0 +1,33 @@
+.plan-heading{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);margin-bottom:0}
+.plan-heading>*{margin:0 0 var(--s-2)}
+#plan-note{margin-bottom:var(--s-4)}
+/* Form card sits on the page surface (bg-1 / line-1); record cards are bg-2 so the two never read as the same thing. */
+.plan-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s-3) var(--s-4);margin-bottom:var(--s-5);background:var(--bg-1);border-color:var(--line-1)}
+.plan-form label{margin:0}
+.plan-form label:has(>textarea){grid-column:1/-1}
+.plan-form>button{align-self:end;justify-self:start}
+.plan-form .form-actions{grid-column:1/-1;margin:0}
+.plan-form input,.plan-form textarea,.plan-form select{background:var(--bg-2)}
+#plan-list .empty{margin-bottom:var(--s-5)}
+.plan-record{padding:var(--s-4) var(--s-5);margin-bottom:var(--s-3);background:var(--bg-2);border:1px solid var(--line-1);border-radius:var(--r-lg)}
+.record-title{display:block;font-size:var(--fs-lg);font-weight:var(--fw-semibold);line-height:var(--lh-tight);overflow-wrap:anywhere}
+.record-meta{margin-top:var(--s-1);white-space:pre-wrap;overflow-wrap:anywhere}
+.record-note{margin-top:var(--s-2);font-size:var(--fs-sm);color:var(--accent-strong)}
+.record-note.warn{color:var(--warn)}
+.plan-record.done .record-title{color:var(--fg-3);text-decoration:line-through}
+.record-actions{margin-top:var(--s-3)}
+.record-actions button{height:var(--control-h-compact);padding:0 10px;font-size:var(--fs-sm)}
+.stat-row{display:flex;flex-wrap:wrap;gap:var(--s-4) var(--s-8);padding:var(--s-4) var(--s-5);margin-bottom:var(--s-5);background:var(--bg-2);border:1px solid var(--line-1);border-radius:var(--r-lg)}
+.stat-row div{display:flex;flex-direction:column;gap:2px}
+.stat-row dt{font-size:var(--fs-xs);color:var(--fg-3)}
+.stat-row dd{font-size:var(--fs-xl);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums}
+.stat-row:empty{display:none}
+#board-card{margin:var(--s-4) 0}
+#board-live>.meta+.meta{margin-top:var(--s-4)}
+.board-address-row{display:flex;align-items:center;gap:var(--s-3);flex-wrap:wrap;margin:var(--s-2) 0}
+#board-address{font-size:var(--fs-lg);line-height:var(--lh-body);overflow-wrap:anywhere;user-select:all}
+.board-code{display:block;margin-top:var(--s-1);font-size:var(--fs-3xl);line-height:var(--lh-tight);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;user-select:all}
+#board-note{margin-top:var(--s-3)}
+.board-message p{margin-top:var(--s-1);font-size:var(--fs-lg);line-height:var(--lh-body);white-space:pre-wrap;overflow-wrap:anywhere}
+.board-message small{display:block;margin-top:var(--s-2)}
+@media(max-width:1160px){.plan-form{grid-template-columns:1fr}}

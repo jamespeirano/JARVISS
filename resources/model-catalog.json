@@ -5,7 +5,7 @@
     {
       "id": "compact",
       "note": "Basic model. Missed safety and planning checks in testing.",
-      "name": "Gemma 4 E2B \u00b7 Abliterated",
+      "name": "Gemma 4 E2B",
       "repo": "mradermacher/Huihui-gemma-4-E2B-it-abliterated-GGUF",
       "revision": "5a6514c29dea768a06908b509a5027ec7f084028",
       "filename": "Huihui-gemma-4-E2B-it-abliterated.Q4_K_M.gguf",
@@ -19,7 +19,7 @@
     {
       "id": "balanced",
       "note": "Missed some equipment and planning checks in testing.",
-      "name": "Gemma 4 E4B \u00b7 Abliterated",
+      "name": "Gemma 4 E4B",
       "repo": "mradermacher/Huihui-gemma-4-E4B-it-abliterated-GGUF",
       "revision": "8cf05b48c08d09b5f5601169fc639e8b7425bddf",
       "filename": "Huihui-gemma-4-E4B-it-abliterated.Q4_K_M.gguf",
@@ -32,7 +32,7 @@
     },
     {
       "id": "advanced",
-      "name": "Qwen 3.8 27B \u00b7 Abliterated",
+      "name": "Qwen 3.8 27B",
       "repo": "huihui-ai/Huihui-Qwen3.8-27B-abliterated-GGUF",
       "revision": "8f1b52408a2f6e317535190c9386f776cacf0079",
       "filename": "Huihui-Qwen3.8-27B-abliterated-UD-DW-Q4_K_M.gguf",

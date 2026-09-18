@@ -119,6 +119,14 @@ class AtlasServiceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'Search again'):
             service.command('route',{'id':found['id']})
 
+    def test_empty_query_lists_only_resources(self):
+        pack=fixture();pack['places'].append({'id':'node/9','name':'Post box','kind':'post box','point':[40,-74]})
+        service=self.service();self.import_area(service,pack)
+        service.command('set_map_position',{'lat':40,'lon':-74})
+        self.assertEqual([p['name'] for p in service.command('nearest',{})],['Recorded fountain','Recorded clinic'])
+        self.assertEqual([p['name'] for p in service.command('nearest',{'query':'post box'})],['Post box'])
+        self.assertTrue(all('distance_text' in p for p in service.command('nearest',{'query':''})))
+
     def test_routable_places_are_capped(self):
         service=self.service();self.import_area(service,fixture())
         service.command('set_map_position',{'lat':40,'lon':-74})

@@ -33,7 +33,7 @@ class LocalBoard:
   name=name.strip();text=text.strip()
   if not name or len(name)>80 or not text or len(text)>2000:raise ValueError(INVALID)
   with self.lock:
-   if sender is not None:  # Jarvis's own posts are not rate limited; LAN peers are, per address.
+   if sender is not None:  # JARVISS's own posts are not rate limited; LAN peers are, per address.
     now,last=time.monotonic(),self.last_post.get(sender)
     if last is not None and now-last<1:raise TooFast('Wait a second between messages, then send again.')
     self.last_post[sender]=now
@@ -83,11 +83,11 @@ class LocalBoard:
    def do_GET(self):
     if self.path=='/':return self.reply(200,(RESOURCES/'local-board.html').read_bytes(),'text/html')
     if self.path!='/messages':return self.reply(404,{'error':'Not found'})
-    if not self.authorized():return self.reply(401,{'error':'Enter the code shown in Jarvis.'})
+    if not self.authorized():return self.reply(401,{'error':'Enter the code shown in JARVISS.'})
     return self.reply(200,board.state()['messages'])
    def do_POST(self):
     if self.path!='/messages':return self.reply(404,{'error':'Not found'})
-    if not self.authorized():return self.reply(401,{'error':'Enter the code shown in Jarvis.'})
+    if not self.authorized():return self.reply(401,{'error':'Enter the code shown in JARVISS.'})
     try:
      size=int(self.headers.get('Content-Length',0))
      if not 0<size<=10000:raise ValueError('Message is too large or empty.')

@@ -1,52 +1,339 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: atlas:; connect-src 'self' atlas:; worker-src 'self' blob: atlas:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"><title>JARVISS</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="jarvis.css"><link rel="stylesheet" href="desktop.css"><link rel="stylesheet" href="references.css"><link rel="stylesheet" href="map-assets/maplibre-gl.css"><link rel="stylesheet" href="atlas.css"><link rel="stylesheet" href="planner.css"><link rel="stylesheet" href="setup.css"></head><body class="setup-screen">
-<aside><nav>
-<button data-page="assistant"><span>◎</span> Chat</button><button data-page="atlas"><span>⌖</span> Maps</button><button data-page="plan"><span>☷</span> Plan</button><button data-page="docs"><span>▧</span> Docs</button>
-</nav><div class="rail-bottom"><button data-page="settings"><span>⚙</span> Settings</button></div></aside>
-<main><header><button id="panel-toggle" class="header-tool" aria-controls="voice-panel" aria-expanded="true" title="Show or hide voice panel">Voice <span aria-hidden="true">◧</span></button><div class="status-pill"><i id="status-dot"></i><button id="view-setup" hidden>View setup</button><span id="status">Connecting to local service</span></div></header>
-<div id="error" role="alert" hidden></div>
-<section id="startup" class="page visible"><div class="setup-heading"><h2>Starting JARVISS</h2><p id="startup-message" role="status">Checking setup…</p></div><button id="startup-retry" hidden>Try again</button></section>
-<section id="setup" class="page">
- <div class="setup-heading"><h2>Set up JARVISS</h2><p>Download once. Use offline.</p></div>
- <p id="hardware-summary" role="status">Checking this computer…</p>
- <div id="recommended-model"></div>
- <details id="model-options"><summary>Other models</summary><div id="setup-models"></div></details>
- <div class="setup-included"><h3>Included</h3><ul id="setup-components"></ul></div>
- <p id="setup-size"></p><p id="setup-warning" role="status"></p>
- <div id="setup-activity" hidden><progress id="setup-bar" max="5"></progress><p id="setup-detail" role="status"></p></div>
- <div class="setup-actions"><button id="setup-download" class="primary" disabled>Download everything</button><button id="setup-pause" hidden>Pause</button><button id="setup-done" hidden>Open JARVISS</button><button id="setup-later" class="text-button">Set up later</button></div>
- <details class="setup-storage"><summary>Files and download details</summary><p id="setup-directory"></p><p>Models, voice and walking files resume after an interruption. An unfinished basemap download restarts. Completed files are reused.</p><button id="setup-recheck">Check this computer again</button></details>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: atlas:; connect-src 'self' atlas:; worker-src 'self' blob: atlas:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<title>JARVISS</title>
+<link rel="stylesheet" href="map-assets/maplibre-gl.css">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="chat.css">
+<link rel="stylesheet" href="atlas.css">
+<link rel="stylesheet" href="plan.css">
+<link rel="stylesheet" href="docs.css">
+<link rel="stylesheet" href="setup.css">
+</head>
+<body class="setup-screen">
+<svg hidden aria-hidden="true">
+ <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></symbol>
+ <symbol id="i-map" viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></symbol>
+ <symbol id="i-plan" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></symbol>
+ <symbol id="i-docs" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
+ <symbol id="i-settings" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></symbol>
+ <symbol id="i-voice" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/></symbol>
+ <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></symbol>
+ <symbol id="i-send" viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></symbol>
+ <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+ <symbol id="i-back" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></symbol>
+ <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+ <symbol id="i-chevron-down" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+ <symbol id="i-chevron-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+ <symbol id="i-close" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+ <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+ <symbol id="i-retry" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></symbol>
+ <symbol id="i-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></symbol>
+ <symbol id="i-locate" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></symbol>
+ <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></symbol>
+ <symbol id="i-clipboard" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></symbol>
+ <symbol id="i-minus" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+ <symbol id="i-pin" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+ <symbol id="i-crosshair" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></symbol>
+ <symbol id="i-fullscreen" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+ <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+ <symbol id="i-warning" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+ <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></symbol>
+</svg>
+
+<aside inert>
+ <div class="wordmark"><span>JARVISS</span><span id="app-version" class="chip"></span></div>
+ <nav aria-label="Pages">
+  <button data-page="assistant"><svg class="icon" aria-hidden="true"><use href="#i-chat"/></svg><span>Chat</span></button>
+  <button data-page="atlas"><svg class="icon" aria-hidden="true"><use href="#i-map"/></svg><span>Maps</span></button>
+  <button data-page="plan"><svg class="icon" aria-hidden="true"><use href="#i-plan"/></svg><span>Plan</span></button>
+  <button data-page="docs"><svg class="icon" aria-hidden="true"><use href="#i-docs"/></svg><span>Docs</span></button>
+ </nav>
+ <div class="rail-bottom"><button data-page="settings"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg><span>Settings</span></button></div>
+</aside>
+
+<main>
+<header>
+ <button id="reference-back" class="quiet header-tool back-tool"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg><span id="reference-back-label">Back to Docs</span></button>
+ <button id="panel-toggle" class="quiet header-tool" aria-controls="voice-panel" aria-expanded="true" title="Show or hide the voice panel"><svg class="icon" aria-hidden="true"><use href="#i-voice"/></svg><span>Voice</span></button>
+ <button id="view-setup" class="quiet compact header-tool" hidden>View setup</button>
+ <div class="status-pill" role="status"><span id="status-dot" class="status-dot"></span><span id="status">Connecting to local service</span></div>
+</header>
+<div id="error" class="notice danger" role="alert" hidden></div>
+
+<section id="startup" class="page visible">
+ <h2 class="page-title" tabindex="-1">Starting JARVISS</h2>
+ <p id="startup-message" class="lede" role="status">Checking setup…</p>
+ <button id="startup-retry" hidden>Try again</button>
 </section>
-<section id="assistant" class="page"><div class="assistant-grid"><div class="conversation-column"><div class="welcome"><h2>What do you need help with?</h2><div id="quick-actions" role="group" aria-label="Start a question"></div></div><div id="messages" aria-live="polite"></div><form id="composer"><textarea id="question" placeholder="Message JARVISS…" rows="2" aria-label="Your question"></textarea><div class="composer-bottom"><span>Shift + Enter for a new line</span><button class="send" id="send" type="submit" aria-label="Send message" title="Send message">↑</button></div></form><div class="chat-footer"><button id="clear" class="text-button">Clear conversation</button></div></div>
-<div class="inspector" id="voice-panel"><div class="voice-card"><div class="orb" id="orb"></div><meter id="mic-level" min="0" max="1" value="0" aria-label="Microphone level"></meter><div id="heard-partial" aria-live="polite"></div><div id="voice-badge" role="status">Voice off</div><button id="voice-toggle" class="primary">Start voice mode</button><div class="voice-hint">Say “stop listening” to pause</div></div></div></div></section>
+
+<section id="setup" class="page">
+ <h2 class="page-title" tabindex="-1">Set up JARVISS</h2>
+ <p class="lede">Download once. Use offline.</p>
+ <div class="setup-included"><h3>Included</h3><ul id="setup-components"></ul></div>
+ <details id="model-options"><summary>Other models</summary><div id="setup-models"></div></details>
+ <p id="setup-size"></p>
+ <p id="setup-warning" class="notice warn" role="status"></p>
+ <div id="setup-activity" hidden><progress id="setup-bar" max="100" value="0" aria-labelledby="setup-detail"></progress><p id="setup-detail" class="meta" role="status"></p></div>
+ <div class="setup-actions">
+  <button id="setup-download" class="primary" disabled>Download everything</button>
+  <button id="setup-chat-only" hidden>Download chat only — maps later</button>
+  <button id="setup-pause" hidden>Pause</button>
+  <button id="setup-done" class="primary" hidden>Open JARVISS</button>
+  <button id="setup-later" class="quiet">Set up later</button>
+ </div>
+ <details class="setup-storage"><summary>Files and download details</summary><p id="hardware-summary" role="status">Checking this computer…</p><p id="setup-directory"></p><p>Models, voice and walking files resume after an interruption. An unfinished map download restarts. Completed files are reused.</p><button id="setup-recheck">Check again</button></details>
+</section>
+
+<section id="assistant" class="page">
+ <h2 class="page-title visually-hidden" tabindex="-1">Chat</h2>
+ <div class="assistant-grid">
+  <div class="conversation-column">
+   <div id="setup-skipped" class="notice info slim" role="status" hidden><span class="notice-text">US maps not downloaded</span><button id="setup-skipped-open" class="compact">Set up</button></div>
+   <div class="welcome"><div class="welcome-text"><p class="greeting">What do you need help with?</p><p class="greeting-sub">Everything runs on this computer. Answers can be wrong — check the field library for anything critical.</p></div><div id="quick-actions" role="group" aria-label="Start a question"></div></div>
+   <div id="messages" role="log" aria-live="polite"></div>
+   <div id="response-wait" role="status" hidden><span class="thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span>Thinking…</div>
+   <form id="composer">
+    <textarea id="question" placeholder="Message JARVISS…" rows="1" aria-label="Your question"></textarea>
+    <div class="composer-bottom"><span class="hint">Shift + Enter for a new line</span><button class="primary icon-only" id="send" type="submit" aria-label="Send message" title="Send message"><svg class="icon" aria-hidden="true"><use href="#i-send"/></svg></button></div>
+   </form>
+   <div id="composer-notice" class="notice warn" role="status" hidden></div>
+   <div class="chat-footer"><button id="clear" class="quiet compact">Clear conversation</button></div>
+  </div>
+  <div class="inspector" id="voice-panel">
+   <div class="voice-card">
+    <div class="orb" id="orb"></div>
+    <div id="voice-badge" class="eyebrow" role="status">Voice off</div>
+    <button id="voice-toggle" class="primary">Start voice mode</button>
+    <p class="voice-hint">Say “stop listening”, “stop voice” or “that’s all” to pause.</p>
+    <meter id="mic-level" min="0" max="1" value="0" aria-label="Microphone level"></meter>
+    <div id="heard-partial" aria-live="off"></div>
+    <div id="voice-pack-note" class="notice info slim" role="status" hidden><span class="notice-text">Voice pack not installed</span><button id="voice-pack-setup" class="compact">Set up</button><button id="voice-pack-dismiss" class="quiet compact dismiss" aria-label="Dismiss"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+   </div>
+   <section id="situation-card" class="card">
+    <div class="card-heading"><h3>Situation</h3><p class="meta">Used in every conversation</p></div>
+    <dl id="situation-summary" class="summary-lines">
+     <div><dt>Where</dt><dd id="situation-summary-location">Not set</dd></div>
+     <div><dt>What happened</dt><dd id="situation-summary-text">Not set</dd></div>
+     <div><dt>People and supplies</dt><dd id="situation-summary-supplies">Not set</dd></div>
+    </dl>
+    <details id="situation-editor">
+     <summary id="situation-edit" class="summary-button">Edit</summary>
+     <form id="profile-form">
+      <label>Your situation<textarea name="situation" rows="3" maxlength="2000" placeholder="Where are you? What has happened? What matters most right now?"></textarea></label>
+      <label>People, needs and supplies<textarea name="supplies" rows="3" maxlength="2000" placeholder="People, mobility, available water, food, equipment and power…"></textarea></label>
+      <label>Where are you?<input name="location_text" placeholder="Street or address, city, state"></label>
+      <div class="location-actions"><button type="button" id="situation-find" class="compact">Find on map</button><span id="situation-location-status" class="meta"></span></div>
+      <div class="form-actions"><button class="primary">Save situation</button></div>
+     </form>
+    </details>
+   </section>
+  </div>
+ </div>
+</section>
 
 <section id="atlas" class="page">
- <div class="section-intro"><div class="map-heading"><h2>Offline atlas</h2><button id="map-fullscreen" aria-pressed="false">Full screen</button></div><p id="map-caption">Explore your downloaded map. Set your position to find nearby resources.</p></div>
- <div class="toolbar"><input id="map-search" aria-label="Search the offline map" placeholder="Water, pharmacy, hardware, a road or place name…"><button id="center-map">My position</button><button id="find-location">Find my location</button><button id="set-position">Pin my position</button></div>
- <details id="location-picker" class="location-picker"><summary>Find my location</summary><p>Find a familiar city or town, explore a road or landmark, then confirm where you are. Searching only moves the map.</p><div class="location-search-grid"><form id="city-search-form"><label for="city-search">1. City or town</label><div class="location-input"><input id="city-search" placeholder="City or town name" autocomplete="off"><button type="submit">Find area</button></div></form><form id="landmark-search-form"><label for="landmark-search">2. Street or landmark</label><div class="location-input"><input id="landmark-search" placeholder="Street, address or landmark…" autocomplete="off"><button type="submit">Find place</button></div></form></div><div class="location-area"><span id="location-area-name">No area selected</span><button id="locate-this-view">Search the area shown on the map</button></div><p id="location-search-status" role="status">Your position stays unset until you choose “I am here” or pin a point.</p><div id="location-results"></div></details>
- <div class="map-tools"><span id="map-local-status">No basemap selected</span><span id="map-click-hint">Click a point for position or directions.</span><button id="choose-basemap">Choose basemap</button><button id="use-basemap" hidden>Back to my maps</button></div>
- <div class="atlas-grid"><div class="map-surface"><div id="detail-map" hidden></div><canvas id="map-canvas"></canvas></div><div id="places" class="panel"><p>Set your position to search nearby.</p></div></div>
- <div id="map-position-note" role="status"></div><div id="route-info" aria-live="polite"></div>
- <section class="us-offline-setup"><div><strong>US offline maps</strong><button id="map-view-setup" hidden>View setup</button><p id="us-map-status" role="status">Checking downloaded map and directions…</p><small>Lower 48, Alaska and Hawaii. Download once while connected; search and walking directions work offline.</small></div><button id="download-us-maps">Download US offline maps</button><button id="map-pause" hidden>Pause</button><p id="map-progress" role="status"></p></section>
- <small>© OpenStreetMap contributors · ODbL · Nearest means straight-line distance. Mapped water is not verified drinking water. Availability and route conditions are unknown.</small>
+ <h2 class="page-title" tabindex="-1">Maps</h2>
+ <p id="map-caption" class="meta">Explore your downloaded map. Set your position to find nearby resources.</p>
+ <div class="toolbar">
+  <div class="search map-search"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><input id="map-search" type="search" aria-label="Search the offline map" placeholder="Water, pharmacy, hardware, a road or place…"><span class="search-tools"><span id="map-result-count" class="meta" role="status"></span><button id="map-show-all" class="quiet compact" hidden>Show all</button></span></div>
+  <button id="center-map"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg>My position</button>
+  <details id="set-position-menu" class="menu">
+   <summary><svg class="icon" aria-hidden="true"><use href="#i-crosshair"/></svg>Set my position<svg class="icon caret" aria-hidden="true"><use href="#i-chevron-down"/></svg></summary>
+   <div class="menu-list" role="menu">
+    <button id="find-location" role="menuitem"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>Search a place</button>
+    <button id="map-use-centre" role="menuitem"><svg class="icon" aria-hidden="true"><use href="#i-crosshair"/></svg>Use map centre</button>
+    <button id="set-position" role="menuitem"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg>Click on the map</button>
+   </div>
+  </details>
+  <button id="map-fullscreen" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#i-fullscreen"/></svg>Full screen</button>
+ <section id="location-picker" class="location-picker card" aria-labelledby="location-picker-title" hidden>
+  <div class="card-heading"><h3 id="location-picker-title">Find my location</h3><button id="location-picker-close" class="quiet compact"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg>Close</button></div>
+  <p class="meta">Search a town, then a street or landmark. Pick a result and choose Set as my position.</p>
+  <div class="location-search-grid">
+   <form id="city-search-form"><label for="city-search">1. City or town</label><div class="location-input"><input id="city-search" placeholder="City or town name" autocomplete="off"><button type="submit">Find area</button></div></form>
+   <form id="landmark-search-form"><label for="landmark-search">2. Street or landmark</label><div class="location-input"><input id="landmark-search" placeholder="Street, address or landmark…" autocomplete="off"><button type="submit">Find place</button></div></form>
+  </div>
+  <div class="location-area"><span id="location-area-name" class="meta">No area selected</span><button id="locate-this-view" class="compact">Search the area shown on the map</button></div>
+  <p id="location-search-status" class="meta" role="status">Your position stays unset until you choose “Set as my position” or pin a point.</p>
+  <div id="location-results"></div>
+ </section>
+ </div>
+ <div class="atlas-grid">
+  <div class="map-surface">
+   <div id="detail-map" hidden></div>
+   <div id="map-empty" class="empty"><svg class="icon" aria-hidden="true"><use href="#i-map"/></svg><p>No offline map installed yet.</p><p class="meta">Download the US map below, or open Setup.</p></div>
+  </div>
+  <div id="places" class="card"><div class="empty"><p>Set your position to search nearby.</p></div></div>
+ </div>
+ <div class="map-meta"><span id="map-position-note" role="status"></span><span id="map-local-status" role="status">No map selected</span><span id="map-click-hint" role="status">Click a point for position or directions.</span><button id="map-click-cancel" class="quiet compact" hidden>Cancel</button><span id="map-confirm" class="confirm" hidden></span><button id="choose-basemap" class="link">Use a map file…</button></div>
+ <div id="route-panel" class="card">
+  <div id="route-info" aria-live="polite"></div>
+  <div class="route-actions"><button id="clear-route" class="compact"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg>Clear route</button><button id="copy-route" class="compact"><svg class="icon" aria-hidden="true"><use href="#i-clipboard"/></svg>Copy directions</button></div>
+ </div>
+ <section id="map-download-card" class="card">
+  <div class="card-heading"><h3>US offline maps</h3><button id="map-view-setup" class="quiet compact" hidden>View setup</button></div>
+  <p id="us-map-status" role="status">Checking downloaded map and directions…</p>
+  <p class="meta">Lower 48, Alaska and Hawaii. Download once while connected; search and walking directions work offline.</p>
+  <div class="card-actions"><button id="download-us-maps" class="primary">Download US offline maps</button><button id="map-pause" hidden>Pause</button></div>
+  <p id="map-progress" class="meta" role="status"></p>
+ </section>
+ <p class="meta attribution">Mapped water is not verified drinking water, and availability and route conditions are unknown.</p>
 </section>
-<section id="plan" class="page"><div class="section-intro"><h2>Plan</h2></div><div id="plan-tabs" class="plan-tabs"></div><section id="plan-records"><div class="plan-heading"><h3 id="plan-title"></h3><button id="plan-ask">Ask JARVISS</button></div><p id="plan-note"></p><form id="plan-form" class="plan-form"></form><div id="plan-list"></div><form id="energy-form" class="plan-form" hidden><label>Usable battery watt-hours<input name="battery_wh" type="number" min="0" step="any" required></label><label>Solar panel watts<input name="solar_watts" type="number" min="0" step="any" required></label><label>Equivalent full-sun hours per day<input name="sun_hours" type="number" min="0" max="24" step="any" required></label><label>Charging efficiency %<input name="efficiency" type="number" min="0" max="100" step="any" required></label><button>Save power budget</button></form><p id="power-summary"></p></section><section id="board-panel" hidden><h3>Group messages</h3><p>Use the same Wi-Fi or local network. Internet is not needed.</p><button id="board-toggle">Start local board</button><p id="board-address"></p><small id="board-note"></small><form id="board-form" class="plan-form"><label>Your name<input name="name" maxlength="80" required></label><label>Message<textarea name="text" maxlength="2000" required></textarea></label><button>Post message</button></form><div id="board-messages"></div></section></section>
-<section id="docs" class="page"><div class="docs-heading"><h2>Docs</h2><div><button id="paste-document">Paste text</button><button id="import-document" class="primary">＋ Add file</button></div></div><input id="docs-search" aria-label="Search docs" placeholder="Search topic, model or warning code…"><form id="note-form" class="plan-form" hidden><label>Name<input name="title" maxlength="120" required></label><label>Text<textarea name="text" rows="5" required></textarea></label><button>Save document</button><button type="button" id="cancel-note">Cancel</button></form><h3 id="field-library-heading" class="subheading">Field library</h3><div class="reference-tools"><p id="reference-summary" class="docs-description"></p><button id="reference-pdfs" aria-pressed="false">Illustrated PDFs</button></div><div id="reference-results" class="docs-list" hidden></div><div id="references" class="docs-list"></div><details id="situation-document" class="doc-entry"><summary><span>Situation</span><small>Used in every conversation</small></summary><form id="profile-form" class="panel form-panel"><label>Your situation<textarea name="situation" rows="3" maxlength="2000" placeholder="Where are you? What has happened? What matters most right now?"></textarea></label><label>People, needs & supplies<textarea name="supplies" rows="3" maxlength="2000" placeholder="People, mobility, available water, food, equipment and power…"></textarea></label><label>Where are you?<input name="location_text" placeholder="Street or address, city, state"></label><div class="location-actions"><button type="button" id="situation-find">Find on map</button><span id="situation-location-status"></span></div><button class="primary">Save situation</button><span id="saved"></span></form></details><h3 id="documents-heading" class="subheading">Your files</h3><div id="documents" class="docs-list"></div><h3 id="guides-heading" class="subheading">Using JARVISS</h3><div id="guides" class="docs-list"></div><details class="doc-entry recovery-entry"><summary><span>Regroup and rebuild</span><small>A short group checklist</small></summary><article id="recovery-document" class="prose"></article></details></section>
+
+<section id="plan" class="page">
+ <h2 class="page-title" tabindex="-1">Plan</h2>
+ <div id="plan-tabs" class="tabs" role="tablist" aria-label="Plan sections"><span id="plan-tab-group" class="tab-group"></span><button id="plan-messages-tab" type="button" role="tab" aria-selected="false" aria-controls="board-panel" tabindex="-1">Group messages<span id="board-unread" class="badge" hidden></span></button></div>
+ <section id="plan-records" role="tabpanel" aria-labelledby="plan-tab-supplies">
+  <div class="plan-heading"><h3 id="plan-title"></h3><button id="plan-ask" class="compact">Ask JARVISS</button></div>
+  <p id="plan-note" class="meta"></p>
+  <form id="plan-form" class="plan-form card"></form>
+  <div id="plan-list"></div>
+  <form id="energy-form" class="plan-form card" hidden>
+   <label>Usable battery watt-hours<input name="battery_wh" type="number" min="0" step="any" required></label>
+   <label>Solar panel watts<input name="solar_watts" type="number" min="0" step="any" required></label>
+   <label>Equivalent full-sun hours per day<input name="sun_hours" type="number" min="0" max="24" step="any" required></label>
+   <label>Charging efficiency %<input name="efficiency" type="number" min="0" max="100" step="any" required></label>
+   <button>Save power budget</button>
+  </form>
+  <dl id="power-summary" class="stat-row" aria-label="Power summary" hidden></dl>
+ </section>
+ <section id="board-panel" role="tabpanel" aria-labelledby="plan-messages-tab" hidden>
+  <div class="plan-heading"><h3>Group messages</h3><button id="board-toggle" type="button">Start local board</button></div>
+  <p class="meta">Use the same Wi-Fi or local network. Internet is not needed.</p>
+  <div id="board-card" class="card">
+   <div id="board-live" hidden>
+    <p class="meta">Open this address on another device, then enter the code.</p>
+    <div class="board-address-row"><p id="board-address"></p><button id="copy-board-address" type="button" class="compact"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>Copy address</button></div>
+    <p class="meta">Board code</p><strong id="board-code" class="board-code"></strong>
+   </div>
+   <p id="board-note" class="meta"></p>
+  </div>
+  <form id="board-form" class="plan-form card"><label>Your name<input name="name" maxlength="80" required></label><label>Message<textarea name="text" maxlength="2000" required></textarea></label><button class="primary">Post message</button></form>
+  <div id="board-messages" role="log" aria-live="polite"></div>
+ </section>
+</section>
+
+<section id="docs" class="page">
+ <div class="title-row"><h2 class="page-title" tabindex="-1">Docs</h2><div class="title-actions"><button id="paste-document">Paste text</button><button id="import-document" class="primary"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Add file</button></div></div>
+ <div class="search"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><input id="docs-search" type="search" aria-label="Search docs" placeholder="Search topic, model or warning code…"></div>
+ <form id="note-form" class="plan-form card" hidden><label>Name<input name="title" maxlength="120" required></label><label>Text<textarea name="text" rows="5" required></textarea></label><div class="form-actions"><button class="primary">Save document</button><button type="button" id="cancel-note" class="quiet">Cancel</button></div></form>
+ <div id="drop-zone" class="drop-overlay" aria-hidden="true"><svg class="icon" aria-hidden="true"><use href="#i-docs"/></svg><p>Drop to add the file</p><p class="meta">PDF, text or Markdown · up to 30 files, searched with the field library</p></div>
+ <p id="docs-cap" class="notice warn" role="status" hidden></p>
+ <h3 id="documents-heading" class="section-heading">Your files</h3>
+ <div id="documents" class="docs-list"></div>
+ <h3 id="field-library-heading" class="section-heading">Field library</h3>
+ <div class="reference-tools"><p id="reference-summary" class="meta" role="status"></p><button id="reference-pdfs" class="compact" aria-pressed="false">With illustrations</button></div>
+ <div id="reference-results" class="docs-list" hidden></div>
+ <div id="references" class="docs-list"></div>
+ <h3 id="guides-heading" class="section-heading">Using JARVISS</h3>
+ <div id="guides" class="docs-list"></div>
+ <details class="doc-entry recovery-entry"><summary><span>Regroup and rebuild</span><small>A short group checklist</small></summary><article id="recovery-document"></article></details>
+</section>
+
 <section id="reference-reader" class="page">
- <button id="reference-back">← Back to Docs</button>
- <h2 id="reference-title" tabindex="-1"></h2>
- <p id="reference-meta" class="docs-description"></p>
- <p id="reference-format" class="docs-description"></p>
+ <h2 id="reference-title" class="page-title" tabindex="-1"></h2>
+ <p id="reference-meta" class="meta"></p>
+ <p id="reference-format" class="meta"></p>
  <p id="reference-note" class="reference-note"></p>
- <p id="reference-link-status" class="reference-note" role="status" hidden>This section has changed. The full document is shown below.</p>
+ <p id="reference-link-status" class="notice info" role="status" hidden>This section has changed. The full document is shown below.</p>
  <div class="reference-actions">
   <button id="reference-open-pdf" class="primary" hidden>Open illustrated PDF</button>
   <button id="reference-save-pdf" hidden>Save PDF</button>
-  <button id="reference-save-text">Save text (.md)</button>
+  <button id="reference-save-text">Save as text</button>
   <button id="reference-ask">Ask JARVISS</button>
  </div>
  <div class="reference-jump"><span>Jump to section</span><div id="reference-picker"><button id="reference-contents" aria-expanded="false" aria-controls="reference-section-list"></button><nav id="reference-section-list" aria-label="Document sections" hidden></nav></div><button id="reference-page-pdf" hidden>View illustrated page</button></div>
  <article id="reference-text"></article>
  <details id="reference-source" class="reference-source"><summary>Source and edition</summary><p id="reference-attribution"></p></details>
 </section>
-<section id="settings" class="page"><div class="section-intro"><h2>Settings</h2></div><div class="settings-tabs" role="tablist" aria-label="Settings"><button role="tab" aria-selected="true" data-settings="responses">Responses</button><button role="tab" aria-selected="false" data-settings="audio">Voice</button><button role="tab" aria-selected="false" data-settings="model">Model</button></div><div class="settings-grid"><div class="panel settings-view" data-settings-view="model" hidden><h3>Language model</h3><p id="model-name">No model selected</p><p id="model-setup-status" role="status">Choose an existing GGUF or prepare the model and voice files first.</p><details><summary>Performance options</summary><label>GPU layers <input id="gpu" type="number" min="0" max="999" placeholder="Automatic"></label><small>Leave blank for automatic. 0 uses the CPU.</small></details><div class="button-row"><button id="choose-model">Choose GGUF</button><button id="start-model" class="primary">Start model</button></div><button id="download-model">Set up or change model</button></div><div class="panel settings-view" data-settings-view="audio" hidden><h3>Audio devices</h3><p id="voice-ready">Voice model status</p><label>Microphone<select id="input-device"><option value="">System default</option></select></label><label>Speaker<select id="output-device"><option value="">System default</option></select></label><label>Voice<select id="voice-name"><option value="bm_george">George · British</option><option value="bm_lewis">Lewis · British</option><option value="am_michael">Michael · American</option><option value="af_heart">Heart · American</option><option value="bf_emma">Emma · British</option></select></label><div class="button-row"><button id="test-speaker">Preview voice</button><span id="audio-status" role="status"></span></div><button id="download-voice">Download voice models · 490 MB</button></div></div><form id="prompt-form" class="settings-view" data-settings-view="responses"><div class="settings-section"><div class="settings-section-heading"><h3>Reply length</h3><span>Hands-free</span></div><div class="limit-grid"><label>Maximum sentences<input id="voice-max-sentences" type="number" min="1" max="20" required></label><label>Voice token budget<input id="voice-max-tokens" type="number" min="32" max="2048" required></label><label>Chat token budget<input id="text-max-tokens" type="number" min="32" max="4096" required></label></div></div><div class="settings-section"><div class="settings-section-heading"><h3>Instructions</h3></div><label>Hands-free prompt<textarea id="voice-prompt" rows="4" maxlength="12000" required></textarea></label><details class="prompt-disclosure"><summary>Internal system prompt<span class="disclosure-action">Edit prompt</span></summary><textarea id="system-prompt" rows="12" maxlength="12000" aria-label="Internal system prompt" required></textarea></details></div><div class="settings-actions"><button class="primary" type="submit">Save changes</button><button id="reset-prompts" type="button">Restore defaults</button></div><span id="prompts-saved" role="status"></span></form><div id="progress" class="progress-note" role="status"></div></section>
-</main><script src="jarvis.js"></script><script src="map-bundle.js"></script><script src="renderer.js"></script><script src="references.js"></script><script src="planner.js"></script><script src="setup.js"></script></body></html>
+
+<section id="settings" class="page">
+ <h2 class="page-title" tabindex="-1">Settings</h2>
+ <div id="settings-tabs" class="tabs" role="tablist" aria-label="Settings">
+  <button id="settings-tab-model" role="tab" aria-selected="true" aria-controls="settings-model" data-settings="model">Model</button>
+  <button id="settings-tab-audio" role="tab" aria-selected="false" aria-controls="settings-audio" data-settings="audio">Voice</button>
+  <button id="settings-tab-responses" role="tab" aria-selected="false" aria-controls="prompt-form" data-settings="responses">Advanced</button>
+  <button id="settings-tab-about" role="tab" aria-selected="false" aria-controls="settings-about" data-settings="about">About</button>
+ </div>
+ <div id="settings-model" class="settings-view" role="tabpanel" aria-labelledby="settings-tab-model" data-settings-view="model">
+  <section class="settings-section">
+   <h3>Language model</h3>
+   <p id="model-name">No model selected</p>
+   <p id="model-setup-status" class="meta" role="status">No model yet. Open Setup to download one.</p>
+   <div class="button-row"><button id="start-model" class="primary">Start model</button><button id="stop-model" hidden>Stop model</button><button id="download-model">Change model</button><button id="choose-model" class="quiet">Use a model file…</button></div>
+  </section>
+  <section class="settings-section">
+   <h3>Graphics</h3>
+   <label>Graphics acceleration<select id="gpu"><option value="">Auto</option><option value="0">Off (CPU only)</option><option value="8">8 layers</option><option value="16">16 layers</option><option value="24">24 layers</option><option value="32">32 layers</option><option value="48">48 layers</option><option value="64">64 layers</option><option value="99">All layers</option></select></label>
+   <p class="meta">Auto lets the model decide. Changing this restarts a running model.</p>
+  </section>
+ </div>
+ <div id="settings-audio" class="settings-view" role="tabpanel" aria-labelledby="settings-tab-audio" data-settings-view="audio" hidden>
+  <section class="settings-section">
+   <h3>Voice</h3>
+   <p id="voice-ready" class="meta">Voice model status</p>
+   <label>Microphone<select id="input-device"><option value="">System default</option></select></label>
+   <label>Speaker<select id="output-device"><option value="">System default</option></select></label>
+   <label>Voice<select id="voice-name"><option value="bm_george">George · British</option><option value="bm_lewis">Lewis · British</option><option value="am_michael">Michael · American</option><option value="af_heart">Heart · American</option><option value="bf_emma">Emma · British</option></select></label>
+   <div class="button-row"><button id="test-speaker">Preview voice</button><span id="audio-status" class="meta" role="status"></span></div>
+  </section>
+  <section class="settings-section"><h3>Voice pack</h3><p class="meta">The offline voice pack is about 490 MB.</p><button id="download-voice">Download voice pack</button></section>
+ </div>
+ <form id="prompt-form" class="settings-view" role="tabpanel" aria-labelledby="settings-tab-responses" data-settings-view="responses" hidden>
+  <section class="settings-section">
+   <h3>Reply length</h3>
+   <div class="limit-grid"><label>Spoken sentences at most<input id="voice-max-sentences" type="number" min="1" max="20" required></label><label>Longest spoken reply<input id="voice-max-tokens" type="number" min="32" max="2048" required></label><label>Longest written reply<input id="text-max-tokens" type="number" min="32" max="4096" required></label></div>
+  </section>
+  <section class="settings-section">
+   <h3>Instructions</h3>
+   <label>Hands-free prompt<textarea id="voice-prompt" rows="4" maxlength="12000" required></textarea></label>
+   <details class="prompt-disclosure"><summary>Internal system prompt</summary><p class="notice warn">Changing the system prompt changes how JARVISS answers everything. Restore defaults if replies get worse.</p><textarea id="system-prompt" rows="12" maxlength="12000" aria-label="Internal system prompt" required></textarea></details>
+  </section>
+  <section class="settings-section">
+   <h3>Units</h3>
+   <label>Distances and temperatures<select id="units"><option value="imperial">Miles and °F</option><option value="metric">Kilometres and °C</option></select></label>
+  </section>
+  <div class="settings-actions"><button id="reset-prompts" type="button" class="quiet compact">Restore defaults</button></div>
+ </form>
+ <div id="settings-about" class="settings-view" role="tabpanel" aria-labelledby="settings-tab-about" data-settings-view="about" hidden>
+  <section class="settings-section">
+   <h3>About</h3>
+   <p>JARVISS <span id="about-version" class="chip"></span></p>
+   <p class="meta">Offline survival assistant. Everything runs on this computer.</p>
+   <div class="button-row"><button id="open-data-folder">Open data folder</button><button id="show-logs">Show logs</button><button id="check-updates">Check for updates</button><button id="show-shortcuts">Keyboard shortcuts</button></div>
+  </section>
+  <section class="settings-section">
+   <h3>Local service</h3>
+   <p class="meta">Restart the background service if JARVISS stops responding.</p>
+   <button id="restart-service">Restart local service</button>
+  </section>
+ </div>
+ <p id="progress" class="meta progress-note" role="status"></p>
+</section>
+</main>
+
+<div id="toast" class="toast" role="status"></div>
+<dialog id="shortcuts-dialog" aria-labelledby="shortcuts-title">
+ <div class="card-heading"><h3 id="shortcuts-title">Keyboard shortcuts</h3><button class="quiet dismiss" aria-label="Close" data-close-dialog><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+ <dl id="shortcut-list" class="shortcut-list">
+  <div><dt><kbd>Ctrl</kbd> <kbd>1</kbd> – <kbd>5</kbd></dt><dd>Chat, Maps, Plan, Docs, Settings</dd></div>
+  <div><dt><kbd>Ctrl</kbd> <kbd>L</kbd></dt><dd>Focus the message box</dd></div>
+  <div><dt><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>V</kbd></dt><dd>Start or stop voice</dd></div>
+  <div><dt><kbd>Esc</kbd></dt><dd>Close menus, full screen or the reader</dd></div>
+  <div><dt><kbd>?</kbd></dt><dd>Show this list</dd></div>
+ </dl>
+</dialog>
+
+<script src="jarvis.js"></script>
+<script src="map-bundle.js"></script>
+<script src="renderer.js"></script>
+<script src="references.js"></script>
+<script src="planner.js"></script>
+<script src="setup.js"></script>
+</body>
+</html>

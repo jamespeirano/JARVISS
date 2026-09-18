@@ -1,9 +1,105 @@
-#atlas .section-intro{margin-bottom:12px}#atlas .section-intro h2{margin-bottom:8px}.atlas-grid{grid-template-columns:minmax(0,1fr) 280px;height:clamp(420px,58vh,750px);gap:14px}.map-surface{position:relative;min-width:0;border:1px solid #434349;border-radius:14px;overflow:hidden}#detail-map,#map-canvas{width:100%;height:100%;border:0;border-radius:0}#detail-map[hidden],#map-canvas[hidden]{display:none}.map-tools{display:flex;align-items:center;gap:14px;color:#9eaaa6;font-size:11px;margin:10px 0 14px;flex-wrap:wrap}.map-tools button{padding:5px 10px;font-size:11px}.map-tools #choose-basemap{margin-left:auto}#map-local-status{color:#a5dfc6}#map-position-note{color:#a5dfc6;font-size:12px;margin-top:12px}#places p{font-size:12px;color:#abb7b2;padding:10px;line-height:1.6}#places button{line-height:1.6;overflow-wrap:anywhere}#places .place-actions{display:flex;gap:6px;margin:0 0 10px}#places .place-actions button{width:auto;flex:1;font-size:11px;padding:6px 8px}.place-card{padding:9px;border-bottom:1px solid #3b4140;margin-bottom:6px}.place-card strong{font-size:12px}.place-card small{display:block;font-size:11px}.prepare-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.prepare-row label{max-width:110px;margin:0}.prepare-row input{padding:8px}.maplibregl-popup-content{background:#232b29;color:#e4f0ea;border:1px solid #64796e;padding:16px;border-radius:10px;font:12px sans-serif;max-width:290px}.maplibregl-popup-content button{font-size:11px;margin-right:6px;padding:7px}.maplibregl-popup-content p{font-size:11px}.maplibregl-ctrl-attrib{font-size:10px}#route-info{font-size:13px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}#route-info:empty{display:none}#routing-packs{font-size:12px;line-height:1.8;margin-top:12px;color:#a5dfc6}.toolbar input{min-width:0}.toolbar button{white-space:nowrap}@media(max-width:1100px){.atlas-grid{grid-template-columns:minmax(0,1fr) 230px}.toolbar button{padding:10px;font-size:12px}}
-.location-picker{border:1px solid #434349;border-radius:12px;padding:16px;margin:12px 0}.location-picker summary{cursor:pointer;font-weight:550}.location-picker p{font-size:12px;line-height:1.7;color:#a9b9b1}.location-search-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.location-search-grid label{margin-bottom:7px}.location-input{display:flex;gap:7px}.location-input input{min-width:0;flex:1;padding:10px}.location-input button{font-size:12px;white-space:nowrap}.location-area{display:flex;align-items:center;gap:12px;margin-top:14px;font-size:11px;color:#a5dfc6}.location-area button{font-size:11px;padding:6px 9px}#location-results{display:flex;gap:8px;overflow:auto;max-height:160px}#location-results button{min-width:190px;max-width:260px;text-align:left;font-size:12px}#location-results small{display:block;margin-top:5px;font-size:10px}#location-picker[open]~.atlas-grid{height:480px}
-
-.us-offline-setup{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:16px 0;border-top:1px solid #434349;margin-top:18px}.us-offline-setup>div{flex:1;min-width:260px}.us-offline-setup p{font-size:12px;margin:7px 0;color:#a5dfc6}.us-offline-setup small{font-size:11px;color:#9eaaa6}.us-offline-setup #map-progress{width:100%;margin:0}.us-offline-setup #map-progress:empty{display:none}
-
-#route-info{padding:14px 0;white-space:normal}#route-info>strong{display:block}#route-info details{margin:12px 0}#route-info details p{white-space:pre-wrap;max-height:420px;overflow:auto}.route-step-controls{display:flex;gap:8px}.route-step-controls button{padding:7px 16px}#route-info small{display:block;color:#a8b9b1}
-.map-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.map-heading button{white-space:nowrap}
-body.map-fullscreen>aside{display:none}body.map-fullscreen>main{padding:14px 20px;display:flex;flex-direction:column;overflow:hidden}body.map-fullscreen main>header{margin-bottom:0;min-height:36px}body.map-fullscreen #panel-toggle{display:none}
-body.map-fullscreen #atlas.visible{display:flex;flex-direction:column;flex:1;min-height:0;overflow:auto}body.map-fullscreen #atlas .section-intro{margin:0}body.map-fullscreen #atlas h2{font-size:22px;margin:5px 0}body.map-fullscreen #map-caption,body.map-fullscreen .us-offline-setup{display:none}body.map-fullscreen #atlas .toolbar{margin:8px 0}body.map-fullscreen .map-tools{margin:6px 0}body.map-fullscreen #atlas .atlas-grid{flex:1;min-height:260px;height:auto}body.map-fullscreen #route-info{max-height:20vh;overflow:auto;flex-shrink:0}body.map-fullscreen #map-position-note{margin-top:6px}body.map-fullscreen .location-picker{margin:5px 0;padding:10px}body.map-fullscreen .location-picker p{margin:4px 0}
+#map-caption{margin:calc(-1 * var(--s-3)) 0 var(--s-4)}
+/* Toolbar: 36px controls; the result count and "Show all" sit inside the search field; the location picker pops over the toolbar instead of pushing the map down. */
+.toolbar{position:relative;margin-bottom:var(--s-3)}
+.map-search{min-width:240px}
+.location-picker{position:absolute;top:calc(100% + 4px);left:0;z-index:20;width:min(560px,100%);border:0;box-shadow:var(--shadow-2);animation:pop var(--motion-fast) ease-out}
+.location-picker .card-heading{margin-bottom:0}
+.location-picker>.card-heading~*{margin-top:var(--s-3)}
+.location-search-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-4)}
+.location-search-grid label{margin-bottom:var(--s-2)}
+.location-input{display:flex;align-items:center;gap:var(--s-2)}
+.location-input input{min-width:0;flex:1}
+.location-area{display:flex;align-items:center;gap:var(--s-3);flex-wrap:wrap}
+#location-results{display:flex;gap:var(--s-2);overflow-x:auto;padding:var(--s-1)}
+#location-results:empty{display:none}
+#location-results button{height:auto;min-height:var(--control-h);padding:var(--s-2) 14px;flex-direction:column;align-items:flex-start;gap:var(--s-1);min-width:200px;max-width:260px;text-align:left;white-space:normal;font-weight:var(--fw-regular)}
+#location-results small{display:block}
+.atlas-grid{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:var(--s-4);height:min(58vh,640px);min-height:320px}
+.map-surface{position:relative;min-width:0;overflow:hidden;background:var(--bg-1);border:1px solid var(--line-2);border-radius:var(--r-lg)}
+#detail-map{width:100%;height:100%}
+#map-empty{position:absolute;inset:0;justify-content:center;border:0;border-radius:0}
+/* One 12px status line under the map: position · map state · click hint · (Cancel / confirmation) … Use a map file. */
+.map-meta{display:flex;align-items:center;gap:var(--s-2);flex-wrap:wrap;min-height:var(--control-h);margin:var(--s-2) 0 var(--s-3);font-size:var(--fs-xs);line-height:var(--lh-ui);color:var(--fg-3)}
+.map-meta>[role=status]:empty{display:none}
+.map-meta>[role=status]:not(:empty)~[role=status]:not(:empty)::before{content:'·';margin-right:var(--s-2)}
+.map-meta #choose-basemap{margin-left:auto}
+/* Places: a list container; the empty state centres in the panel and the last card clears the rounded corner. */
+#places{display:flex;flex-direction:column;padding:var(--s-3) var(--s-4);overflow:auto;min-height:0}
+#places>*{flex-shrink:0}
+#places>.empty{border:0;padding:var(--s-4) var(--s-2);margin:auto 0}
+#places[aria-busy=true]>.place-card{opacity:.6}
+.place-card{padding:var(--s-3) 0;border-bottom:1px solid var(--line-1);border-radius:var(--r-sm)}
+.place-card:last-of-type{border-bottom:0}
+.place-card strong{display:block;font-size:var(--fs-md);overflow-wrap:anywhere}
+.place-card small{display:block}
+.place-card small:empty{display:none}
+.place-card small.unnamed{display:inline}
+.place-actions{margin-top:var(--s-2);flex-wrap:nowrap}
+.place-actions button{flex:1;height:var(--control-h);padding:0 var(--s-2);font-size:var(--fs-sm)}
+.places-footnote{padding-top:var(--s-3)}
+#route-panel{margin-bottom:var(--s-4)}
+#route-panel:has(#route-info:empty){display:none}
+#route-info{font-size:var(--fs-md);line-height:var(--lh-body);overflow-wrap:anywhere}
+#route-info>strong{display:block;font-size:var(--fs-lg);margin-bottom:var(--s-2)}
+#route-info details{margin:var(--s-3) 0}
+#route-info details p{white-space:pre-wrap;max-height:320px;overflow:auto;margin-top:var(--s-2);font-size:var(--fs-sm)}
+.route-step-controls{margin-top:var(--s-3)}
+.route-step-controls button{padding:0 16px}
+#route-info small{display:block;margin-top:var(--s-3)}
+.route-actions{margin-top:var(--s-4)}
+#map-download-card{margin-bottom:var(--s-4)}
+.attribution{overflow-wrap:anywhere}
+/* Full screen: rail and page chrome go away, the map takes the height. */
+body.map-fullscreen aside{display:none}
+body.map-fullscreen #atlas.visible{display:flex;flex-direction:column;height:calc(100vh - var(--header-h));padding-bottom:var(--s-3)}
+body.map-fullscreen #atlas .page-title,body.map-fullscreen #map-caption,body.map-fullscreen #map-download-card,body.map-fullscreen .attribution{display:none}
+body.map-fullscreen .atlas-grid{flex:1;height:auto;min-height:260px}
+body.map-fullscreen #route-panel{max-height:40vh;overflow:auto;flex-shrink:0;margin-top:var(--s-3);margin-bottom:0}
+body.map-fullscreen .location-picker{padding:var(--s-3)}
+body.map-fullscreen .map-meta{margin-bottom:0}
+/* MapLibre chrome in the app palette (loaded after maplibre-gl.css); icons come from the sprite (map-view.mjs swaps them in). */
+.maplibregl-ctrl-top-right .maplibregl-ctrl{margin:var(--s-2) var(--s-2) 0 0}
+.maplibregl-ctrl-bottom-right .maplibregl-ctrl{margin:0 var(--s-2) var(--s-2) 0}
+.maplibregl-ctrl-bottom-left .maplibregl-ctrl{margin:0 0 var(--s-2) var(--s-2)}
+.maplibregl-ctrl-group{background:var(--bg-2);border:0;border-radius:var(--r-md)}
+.maplibregl-ctrl-group:not(:empty){box-shadow:var(--shadow-2)}
+.maplibregl-ctrl-group button{display:flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;color:var(--fg-2);background:transparent;border:0;border-radius:0}
+.maplibregl-ctrl-group button{border-radius:var(--r-md)}
+.maplibregl-ctrl-group button+button{border-top:1px solid var(--line-2)}
+.maplibregl-ctrl-group button:hover{background:var(--bg-3);color:var(--fg-1)}
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon{display:none}
+.maplibregl-ctrl-group button .icon{display:block;margin:auto}
+/* Focus: the app ring replaces MapLibre's blue glow; the canvas ring is drawn inside the rounded surface. */
+.maplibregl-ctrl-group button:focus,.maplibregl-ctrl-group button:focus:focus-visible,.maplibregl-ctrl-attrib-button:focus{box-shadow:var(--ring)}
+.maplibregl-ctrl-group button:focus:not(:focus-visible),.maplibregl-ctrl-attrib-button:focus:not(:focus-visible){box-shadow:none}
+.maplibregl-canvas:focus-visible{outline:2px solid var(--accent);outline-offset:-4px}
+.maplibregl-ctrl-scale{height:28px;line-height:26px;padding:0 var(--s-2);font:var(--fs-xs)/26px var(--font);color:var(--fg-2);background:var(--bg-2);border:1px solid var(--line-3);border-top:0;border-radius:0 0 var(--r-sm) var(--r-sm);opacity:.9}
+/* Attribution: a 28px chip; the toggle sits at its right end and carries the sprite's info icon. */
+.maplibregl-ctrl-attrib{padding:0 var(--s-2);font:var(--fs-xs)/var(--lh-ui) var(--font);color:var(--fg-3);background:var(--bg-2);border-radius:var(--r-sm);box-shadow:var(--shadow-1)}
+.maplibregl-ctrl-attrib-inner{display:flex;align-items:center;gap:var(--s-2);height:28px;white-space:nowrap} /* wide maps: no toggle, the chip is always open */
+.maplibregl-ctrl-attrib.maplibregl-compact{box-sizing:border-box;min-height:28px;padding:0 28px 0 0;margin:0 var(--s-2) var(--s-2) 0;color:var(--fg-3);background:var(--bg-2);border-radius:var(--r-sm);box-shadow:var(--shadow-1)}
+.maplibregl-ctrl-attrib.maplibregl-compact-show,.maplibregl-ctrl-bottom-right>.maplibregl-ctrl-attrib.maplibregl-compact-show{padding:0 32px 0 var(--s-2);border-radius:var(--r-sm)}
+.maplibregl-ctrl-attrib.maplibregl-compact::after{display:none}
+.maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-inner{display:flex;align-items:center;gap:var(--s-2);height:28px;white-space:nowrap}
+.maplibregl-ctrl-attrib a{display:inline-flex;align-items:center;height:28px;color:var(--fg-2);text-decoration:none;border-radius:var(--r-sm)}
+.maplibregl-ctrl-attrib a:hover{color:var(--fg-1);text-decoration:underline}
+.maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button,.maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib-button{display:flex;align-items:center;justify-content:center;width:28px;height:28px;top:0;right:0;left:auto;padding:0;margin:0;color:var(--fg-3);background:none;border:0;border-radius:var(--r-sm);cursor:pointer}
+.maplibregl-ctrl-attrib-button::before{display:none}
+.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button:hover,.maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib-button:hover{color:var(--fg-1);background:var(--bg-3);box-shadow:none}
+.maplibregl-ctrl-attrib-button .icon{display:block}
+.maplibregl-popup{font:var(--fs-sm)/var(--lh-ui) var(--font)}
+.maplibregl-popup-content{padding:var(--s-4) var(--s-4) var(--s-3);color:var(--fg-1);background:var(--bg-2);border:0;border-radius:var(--r-md);box-shadow:var(--shadow-2);max-width:280px;animation:pop var(--motion-fast) ease-out}
+.maplibregl-popup-content strong{display:block;font-size:var(--fs-md);margin-bottom:var(--s-1);padding-right:var(--s-6)}
+.maplibregl-popup-content p{color:var(--fg-2);margin:0 0 var(--s-3)}
+.popup-actions{flex-wrap:nowrap}
+.popup-actions button{flex:1;padding:0 var(--s-2);font-size:var(--fs-sm)}
+.maplibregl-popup-close-button{display:flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;top:0;right:0;font-size:0;color:var(--fg-3);background:transparent;border:0;border-radius:var(--r-sm)}
+.maplibregl-popup-close-button:hover{background:var(--bg-3);color:var(--fg-1)}
+.maplibregl-popup-anchor-top .maplibregl-popup-tip,.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,.maplibregl-popup-anchor-top-right .maplibregl-popup-tip{border-bottom-color:var(--bg-2)}
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip{border-top-color:var(--bg-2)}
+.maplibregl-popup-anchor-left .maplibregl-popup-tip{border-right-color:var(--bg-2)}
+.maplibregl-popup-anchor-right .maplibregl-popup-tip{border-left-color:var(--bg-2)}
+@media(max-width:1160px){
+ .atlas-grid{grid-template-columns:minmax(0,1fr) 240px}
+ .location-search-grid{grid-template-columns:1fr}
+}

@@ -42,13 +42,16 @@ service.main()
   const touch=name=>fs.writeFileSync(path.join(test,name),'');
   const remove=name=>fs.rmSync(path.join(test,name),{force:true});
   const row=id=>page.locator(`[data-reference="${id}"]`);
-  const read=id=>row(id).getByRole('button',{name:'Read full document',exact:true}).click();
+  const read=id=>row(id).locator('.doc-row-main').click(); // the row itself opens the document
+  const mediumDate=d=>page.evaluate(iso=>new Intl.DateTimeFormat(undefined,{dateStyle:'medium'}).format(new Date(iso)),d.toISOString());
   const waitReader=title=>page.waitForFunction(title=>document.querySelector('#reference-reader').classList.contains('visible')&&document.querySelector('#reference-title').textContent===title,title);
   const back=()=>page.locator('#reference-back').click();
   const words=text=>(text.match(/[\p{L}\p{N}]+/gu)||[]).join(' ');
   await page.locator('#setup-later').click();await page.locator('[data-page="docs"]').click();
-  assert.equal(await page.locator('.reference-card').count(),38);
-  assert.equal(await page.getByRole('button',{name:'Open illustrated PDF',exact:true}).count(),3); // Only the three available PDF cards are exposed.
+  assert.equal(await page.locator('#references .doc-row').count(),38);
+  assert.equal(await page.getByRole('button',{name:'Open illustrated PDF',exact:true}).count(),3); // Only the three available PDF rows are exposed.
+  assert.match(await page.locator('#references .doc-row .meta').first().innerText(),/^[^·]+ · [\d,]+ words$/,'Row meta is topic · words');
+  assert.equal(await page.locator('#reference-pdfs').innerText(),'With illustrations (3)');
   if(process.env.JARVISS_UX_SCREENSHOTS)fs.mkdirSync(process.env.JARVISS_UX_SCREENSHOTS,{recursive:true});
   // Every bundled document is complete, readable, and browsable without a model.
   for(const entry of catalog){
@@ -58,11 +61,16 @@ service.main()
    assert.equal(await page.locator('#reference-section-list button').count(),doc.sections.length);
    assert.equal(await page.locator('#reference-open-pdf').isVisible(),!!entry.pdf);
    assert.equal(await page.locator('#reference-save-pdf').isVisible(),!!entry.pdf);
+   const labels=await page.locator('#reference-text > section > h3').allInnerTexts();
    for(let i=0;i<doc.sections.length;i++){
-    const source=doc.sections[i].text.replace(/^\s*(?:[-*•]|\d+[.)])[ \t]+/gm,'');
-    const shown=await page.locator('.reference-prose').nth(i).innerText();
+    // The reader drops a leading sub-heading that only repeats the section title; everything else must survive.
+    let text=doc.sections[i].text.trimStart();const repeated=/^#{1,6}[ \t]+(.+)/.exec(text);
+    if(repeated&&(words(repeated[1]).toLowerCase()===words(labels[i]).toLowerCase()||words(repeated[1]).toLowerCase()===words(doc.sections[i].heading).toLowerCase()))text=text.slice(repeated[0].length);
+    const source=text.replace(/^\s*(?:[-*•]|\d+[.)])[ \t]+/gm,'');
+    const shown=await page.locator('#reference-text .reference-prose').nth(i).innerText();
     assert.equal(words(shown),words(source),`${entry.id}: all words and quantities must survive formatting (${doc.sections[i].heading})`);
    }
+   assert.equal(await page.locator('#reference-text h4').evaluateAll((hs,labels)=>hs.filter(h=>h.previousElementSibling===null&&labels.includes(h.textContent)).length,labels),0,'No sub-heading repeats its section title');
    assert.equal(await page.locator('#reference-text details').count(),0,'No collapsed advice');
    // A page cited only by number takes its first sub-heading as the jump-menu title.
    for(const [id,heading,title] of [['army-navigation','7-3 · PDF page 155','Desert Movement'],['army-shelter','6-2 · PDF page 136','SHELTER CONSIDERATIONS']]){
@@ -89,9 +97,15 @@ service.main()
   const libraryScroll=await page.locator('main').evaluate(el=>el.scrollTop);
   await read(last.id);await waitReader(last.title);await back();
   assert.equal(await page.locator('main').evaluate(el=>el.scrollTop),libraryScroll,'Back must restore a scrolled library');
-  assert.equal(await row(last.id).getByRole('button',{name:'Read full document',exact:true}).evaluate(el=>el===document.activeElement),true);
+  assert.equal(await row(last.id).locator('.doc-row-main').evaluate(el=>el===document.activeElement),true);
   await read('fda-food-flood');await waitReader('Food and water after storms');
   assert.equal(await page.locator('#reference-text > section').count(),3);
+  assert.equal(await page.locator('#reference-format').innerText(),'Text-only edition — figures and charts are not included.');
+  assert.match(await page.locator('#reference-meta').innerText(),/^.+ · .+ · [\d,]+ words$/);
+  assert.equal(await page.locator('#reference-save-text').innerText(),'Save as text');
+  // The reader note keeps the document's own cautions and drops edition boilerplate, which now lives under Source and edition.
+  const noteCheck=await page.evaluate(()=>shortNote('Great Lakes regional guide. Planting dates and growing conditions are regional, not nationwide. Text edition; figures and visual charts are omitted. Read the text here; answers use the reviewed field-guide sections to keep tables and qualifications together.'));
+  assert.equal(noteCheck,'Great Lakes regional guide. Planting dates and growing conditions are regional, not nationwide.');
   assert.doesNotMatch(await page.locator('#reference-text').innerText(),/WATCH|1-888|Questions\?|Get Assistance|Links for|Ask about this/);
   await page.locator('#reference-contents').click();
   await page.locator('#reference-section-list').getByRole('button',{name:'After a Storm',exact:true}).click();
@@ -102,25 +116,29 @@ service.main()
   assert.equal(await page.locator('#question').inputValue(),'Using the document "Food and water after storms", ');
   await page.locator('[data-page="docs"]').click();
   // A search applies to the entire library, including user imports.
-  await page.evaluate(async()=>{await call('import_note',{title:'Generator manual',text:'E04 means the oil level must be checked before restarting.'});await refresh();});
-  await page.locator('#docs-search').fill('E04');
+  await page.evaluate(async()=>{await call('import_note',{title:'Zentro G40 manual',text:'E04 means the oil level must be checked before restarting.'});await refresh();});
+  await page.locator('#docs-search').fill('zentro');
   await expect(page.locator('#reference-results')).not.toContainText('Searching');
-  await expect(page.locator('#reference-results')).toContainText('Generator manual');
+  await expect(page.locator('#reference-results')).toContainText('Zentro G40 manual');
   await expect(page.locator('#reference-summary')).toHaveText('1 matching document');
-  assert.equal(await page.locator('.reference-card:visible').count(),0,'No unrelated field documents during search');
+  assert.equal(await page.locator('#references .doc-row:visible').count(),0,'No unrelated field documents during search');
   assert.equal(await page.getByText('No matching documents.',{exact:true}).isVisible(),false);
   assert.equal(await page.locator('#documents').isVisible(),false);
+  assert.equal((await page.locator('#reference-results .result-group h4').first().evaluate(el=>el.textContent)),'Your files (1)');
   if(process.env.JARVISS_UX_SCREENSHOTS)await page.screenshot({path:path.join(process.env.JARVISS_UX_SCREENSHOTS,'import-search.png')});
-  await page.locator('#reference-results summary').click();
-  await expect(page.locator('#reference-results .doc-body')).toBeVisible();
+  await page.locator('#reference-results .doc-row.mine .doc-row-main').click();await waitReader('Zentro G40 manual');
+  assert.match(await page.locator('#reference-text').innerText(),/E04 means the oil level/);await back();
   await page.locator('#reference-pdfs').click();
   await page.getByText('No matching documents.',{exact:true}).waitFor();
-  assert.equal(await page.locator('#reference-results .doc-entry').count(),0,'PDF-only search excludes text imports');
-  await page.locator('#reference-pdfs').click();
-  await expect(page.locator('#reference-results')).toContainText('Generator manual');
+  assert.equal(await page.locator('#reference-results .doc-row.mine').count(),0,'PDF-only search excludes text imports');
+  await page.getByRole('button',{name:'Clear search',exact:true}).click();
+  assert.equal(await page.locator('#docs-search').inputValue(),'');assert.equal(await page.locator('#docs-search').evaluate(el=>el===document.activeElement),true);
+  assert.match(await page.locator('#reference-summary').innerText(),/^Showing 3 illustrated PDFs · .*hidden$/);
+  await page.locator('#reference-pdfs').click();await page.locator('#docs-search').fill('zentro');
+  await expect(page.locator('#reference-results')).toContainText('Zentro G40 manual');
   await page.locator('#docs-search').fill('');
-  assert.equal(await page.locator('.reference-card:visible').count(),38);
-  assert.equal(await page.locator('#documents .doc-entry:visible').count(),1);
+  assert.equal(await page.locator('#references .doc-row:visible').count(),38);
+  assert.equal(await page.locator('#documents .doc-row.mine:visible').count(),1);
   await page.locator('#docs-search').fill('bowline');
   const result=page.locator('#reference-results button').filter({hasText:'Knots, rope and lashings'}).first();
   await result.click();await waitReader('Knots, rope and lashings');
@@ -131,7 +149,7 @@ service.main()
   await page.locator('#docs-search').fill('zzqxy77');
   await page.getByText('No matching documents.',{exact:true}).waitFor();
   await page.locator('#docs-search').fill('');await page.locator('#reference-pdfs').click();
-  assert.equal(await page.locator('.reference-card:visible').count(),3);
+  assert.equal(await page.locator('#references .doc-row:visible').count(),3);
   await page.locator('#docs-search').fill('insulin');
   await page.getByText('No matching documents.',{exact:true}).waitFor();
   await page.locator('#reference-pdfs').click();
@@ -258,6 +276,68 @@ service.main()
   }
   assert.deepEqual(errors,[]);assert.deepEqual(await app.evaluate(()=>globalThis.readerExternalRequests),[]);
   console.log('PASS keyboard, anchored menu bounds, 1024/1440 windows, 100/125/150% zoom, no script errors or external requests');
+  // Your files: imported documents open in the same reader, rename inline, remove in two steps, arrive by drop, and stop at the cap.
+  await page.setViewportSize({width:1280,height:900});await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].webContents.setZoomFactor(1));
+  await back();await page.locator('[data-page="docs"]').click();
+  await page.evaluate(async()=>{await call('import_note',{title:'Pump TP1 manual',text:'# Start-up\n\nE04: **Intake obstruction**. Switch off and check the `filter`.\n\n| Code | Meaning |\n|---|---|\n| E04 | Intake |\n\n## Storage\n\n1. Drain.\n2. Cover.'});await refresh();});
+  const fileCard=title=>page.locator('#documents .doc-row.mine').filter({has:page.locator('.doc-title',{hasText:title})});
+  const today=await mediumDate(new Date()),pumpWords=(await page.evaluate(()=>window.jarviss.command('state'))).documents.find(d=>d.title==='Pump TP1 manual').words;
+  assert.equal(await fileCard('Pump TP1 manual').locator('.meta').innerText(),`Imported ${today} · ${pumpWords} words`,'Import dates read as medium dates');
+  assert.deepEqual(await fileCard('Pump TP1 manual').locator('.doc-row-actions button').allInnerTexts(),['Rename','Remove'],'Your-files rows carry compact Rename and Remove');
+  await fileCard('Pump TP1 manual').locator('.doc-row-main').click();await waitReader('Pump TP1 manual');
+  assert.equal(await page.locator('#reference-text > section').count(),2);assert.equal(await page.locator('#reference-section-list button').count(),2);
+  for(const id of ['#reference-open-pdf','#reference-save-pdf','#reference-page-pdf','#reference-source'])assert.equal(await page.locator(id).isVisible(),false,id+' is not offered for an imported file');
+  assert.equal(await page.locator('#reference-text strong').first().innerText(),'Intake obstruction');assert.equal(await page.locator('#reference-text code').first().innerText(),'filter');
+  assert.equal(await page.locator('#reference-text table td').first().innerText(),'E04');assert.equal(await page.locator('#reference-text ol li').count(),2);
+  assert.equal(await page.locator('#reference-meta').innerText(),`Your file · Imported ${today} · ${pumpWords} words`);
+  assert.equal(await page.locator('#reference-format').innerText(),'Searched when you ask JARVISS');
+  assert.equal(await page.evaluate(()=>document.title),'Pump TP1 manual · JARVISS');assert.equal(await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].getTitle()),'Pump TP1 manual · JARVISS');
+  assert.equal(await page.locator('#reference-title').evaluate(el=>el===document.activeElement),true);
+  await app.evaluate(({session})=>{globalThis.savedDownloads=[];session.defaultSession.once('will-download',(event,item)=>{globalThis.savedDownloads.push(item.getFilename());item.cancel();});});
+  await page.locator('#reference-save-text').click();
+  await expect.poll(()=>app.evaluate(()=>globalThis.savedDownloads)).toEqual(['Pump TP1 manual.md']);
+  await expect(page.locator('#toast')).toHaveText('Saved as text');assert.equal(await page.locator('#reference-save-text').innerText(),'Save as text','The button keeps its label; the toast is the feedback');
+  await page.locator('#reference-ask').click();assert.equal(await page.locator('#question').inputValue(),'Using the document "Pump TP1 manual", ');
+  await page.locator('[data-page="docs"]').click();assert.equal(await page.evaluate(()=>document.title),'Docs · JARVISS');
+  await fileCard('Pump TP1 manual').getByRole('button',{name:'Rename',exact:true}).click();
+  const renameBox=page.locator('#documents .rename-form input');assert.equal(await renameBox.evaluate(el=>el===document.activeElement),true);
+  await page.keyboard.press('Escape');assert.equal(await page.locator('#documents .rename-form').count(),0);
+  assert.equal(await fileCard('Pump TP1 manual').getByRole('button',{name:'Rename',exact:true}).evaluate(el=>el===document.activeElement),true,'Escape returns focus to Rename');
+  await fileCard('Pump TP1 manual').getByRole('button',{name:'Rename',exact:true}).click();await renameBox.fill('Pump TP1 handbook');await page.keyboard.press('Enter');
+  await fileCard('Pump TP1 handbook').waitFor();assert.equal(await fileCard('Pump TP1 manual').count(),0);
+  await expect(page.locator('#toast')).toHaveText('Renamed to "Pump TP1 handbook"');
+  assert.equal(await fileCard('Pump TP1 handbook').getByRole('button',{name:'Rename',exact:true}).evaluate(el=>el===document.activeElement),true,'Focus follows the renamed file');
+  assert.equal(await page.evaluate(()=>window.jarviss.command('library_rename',{title:'Pump TP1 handbook',new_title:'Zentro G40 manual'}).catch(e=>e.message)).then(m=>/already has that name/.test(m)),true);
+  await fileCard('Zentro G40 manual').getByRole('button',{name:'Remove',exact:true}).click();
+  const confirmBox=fileCard('Zentro G40 manual').locator('.confirm');await expect(confirmBox).toContainText('Remove this file?');
+  assert.equal(await confirmBox.getByRole('button',{name:'Yes',exact:true}).evaluate(el=>el===document.activeElement),true);
+  await page.keyboard.press('Escape');assert.equal(await confirmBox.count(),0);
+  assert.equal(await fileCard('Zentro G40 manual').getByRole('button',{name:'Remove',exact:true}).evaluate(el=>el===document.activeElement),true,'No/Escape restores the Remove button and its focus');
+  await fileCard('Zentro G40 manual').getByRole('button',{name:'Remove',exact:true}).click();await confirmBox.getByRole('button',{name:'Yes',exact:true}).click();
+  await expect(fileCard('Zentro G40 manual')).toHaveCount(0);await expect(page.locator('#toast')).toHaveText('Removed "Zentro G40 manual"');
+  assert.equal(await fileCard('Pump TP1 handbook').getByRole('button',{name:'Remove',exact:true}).evaluate(el=>el===document.activeElement),true,'Focus moves to the neighbouring file');
+  assert.equal((await page.evaluate(()=>window.jarviss.command('state'))).documents.length,1);
+  // Dropped files travel through the preload path bridge; a bad PDF reports its own error and a stray .exe is ignored.
+  fs.writeFileSync(path.join(test,'Pump notes.txt'),'Pump primer: bleed the line before starting.');fs.writeFileSync(path.join(test,'broken.pdf'),'not a pdf');fs.writeFileSync(path.join(test,'setup.exe'),'');
+  await page.evaluate(()=>{const input=document.createElement('input');input.type='file';input.multiple=true;input.id='drop-probe';input.hidden=true;document.body.append(input);});
+  await page.locator('#drop-probe').setInputFiles(['Pump notes.txt','broken.pdf','setup.exe'].map(name=>path.join(test,name)));
+  await page.evaluate(()=>{const files=document.querySelector('#drop-probe').files,transfer=new DataTransfer();for(const file of files)transfer.items.add(file);
+   const zone=document.querySelector('#docs');zone.dispatchEvent(new DragEvent('dragenter',{dataTransfer:transfer,bubbles:true}));zone.dispatchEvent(new DragEvent('dragover',{dataTransfer:transfer,bubbles:true,cancelable:true}));
+   const overlay=zone.querySelector(':scope > .drop-overlay');window.dropProbeOver=zone.classList.contains('over')&&!!overlay&&getComputedStyle(overlay).display!=='none';zone.dispatchEvent(new DragEvent('drop',{dataTransfer:transfer,bubbles:true,cancelable:true}));});
+  assert.equal(await page.evaluate(()=>window.dropProbeOver),true,'Dragging files over the Docs page shows the drop overlay');assert.equal(await page.evaluate(()=>document.querySelector('#docs').classList.contains('over')||[...document.querySelectorAll('#docs > .drop-overlay')].some(o=>getComputedStyle(o).display!=='none')),false,'The overlay leaves on drop');
+  await expect(page.locator('#toast')).toHaveText('Added "Pump notes.txt"');await fileCard('Pump notes.txt').waitFor();
+  await expect(page.locator('#toast')).toHaveText(/^broken\.pdf: /,{timeout:5000});
+  assert.equal(await page.locator('#documents .doc-row.mine').count(),2);assert.equal(await page.locator('#docs-cap').isVisible(),false);
+  for(let n=3;n<=30;n++)await page.evaluate(n=>call('import_note',{title:'Note '+n,text:'Filler text '+n}),n);
+  await page.evaluate(()=>refresh());await expect(page.locator('#docs-cap')).toHaveText('30 of 30 files used — remove one to add more');
+  assert.match(await page.evaluate(()=>window.jarviss.command('import_note',{title:'Note 31',text:'x'}).catch(e=>e.message)),/reached 30/);
+  await fileCard('Note 30').getByRole('button',{name:'Remove',exact:true}).click();await fileCard('Note 30').locator('.confirm').getByRole('button',{name:'Yes',exact:true}).click();
+  await expect(page.locator('#docs-cap')).toHaveText('29 of 30 files used — remove one to add more');
+  for(const n of [29,28,27])await page.evaluate(n=>call('library_delete',{title:'Note '+n}),n);
+  await page.evaluate(()=>refresh());await expect(page.locator('#docs-cap')).toBeHidden();assert.equal(await page.locator('#documents .doc-row.mine').count(),26);
+  await page.locator('#docs-search').fill('note');await expect(page.locator('#docs-cap')).toBeHidden();await page.locator('#docs-search').fill('');
+  assert.deepEqual(errors,[]);
+  console.log('PASS imported files: reader, inline bold/code/tables, window title, save, rename, two-step remove, drop-overlay import and the 30-file cap');
  }finally{
   for(const name of fs.readdirSync(test).filter(n=>n.startsWith('hold-')))fs.rmSync(path.join(test,name));
   if(app)await app.close();fs.rmSync(test,{recursive:true,force:true});

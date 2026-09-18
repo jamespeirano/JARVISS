@@ -121,6 +121,23 @@ class ReferenceTests(unittest.TestCase):
             (root/'broken.pdf').write_bytes(b'%PDF-1.4 garbage')
             with self.assertRaisesRegex(ValueError, 'could not be read'): library.import_text(root/'broken.pdf')
 
+    def test_documents_are_listed_light_and_opened_renamed_and_removed_by_title(self):
+        with tempfile.TemporaryDirectory() as folder, patch('jarviss.library.DATA', Path(folder)):
+            library.import_note('Pump manual', '## Priming\nFill the bowl.\n## Faults\nE04 means low oil.')
+            library.import_note('Other', 'Text')
+            listed = library.library_catalog()[0]
+            self.assertEqual(listed, {'title':'Pump manual', 'kind':'note', 'imported_at':listed['imported_at'], 'words':11})
+            doc = library.document('Pump manual')
+            self.assertEqual([s['heading'] for s in doc['sections']], ['Priming', 'Faults']); self.assertNotIn('text', doc)
+            with self.assertRaisesRegex(ValueError, 'no longer'): library.document('Missing')
+            with self.assertRaisesRegex(ValueError, 'already has that name'): library.rename_document('Pump manual', 'Other')
+            with self.assertRaisesRegex(ValueError, 'up to 120'): library.rename_document('Pump manual', ' ')
+            self.assertEqual(library.rename_document('Pump manual', '  Generator  manual '), 'Generator manual')
+            self.assertEqual(library.document('Generator manual')['sections'][1]['heading'], 'Faults')
+            self.assertTrue(library.delete_document('Other'))
+            with self.assertRaisesRegex(ValueError, 'no longer'): library.delete_document('Other')
+            self.assertEqual([d['title'] for d in library.library_catalog()], ['Generator manual'])
+
     def test_same_file_name_with_different_content_is_kept_separately(self):
         with tempfile.TemporaryDirectory() as folder, patch('jarviss.library.DATA', Path(folder)):
             root = Path(folder); (root/'manual.txt').write_text('Widgetron A: fuse 10 A.')

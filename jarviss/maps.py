@@ -25,6 +25,11 @@ CATEGORIES = {
     'fuel': {'fuel', 'gas_station'},
 }
 RESOURCE_CATEGORIES = {c.replace(' ', '_') for group in CATEGORIES.values() for c in group} | RESOURCE_TAGS.keys()
+
+
+def is_resource(place):
+    """Water, food, medical, supplies, shelter, fuel: not post boxes, benches or waste baskets."""
+    return any(str(v).replace(' ', '_') in RESOURCE_CATEGORIES for v in (place.get('category', place['kind']), place['kind']))
 ALIASES = {'grocery store': 'food', 'groceries': 'food', 'gas station': 'fuel', 'fire station': 'fire_station',
            'hardware store': 'hardware', 'drugstore': 'pharmacy', 'river': 'river', 'creek': 'stream',
            'flowing water': 'running water', 'water source': 'water', 'fresh water': 'water',
@@ -41,7 +46,7 @@ def normalized(text):
 def matches_place(place, query):
     query = query.lower().strip()
     if not query:
-        return True
+        return is_resource(place)  # The default Maps list shows resources, not every mapped amenity.
     query = ALIASES.get(query, query)
     category = place.get('category', place['kind'])
     if query == 'drinking water' and place['kind'] == 'water' and 'category' not in place:
@@ -58,8 +63,24 @@ def matches_place(place, query):
     return normalized(query.replace('_', ' ')) in normalized(' '.join(str(place.get(k, '')) for k in ('name', 'kind', 'category')).replace('_', ' '))
 
 
+UNITS = {'value':'imperial'}  # Settings → Advanced; the service sets it when settings load or change.
+
+
+def set_units(value):
+    if value not in ('imperial','metric'): raise ValueError('Units must be imperial or metric.')
+    UNITS['value'] = value
+    return value
+
+
 def format_distance(meters):
+    if UNITS['value'] == 'metric':
+        return f'{meters / 1000:.2f} km ({round(meters):,} m)' if meters >= 1000 else f'{round(meters):,} m'
     return f'{meters / 1609.344:.2f} miles ({round(meters):,} m)'
+
+
+def with_distance_text(rows):
+    """Search results carry the formatted distance so the renderer never reimplements units."""
+    return [dict(r, distance_text=format_distance(r['distance_m'])) if r.get('distance_m') is not None else r for r in rows]
 
 
 def route_to_place(area, origin, place):
