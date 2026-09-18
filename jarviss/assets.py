@@ -48,10 +48,10 @@ class _MetadataRedirectHandler(urllib.request.HTTPRedirectHandler):
         return redirected
 
 
-def download(url, target, progress=print, expected_sha=None):
+def download(url, target, progress=print, expected_sha=None, size=None):
     # Shared resumable transfer; kept here for older preparation callers.
     from .map_setup import download_file
-    return download_file(url, target, progress, checksum=expected_sha.removeprefix('sha256:') if expected_sha else None)
+    return download_file(url, target, progress, size, checksum=expected_sha.removeprefix('sha256:') if expected_sha else None)
 
 
 def extract(archive, dest):
@@ -91,7 +91,7 @@ def prepare_runtime(progress=print):
     asset = next(a for a in release['assets'] if a['name'].endswith(suffix))
     with tempfile.TemporaryDirectory() as temp:
         archive = Path(temp) / asset['name']
-        sha = download(asset['browser_download_url'], archive, progress, asset.get('digest'))
+        sha = download(asset['browser_download_url'], archive, progress, asset.get('digest'), asset.get('size'))
         extract(archive, RUNTIME)
     server = find_server()
     if not server:

@@ -2,6 +2,7 @@
 import hashlib
 import json
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -9,7 +10,9 @@ from unittest.mock import patch
 from jarviss import library
 from jarviss.assistant import messages
 from jarviss.map_questions import answer_map
+from jarviss.model import MATERIAL_MARKER, QUESTION_MARKER
 from jarviss.service import Service
+from jarviss.storage import read_json
 
 
 class ReferenceTests(unittest.TestCase):
@@ -82,6 +85,70 @@ class ReferenceTests(unittest.TestCase):
         repeated = library.sections('## Notes\nOne.\n## Notes\nTwo.')
         self.assertNotEqual(repeated[0]['id'], repeated[1]['id'])
 
+    def test_section_links_are_insertion_stable_and_follow_their_own_text(self):
+        original = library.sections('## Notes\nOne.\n## Notes\nTwo.\n## Notes\nThree.')
+        inserted = library.sections('## Notes\nZero.\n## Notes\nOne.\n## Notes\nTwo.\n## Notes\nThree.')
+        self.assertEqual([s['id'] for s in original], [s['id'] for s in inserted[1:]])
+        edited = library.sections('## Notes\nOne.\n## Notes\nTwo, revised.\n## Notes\nThree.')
+        self.assertEqual([edited[0]['id'], edited[2]['id']], [original[0]['id'], original[2]['id']])
+        self.assertNotEqual(edited[1]['id'], original[1]['id'])
+        rewrapped = library.sections('## Notes\nOne.\n## Notes\nTwo.\n## Notes\n  Three.  ')
+        self.assertEqual([s['id'] for s in rewrapped], [s['id'] for s in original])
+        duplicates = library.sections('## Notes\nSame.\n## Notes\nSame.\n## Notes\nSame.')
+        self.assertEqual(len({s['id'] for s in duplicates}), 3)
+        self.assertEqual(duplicates[0]['id'], library.sections('## Notes\nSame.')[0]['id'])
+        self.assertEqual(duplicates[:2], library.sections('## Notes\nSame.\n## Notes\nSame.'))
+
+    def test_code_block_comments_are_not_headings(self):
+        parts = library.sections('## Setup\n```sh\n# not a heading\necho hi\n```\n## Next\nBody')
+        self.assertEqual([p['heading'] for p in parts], ['Setup', 'Next'])
+        self.assertIn('# not a heading', parts[0]['text'])
+
+    def test_imports_are_serialized_decoded_and_wrapped(self):
+        with tempfile.TemporaryDirectory() as folder, patch('jarviss.library.DATA', Path(folder)):
+            root = Path(folder); errors = []
+            def work(n):
+                try: library.import_note(f'Note {n}', f'Body {n}')
+                except Exception as error: errors.append(error)
+            threads = [threading.Thread(target=work, args=(n,)) for n in range(12)]
+            for t in threads: t.start()
+            for t in threads: t.join()
+            self.assertEqual(errors, [])
+            self.assertEqual(len(read_json(root/'library.json', [])), 12)
+            (root/'notes.txt').write_bytes('Temp 20\xb0C \u2014 \u201cok\u201d'.encode('cp1252'))
+            self.assertEqual(library.import_text(root/'notes.txt'), 'notes.txt')
+            self.assertIn('20\xb0C \u2014 \u201cok\u201d', next(d['text'] for d in read_json(root/'library.json', []) if d['title'] == 'notes.txt'))
+            (root/'broken.pdf').write_bytes(b'%PDF-1.4 garbage')
+            with self.assertRaisesRegex(ValueError, 'could not be read'): library.import_text(root/'broken.pdf')
+
+    def test_same_file_name_with_different_content_is_kept_separately(self):
+        with tempfile.TemporaryDirectory() as folder, patch('jarviss.library.DATA', Path(folder)):
+            root = Path(folder); (root/'manual.txt').write_text('Widgetron A: fuse 10 A.')
+            self.assertEqual(library.import_text(root/'manual.txt'), 'manual.txt')
+            self.assertEqual(library.import_text(root/'manual.txt'), 'manual.txt')
+            (root/'manual.txt').write_text('Widgetron B: fuse 15 A.')
+            self.assertEqual(library.import_text(root/'manual.txt'), 'manual (2).txt')
+            (root/'manual.txt').write_text('Widgetron C: fuse 20 A.')
+            self.assertEqual(library.import_text(root/'manual.txt'), 'manual (3).txt')
+            self.assertEqual(library.import_note('Plan', 'One'), 'Plan')
+            self.assertEqual(library.import_note('Plan', 'Two'), 'Plan (2)')
+            self.assertEqual([d['title'] for d in read_json(root/'library.json', [])],
+                             ['manual.txt', 'manual (2).txt', 'manual (3).txt', 'Plan', 'Plan (2)'])
+            texts = '\n'.join(p['text'] for p in library.retrieve('Widgetron fuse'))
+            for fact in ('10 A', '15 A', '20 A'): self.assertIn(fact, texts)
+
+    def test_library_index_is_reused_until_the_file_changes(self):
+        with tempfile.TemporaryDirectory() as folder, patch('jarviss.library.DATA', Path(folder)):
+            library._recovery_chunks()
+            library.import_note('Pump', 'Widgetron fuse is 10 A.')
+            with patch('jarviss.library._document_chunks', wraps=library._document_chunks) as parse:
+                self.assertIn('10 A', library.retrieve('Widgetron fuse')[0]['text'])
+                library.retrieve('Widgetron fuse')
+                self.assertEqual(parse.call_count, 1)
+                library.import_note('Pump', 'Widgetron fuse is 15 A.')
+                self.assertTrue(any('15 A' in p['text'] for p in library.retrieve('Widgetron fuse')))
+                self.assertEqual(parse.call_count, 3)
+
     def test_unknown_documents_and_paths_are_rejected(self):
         for identifier in ('../settings.json', '/etc/passwd', 'missing'):
             with self.assertRaises(ValueError):
@@ -125,10 +192,12 @@ class ReferenceTests(unittest.TestCase):
                     service.ready = True
                     with patch.object(service, 'catalog', return_value=None), patch.object(service.model, 'chat', return_value='Boil for three minutes.') as chat:
                         service.command('chat', {'text':'How do I boil river water at 7000 feet?'})
-                    context = json.loads(chat.call_args.args[0][0]['content'].split('CONTEXT DATA:\n')[1])
+                    payload = chat.call_args.args[0]
+                    material = json.loads(payload[-1]['content'].split(MATERIAL_MARKER)[1].split(QUESTION_MARKER)[0])
                     refs = service.history[-1]['references']
                     self.assertTrue(refs)
-                    self.assertTrue(all(any(d['title'] == r['title'] and d['heading'] == r['heading'] for d in context['local_documents']) for r in refs))
+                    self.assertTrue(all(any(d['title'] == r['title'] and d['heading'] == r['heading'] for d in material['local_documents']) for r in refs))
+                    self.assertNotIn(material['local_documents'][0]['text'][:60], payload[0]['content'])  # passages never carry system authority
                     saved = json.loads((Path(folder) / 'conversation.json').read_text())
                     self.assertEqual(saved[-1]['references'], refs)
                     answers = [c.args[0]['data'] for c in emit.call_args_list if c.args[0]['event'] == 'answer']

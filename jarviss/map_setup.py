@@ -29,6 +29,44 @@ def sha256(path):
     with Path(path).open('rb') as source: return hashlib.file_digest(source,'sha256').hexdigest()
 
 
+def basemap_path(): return ROOT/'local-maps'/'us-z15.pmtiles'
+
+
+def basemap_issue(path):
+    """Cheap startup check. Neither provider publishes checksums, so the size recorded at download is the reference."""
+    path=Path(path);manifest=read_json(path.parent/'manifest.json',{})
+    if manifest.get('file')==path.name and type(manifest.get('size_bytes')) is int and manifest['size_bytes']!=path.stat().st_size:
+        return (f'The saved US map is {path.stat().st_size:,} bytes but its download record says {manifest["size_bytes"]:,}. '
+                'Open setup and choose Check setup to verify and repair it.')
+    return None
+
+
+def verify_us(progress=print):
+    """Re-hash installed US data against the hashes recorded at download and remove what no longer matches.
+    Reads in chunks so pause and progress land between them; the map alone is about 21 GB."""
+    target=basemap_path();manifest=read_json(target.parent/'manifest.json',{});router=USRouter();checks=[]
+    if target.is_file() and manifest.get('file')==target.name: checks.append((target,manifest.get('sha256')))
+    for row in router.manifest.get('files',[]):
+        path=router.directory/'segments4'/row['name']
+        if path.is_file(): checks.append((path,read_json(path.with_suffix('.receipt.json'),{}).get('sha256')))
+    total=sum(path.stat().st_size for path,_ in checks) or 1;done=0;last=0;removed=[]
+    progress('Checking US map files… 0%')
+    for path,expected in checks:
+        digest=hashlib.sha256()
+        with path.open('rb') as source:
+            while chunk:=source.read(8*1024*1024):
+                digest.update(chunk);done+=len(chunk)
+                if time.monotonic()-last>=1: progress(f'Checking US map files… {done*100//total}%');last=time.monotonic()
+        if path==target and not expected:
+            # A 0.2.3 map was verified by the extractor but never hashed; record it rather than discard it.
+            write_json(target.parent/'manifest.json',dict(manifest,sha256=digest.hexdigest()));continue
+        if digest.hexdigest()!=expected:
+            path.unlink();removed.append(path)
+            if path!=target: path.with_suffix('.receipt.json').unlink(missing_ok=True)
+    progress('Checking US map files… 100%')
+    return removed
+
+
 def remaining_bytes(target, url, size, checksum=None):
     """Credit only completed files or partials belonging to this exact transfer."""
     target = Path(target)
@@ -59,7 +97,9 @@ def download_file(url, target, progress=print, size=None, checksum=None):
     if read_json(marker,{}) != identity:
         part.unlink(missing_ok=True)
         write_json(marker,identity)
-    for attempt in range(3):
+    attempt = failures = 0
+    while True:
+        received = 0
         try:
             offset = part.stat().st_size if part.exists() else 0
             if size and offset >= size:
@@ -69,13 +109,13 @@ def download_file(url, target, progress=print, size=None, checksum=None):
             with urllib.request.urlopen(urllib.request.Request(url,headers=headers),timeout=90,context=tls_context()) as response:
                 resumed = response.status == 206
                 if resumed and not response.headers.get('Content-Range','').startswith(f'bytes {offset}-'):
-                    raise ValueError('Server returned an incorrect download range.')
+                    part.unlink(); raise ValueError('Server returned an incorrect download range.')
                 if not resumed: offset=0
                 total = size or (int(response.headers.get('Content-Length',0))+offset)
                 done, last, started = offset, 0, time.monotonic()
                 with part.open('ab' if resumed else 'wb') as output:
                     while chunk := response.read(64*1024):
-                        output.write(chunk); done+=len(chunk)
+                        output.write(chunk); done+=len(chunk); received+=len(chunk)
                         if time.monotonic()-last>1:
                             elapsed = time.monotonic()-started
                             progress(transfer_text(label,done,total,(done-offset)/elapsed if elapsed >= 1 else 0))
@@ -87,9 +127,13 @@ def download_file(url, target, progress=print, size=None, checksum=None):
                 part.unlink(); raise ValueError('Download checksum mismatch; retrying.')
             part.replace(target); marker.unlink(missing_ok=True)
             return digest
-        except (OSError,ValueError):
-            if attempt==2: raise
-            time.sleep(1)
+        except (OSError,ValueError) as error:
+            # A partial that already spans the whole file (killed before publishing) can never resume.
+            if getattr(error,'code',None)==416: part.unlink(missing_ok=True)
+            # A link that keeps delivering bytes earns fresh attempts; a dead one gets four, 1/2/4 s apart.
+            attempt, failures = (0 if received else attempt+1), failures+1
+            if attempt>3 or failures>=12: raise
+            time.sleep(min(4, 2**(attempt-1)) if attempt else 1)
 
 
 def platform_name():
@@ -121,15 +165,18 @@ def prepare_engine(progress=print):
     if not java_path() or not router.jar.is_file(): raise ValueError('Offline routing engine installation is incomplete.')
 
 
+def in_us(name):
+    a,b=re.findall(r'([EWNS])(\d+)',name)
+    x=int(a[1])*(-1 if a[0]=='W' else 1);y=int(b[1])*(-1 if b[0]=='S' else 1)
+    return any(x<e and x+5>w and y<n and y+5>s for w,s,e,n in US_BOUNDS)
+
+
 def select_us_files(html):
-    files=[]
     pattern=r'href="([EW]\d+_[NS]\d+\.rd5)"[^\n]*?</a>\s+([^\n]+?)\s+(\d+)\s*\n'
-    for name,stamp,size in re.findall(pattern,html):
-        a,b=re.findall(r'([EWNS])(\d+)',name)
-        x=int(a[1])*(-1 if a[0]=='W' else 1);y=int(b[1])*(-1 if b[0]=='S' else 1)
-        if any(x<e and x+5>w and y<n and y+5>s for w,s,e,n in US_BOUNDS):
-            files.append({'name':name,'size':int(size),'provider_modified':stamp.strip()})
-    if len(files)<100: raise ValueError('Could not verify the full US routing download list. Retry setup while connected.')
+    files=[{'name':name,'size':int(size),'provider_modified':stamp.strip()} for name,stamp,size in re.findall(pattern,html) if in_us(name)]
+    # Every US tile the page links must also have parsed a date and size; otherwise coverage silently ends at a hole.
+    linked=sum(in_us(name) for name in re.findall(r'href="([EW]\d+_[NS]\d+\.rd5)"',html))
+    if len(files)<100 or len(files)<linked: raise ValueError('Could not verify the full US routing download list. Retry setup while connected.')
     return files
 
 
@@ -150,7 +197,7 @@ def prepare_routing(progress=print):
         path=router.directory/'segments4'/row['name']
         # The provider refreshes the graph. Do not mix a stale completed tile with a new revision of equal size.
         receipt=read_json(path.with_suffix('.receipt.json'),{})
-        if path.exists() and receipt and receipt.get('provider_modified')!=row['provider_modified']: path.unlink()
+        if path.exists() and receipt.get('provider_modified')!=row['provider_modified']: path.unlink()
         row['sha256']=download_file(SEGMENTS_URL+row['name'],path,lambda text: progress('US directions · '+text),row['size'])
         write_json(path.with_suffix('.receipt.json'),row)
         with lock:
@@ -180,9 +227,12 @@ def prepare_map_tool(progress=print):
 
 def prepare_basemap(progress=print, cancel=None):
     from .atlas import TileArchive
-    target=ROOT/'local-maps'/'us-z15.pmtiles'
+    target=basemap_path()
     if target.is_file():
-        TileArchive(target);progress('US basemap is already installed.');return target
+        try: TileArchive(target);progress('US basemap is already installed.');return target
+        except ValueError as error:
+            progress(f'The saved US map is unreadable ({error}). Downloading it again.')
+            target.unlink()
     executable=prepare_map_tool(progress)
     builds=fetch_json('https://build-metadata.protomaps.dev/builds.json')
     build=next(b for b in sorted(builds,key=lambda b:b['key'],reverse=True) if re.fullmatch(r'\d{8}\.pmtiles',b['key']) and str(b.get('version','')).startswith('4.'))
@@ -199,12 +249,12 @@ def prepare_basemap(progress=print, cancel=None):
             for line in process.stdout: lines.put(line)
         finally: lines.put(None)
     threading.Thread(target=read,daemon=True).start()
-    last_update = 0
+    last_update = 0; extracted = False
     try:
         while True:
             if cancel and cancel.is_set():
                 from .setup import SetupPaused
-                raise SetupPaused()
+                raise SetupPaused(note=' The unfinished US map must restart; other files are kept.')
             try: line=lines.get(timeout=.2)
             except queue.Empty: continue
             if line is None: break
@@ -212,12 +262,15 @@ def prepare_basemap(progress=print, cancel=None):
             if text and (time.monotonic()-last_update >= 1 or '100%' in text):
                 progress(text);last_update=time.monotonic()
         if process.wait():raise ValueError('US basemap download did not finish. Retry setup while connected.')
+        extracted = True
     finally:
         if process.poll() is None:
             process.terminate()
             try:process.wait(timeout=5)
             except subprocess.TimeoutExpired:process.kill();process.wait()
         process.stdout.close()
+        # The extractor cannot resume, so a paused or failed partial is only wasted space.
+        if not extracted: partial.unlink(missing_ok=True)
     progress('Checking US map download…')
     subprocess.run([str(executable),'verify',str(partial)],check=True,capture_output=True)
     archive=TileArchive(partial)

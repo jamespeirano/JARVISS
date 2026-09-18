@@ -39,6 +39,7 @@ function ensureMap(){
  map.on('click',event=>{
   const point=[event.lngLat.lat,event.lngLat.lng];
   if(clickMode){const action=clickMode;setMode(null);window.dispatchEvent(new CustomEvent('atlas-point',{detail:{point,action}}));return;}
+  previewMarker?.remove();previewMarker=null; // A rejected landmark preview must not linger.
   const features=map.queryRenderedFeatures(event.point,{layers:['results-points']});
   const place=features[0]?.properties;
   const content=document.createElement('div');

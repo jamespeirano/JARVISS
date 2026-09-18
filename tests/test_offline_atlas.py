@@ -1,9 +1,10 @@
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 from jarviss.maps import OfflineMap, build_pack, matches_place
 from jarviss.map_questions import answer_map, parse_question
-from jarviss.atlas import MapCatalog, TileArchive
+from jarviss.atlas import MapCatalog, TileArchive, feature_key
 from tests.test_core import fixture
 
 
@@ -59,6 +60,11 @@ class RoutingTests(unittest.TestCase):
         self.assertTrue(matches_place({'kind':'untreated water','category':'stream','name':'Creek'},'water'))
         self.assertFalse(matches_place({'kind':'medical','category':'pharmacy','name':'Drugstore'},'hospital'))
 
+    def test_standing_water_matches_by_name_within_its_group(self):
+        self.assertTrue(matches_place({'kind':'water','name':'Rowan Pond'},'pond'))
+        self.assertTrue(matches_place({'kind':'water','name':'Unnamed water'},'water source'))
+        self.assertFalse(matches_place({'kind':'restaurant','category':'restaurant','name':'Pond Cafe'},'pond'))
+
     def test_resource_names_do_not_override_recorded_categories(self):
         for query,category,name in [
             ('hospital','pet','LiveWell Animal Hospital'),
@@ -88,6 +94,13 @@ class QuestionTests(unittest.TestCase):
                 text,route=self.answer(q)
                 self.assertIsNotNone(route,text);self.assertIn('miles',text)
                 self.assertIn('Park Path',text)
+
+    def test_water_source_alias_finds_recorded_water(self):
+        for question in ['what is the nearest water source','Where is the closest water source?']:
+            with self.subTest(question=question):
+                text,route=self.answer(question)
+                self.assertIsNotNone(route,text);self.assertEqual(route['destination'],'Recorded fountain')
+                self.assertIn('Do not assume water is safe',text)
 
     def test_find_drinking_water(self):
         self.assertEqual(parse_question('Where can I find drinking water?')['target'],'drinking water')
@@ -204,6 +217,21 @@ class QuestionTests(unittest.TestCase):
         catalog=MapCatalog()
         with self.assertRaisesRegex(ValueError,'US offline directions are not installed'):
             catalog.route([40,-74],[40.01,-74])
+
+    def test_idless_features_keep_one_identity_across_tile_clips(self):
+        from shapely.geometry import LineString
+        whole=LineString([(-97.7512,30.2703),(-97.7412,30.2713)])
+        clipped=LineString([(-97.7511996,30.2703001),(-97.7412,30.2713)])
+        self.assertEqual(feature_key('Shoal Creek','untreated water',whole),feature_key('shoal creek','untreated water',clipped))
+        self.assertNotEqual(feature_key('Shoal Creek','untreated water',whole),feature_key('Waller Creek','untreated water',whole))
+        self.assertNotEqual(feature_key('Shoal Creek','untreated water',whole),feature_key('Shoal Creek','road',whole))
+
+    def test_catalog_merges_a_pack_place_with_its_basemap_copy(self):
+        copy={'id':'tile/pois/1','name':'Recorded Fountain','kind':'untreated water','point':[40.0015,-73.999],'distance_m':170}
+        other={'id':'tile/pois/2','name':'Recorded Fountain','kind':'untreated water','point':[40.004,-73.999],'distance_m':445}
+        archive=SimpleNamespace(pack={},contains=lambda p:True,nearest=lambda point,query='',limit=8:[copy,other])
+        rows=MapCatalog([OfflineMap(fixture())],archive).nearest([40,-74],'water')
+        self.assertEqual([r['id'] for r in rows],['node/3','tile/pois/2'])
 
 
 class RealArchiveTests(unittest.TestCase):

@@ -66,6 +66,7 @@ class Voice:
         self.input_device = self.output_device = None
         self.voice_name = 'bm_george'
         self.epoch = 0
+        self.session = 0
         self.load_lock = threading.Lock()
         self.start_lock = threading.Lock()
         self.speech_lock = threading.RLock()
@@ -103,9 +104,13 @@ class Voice:
                 output = resolve_device(self.output_device, 'output')
                 info = sd.query_devices(output, kind='output')
                 sd.check_output_settings(device=output, channels=min(2,info['max_output_channels']), dtype='float32', samplerate=info['default_samplerate'])
-                if self.listener and self.listener.is_alive(): self.listener.join(timeout=2)
+                if self.listener and self.listener.is_alive():
+                    self.listener.join(timeout=2)
+                    # Two listeners would open the microphone twice; the old one is retired instead.
+                    if self.listener.is_alive(): raise RuntimeError('The previous microphone session is still closing. Try again in a moment.')
+                self.session += 1
                 self.started.clear(); self.start_error = None; self.enabled.set()
-                self.listener = threading.Thread(target=self._listen, daemon=True); self.listener.start()
+                self.listener = threading.Thread(target=self._listen, args=(self.session,), daemon=True); self.listener.start()
                 if not self.started.wait(30):
                     self.enabled.clear(); raise TimeoutError('Microphone did not start. Check audio permissions and selected device.')
                 if self.start_error: raise RuntimeError(self.start_error)
@@ -115,7 +120,7 @@ class Voice:
     def pause(self):
         self.enabled.clear()
         self.stop_speaking()
-        self.on_status('Voice off'); self.on_event('mic_level', 0)
+        self.on_status('Voice off'); self.on_event('mic_level', 0); self.on_event('partial', '')
 
     def stop_speaking(self):
         with self.speech_lock:
@@ -124,6 +129,8 @@ class Voice:
             self.speaking.clear()
             self.previewing = False
             self.on_event('voice_preview', False)
+            # The badge must not stay on "Speaking" until the speech thread notices the epoch change.
+            self.on_status('Thinking' if self.busy.is_set() else 'Listening' if self.enabled.is_set() else 'Voice off')
 
     @staticmethod
     def _drain(q):
@@ -137,8 +144,9 @@ class Voice:
         with self.speech_lock:
             if self.closed.is_set(): return
             if preview:
-                # A new preview replaces old speech and cannot feed the microphone.
-                self.pause()
+                # A new preview replaces old speech. Listening stays on: the
+                # listener ignores the microphone while `speaking` is set.
+                self.stop_speaking()
                 self.previewing = True
                 self.on_event('voice_preview', True)
             self.speaking.set()
@@ -169,14 +177,18 @@ class Voice:
         else:
             self.on_event('partial', json.loads(recognizer.PartialResult()).get('partial', ''))
 
-    def _listen(self):
+    def _listen(self, session=None):
         import sys
+        if session is None: session = self.session
+        # A listener that start() has replaced must not touch the mic, flags or UI.
+        live = lambda: session == self.session
         if sys.platform == 'win32':
             import pythoncom
             pythoncom.CoInitialize()
         try:
             import sounddevice as sd
             import numpy as np
+            if not live(): return
             device = resolve_device(self.input_device, 'input')
             info = sd.query_devices(device, kind='input')
             rate = int(info['default_samplerate'])
@@ -186,7 +198,7 @@ class Voice:
             recognizer = self.make_recognizer(rate)
             self._drain(self.audio)
             def callback(data, frames, timing, status):
-                if not self.enabled.is_set(): return
+                if not self.enabled.is_set() or not live(): return
                 samples = np.frombuffer(data, dtype=np.int16)
                 if channels > 1:
                     samples = samples.reshape(-1, channels).astype(np.float32).mean(axis=1).astype(np.int16)
@@ -217,12 +229,12 @@ class Voice:
                         if attempt == 2: raise
                         self.closed.wait(.4)
                 if stream: break
-            if not self.enabled.is_set() or self.closed.is_set():
+            if not self.enabled.is_set() or self.closed.is_set() or not live():
                 if stream: stream.close()
                 return
             with closing(stream):
                 self.on_status('Listening'); self.started.set(); paused = False
-                while self.enabled.is_set() and not self.closed.is_set():
+                while self.enabled.is_set() and not self.closed.is_set() and live():
                     if self.busy.is_set() or self.speaking.is_set():
                         recognizer.Reset(); self._drain(self.audio); paused = True
                         self.closed.wait(.05); continue
@@ -231,10 +243,11 @@ class Voice:
                     except queue.Empty: continue
                     self.accept_audio(recognizer, data)
         except Exception as error:
-            self.start_error = f'Microphone: {error}'
-            self.enabled.clear(); self.on_status('Voice off'); self.on_error(self.start_error)
+            if live():
+                self.start_error = f'Microphone: {error}'
+                self.enabled.clear(); self.on_status('Voice off'); self.on_error(self.start_error)
         finally:
-            self.started.set(); self.on_event('mic_level', 0)
+            if live(): self.started.set(); self.on_event('mic_level', 0)
             if sys.platform == 'win32': pythoncom.CoUninitialize()
 
     def _speak(self):

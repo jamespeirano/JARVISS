@@ -134,5 +134,57 @@ class VoiceLifecycleTests(unittest.TestCase):
             self.assertEqual(errors, [])
         finally: release.set()
 
+    def test_stuck_listener_blocks_a_second_microphone_session(self):
+        voice, events, errors, statuses = self.make_voice()
+        release = threading.Event()
+        voice.listener = threading.Thread(target=release.wait, daemon=True); voice.listener.start()
+        voice.prepare_tts = lambda: None
+        opened = []
+        def listen(session): opened.append(session); voice.started.set()
+        with patch('jarviss.voice.MODELS', self.voice_files()), patch('jarviss.voice.resolve_device', return_value=7), \
+             patch('sounddevice.query_devices', return_value={'default_samplerate':48000, 'max_output_channels':2}), \
+             patch('sounddevice.check_output_settings'), patch.object(voice, '_listen', listen):
+            with self.assertRaisesRegex(RuntimeError, 'still closing'): voice.start()
+            release.set(); voice.listener.join(1)
+            voice.start()
+        self.assertEqual(opened, [voice.session])
+        self.assertFalse(errors)
+
+    def test_superseded_listener_touches_nothing(self):
+        voice, events, errors, statuses = self.make_voice()
+        voice.enabled.set(); voice.session = 3
+        streams = []
+        with patch('sounddevice.RawInputStream', side_effect=lambda **k: streams.append(k)), \
+             patch('sounddevice.query_devices', return_value={'default_samplerate':48000, 'max_input_channels':1}), \
+             patch('jarviss.voice.resolve_device', side_effect=RuntimeError('old device gone')):
+            voice._listen(2)
+        self.assertEqual(streams, [])
+        self.assertTrue(voice.enabled.is_set())
+        self.assertFalse(voice.started.is_set())
+        self.assertEqual((errors, statuses, events), ([], [], []))
+
+    def test_pause_clears_partial_text_and_preview_keeps_voice_mode_on(self):
+        voice, events, errors, _ = self.make_voice()
+        voice.pause()
+        self.assertIn(('partial', ''), events)
+        voice.enabled.set()
+        voice.tts = types.SimpleNamespace(create=lambda text, **k: (np.zeros(240, dtype=np.float32), 24000))
+        voice.prepare_tts = lambda: None
+        voice.play_audio = Mock()
+        voice.speak('Preview.', preview=True)
+        wait_for(lambda: not voice.previewing)
+        self.assertTrue(voice.enabled.is_set())
+        self.assertFalse(voice.speaking.is_set())
+        self.assertEqual(errors, [])
+
+    def voice_files(self):
+        import tempfile
+        from pathlib import Path
+        from jarviss.assets import VOICE_NAME
+        folder = tempfile.TemporaryDirectory(); self.addCleanup(folder.cleanup)
+        model = Path(folder.name) / VOICE_NAME / 'am' / 'final.mdl'
+        model.parent.mkdir(parents=True); model.write_bytes(b'fixture')
+        return Path(folder.name)
+
 
 if __name__ == '__main__': unittest.main()

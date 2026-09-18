@@ -82,6 +82,7 @@ class LocationIndex:
         if len(query.strip()) < 2: return []
         records=self.load(progress)
         parts=query.split(',',1);needle=normalized(parts[0])
+        if len(needle) < 2: return []  # Punctuation alone would match every label.
         region=normalized(parts[1]) if len(parts)>1 else ''
         hints=[p for p in records if p['kind'] in ('state','province','region') and region and region in (normalized(p['name']),normalized(p['abbreviation']))]
         found=[p for p in records if needle in normalized(p['name']) or needle == normalized(p['abbreviation'])]

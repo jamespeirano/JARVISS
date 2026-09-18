@@ -4,6 +4,7 @@ import math
 import platform
 import subprocess
 import tempfile
+import threading
 from pathlib import Path
 from .storage import ROOT, RUNTIME, BUNDLED_RUNTIME, RESOURCES, read_json
 from .maps import coordinate, distance, bearing, format_distance
@@ -34,6 +35,15 @@ class USRouter:
         bundled = BUNDLED_RUNTIME / 'brouter' / f'brouter-{BROUTER_VERSION}' / f'brouter-{BROUTER_VERSION}-all.jar'
         self.runtime = Path(runtime or (BUNDLED_RUNTIME if bundled.is_file() and java_path(BUNDLED_RUNTIME) else RUNTIME))
         self.manifest = read_json(self.directory / 'manifest.json', {})
+        self.process = None; self.lock = threading.Lock()
+
+    def close(self):
+        """Stop a calculation still running when Jarvis quits; nothing else can end the Java process."""
+        with self.lock: process = self.process
+        if process and process.poll() is None:
+            process.kill()
+            try: process.wait(5)
+            except subprocess.TimeoutExpired: pass
 
     def status(self):
         files = self.manifest.get('files', [])
@@ -66,16 +76,21 @@ class USRouter:
         params = f'lonlats={origin[1]},{origin[0]}|{destination[1]},{destination[0]}&profile=walking&format=geojson&alternativeidx=0&timode=2'
         with tempfile.TemporaryDirectory(prefix='jarvis-route-') as temp:
             output = Path(temp) / 'route'
-            command = [str(java_path(self.runtime)), '-Xmx2048m', '-DmaxRunningTime=180', '-cp', str(self.jar),
+            command = [str(java_path(self.runtime)), '-Xmx2048m', '-DmaxRunningTime=110', '-cp', str(self.jar),
                        'btools.server.BRouter', str(self.directory / 'segments4'), str(RESOURCES / 'routing'), params, str(output)]
+            with self.lock:
+                self.process = process = subprocess.Popen(command, cwd=temp, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                                                          **({'creationflags':subprocess.CREATE_NO_WINDOW} if platform.system() == 'Windows' else {}))
             try:
-                result = subprocess.run(command, cwd=temp, capture_output=True, text=True, timeout=190,
-                                        **({'creationflags':subprocess.CREATE_NO_WINDOW} if platform.system() == 'Windows' else {}))
+                stdout, stderr = process.communicate(timeout=120)
             except subprocess.TimeoutExpired:
-                raise ValueError('This route exceeded the local calculation time. Choose an intermediate destination along your trip; the US data is already installed.') from None
+                process.kill(); process.communicate()
+                raise ValueError('This route was not finished within two minutes. Choose an intermediate destination along your trip; the US data is already installed.') from None
+            finally:
+                with self.lock: self.process = None
             path = Path(str(output) + '0.geojson')
-            if result.returncode or not path.is_file():
-                log = result.stdout + result.stderr
+            if process.returncode or not path.is_file():
+                log = stdout + stderr
                 if 'timeout' in log.lower() or 'memory' in log.lower():
                     raise ValueError('This route exceeded local calculation resources. Choose an intermediate destination; no additional area download is needed.')
                 if '.rd5' in log and ('not found' in log or 'does not exist' in log):
@@ -100,7 +115,7 @@ class USRouter:
         actions = [(0, f'Head {compass}')]
         for index,cmd,exit_number,*_ in props.get('voicehints', []):
             if not 0 <= index < len(points): raise ValueError('Invalid turn in the local routing result.')
-            if cmd == 1: continue  # Continuing straight at each junction does not require a separate instruction.
+            if cmd in (1, 100): continue  # Straight ahead (1) and the end-of-track marker (100) are not turns.
             if cmd in (12,16): raise ValueError('The route contains an unmapped direct segment; choose endpoints on connected walking paths.')
             action = f'At the roundabout, take exit {abs(exit_number)}' if cmd in (13,14) else TURNS.get(cmd)
             if not action: raise ValueError('Unrecognized turn in the local routing result.')

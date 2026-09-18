@@ -35,7 +35,7 @@ function atlasHandler({assets,getArchive}) {
     status=206;headers['Content-Range']=`bytes ${start}-${end}/${info.size}`;
    }
    headers['Content-Length']=String(end-start+1);
-   if(request.method==='HEAD')return new Response(null,{status,headers});
+   if(request.method==='HEAD'||!info.size)return new Response(null,{status,headers}); // A stream over an empty file has no valid end offset.
    return new Response(Readable.toWeb(fs.createReadStream(file,{start,end})),{status,headers});
   }catch{return new Response('Local map file unavailable. Reimport the archive.',{status:404,headers});}
  };

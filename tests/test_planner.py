@@ -1,4 +1,4 @@
-import json,tempfile,unittest
+import itertools,json,socket,tempfile,time,unittest
 from pathlib import Path
 from unittest.mock import patch
 from jarviss import planner
@@ -98,9 +98,63 @@ class BoardTests(unittest.TestCase):
     for name,text in [('Alex','Meet at the library at noon.'),('Sam','Received. Bringing water.')]:
      req=urllib.request.Request(url,data=json.dumps({'name':name,'text':text}).encode(),headers={'X-Board-Code':state['code'],'Content-Type':'application/json'})
      with urllib.request.urlopen(req) as response:self.assertTrue(json.load(response)['saved'])
+     time.sleep(1.05)  # One address may post once a second.
     with urllib.request.urlopen(urllib.request.Request(url,headers={'X-Board-Code':state['code']})) as response:self.assertEqual(len(json.load(response)),2)
     board.close();self.assertFalse(board.state()['active']);self.assertEqual(len(LocalBoard().state()['messages']),2)
    finally:board.close()
+
+
+ def test_peers_are_rate_limited_and_input_is_type_checked(self):
+  with tempfile.TemporaryDirectory() as temp,patch('jarviss.local_board.DATA',Path(temp)):
+   board=LocalBoard()
+   try:
+    state=board.start('127.0.0.1');url=state['address']+'/messages'
+    def post(body,code=state['code']):
+     req=urllib.request.Request(url,data=json.dumps(body).encode(),headers={'X-Board-Code':code,'Content-Type':'application/json'})
+     try:
+      with urllib.request.urlopen(req) as response:return response.status,json.load(response)
+     except urllib.error.HTTPError as failure:return failure.code,json.load(failure)
+    self.assertEqual(post({'name':'Alex','text':'First'})[0],200)
+    status,result=post({'name':'Alex','text':'Second'})
+    self.assertEqual(status,429);self.assertIn('Wait a second',result['error'])
+    self.assertEqual(post({'name':{'a':1},'text':'Third'})[0],400)
+    self.assertEqual(post({'name':'Alex','text':'Wrong code'},code='C\xd6DE')[0],401)
+    board.add('Jarvis','Own posts are not limited.');board.add('Jarvis','Second own post.')
+    self.assertEqual([m['text'] for m in board.state()['messages']],['First','Own posts are not limited.','Second own post.'])
+    time.sleep(1.05)
+    self.assertEqual(post({'name':'Alex','text':'Later'})[0],200)
+   finally:board.close()
+ def test_a_flooding_peer_only_evicts_its_own_history(self):
+  with tempfile.TemporaryDirectory() as temp,patch('jarviss.local_board.DATA',Path(temp)),patch('jarviss.local_board.time.monotonic',side_effect=itertools.count(step=2)):
+   board=LocalBoard()
+   for i in range(5):board.add('Sam',f'B {i}','192.168.1.5')
+   for i in range(3):board.add('Jarvis',f'Own {i}')
+   for i in range(1200):board.add('Alex',f'A {i}','192.168.1.7')
+   rows=json.loads((Path(temp)/'local-messages.json').read_text(encoding='utf-8'))
+   self.assertEqual(len(rows),1000)
+   self.assertEqual([r['text'] for r in rows if r['from']!='192.168.1.7'],[f'B {i}' for i in range(5)]+[f'Own {i}' for i in range(3)])
+   self.assertEqual([r['from'] for r in rows[:8]],['192.168.1.5']*5+['local']*3)
+   self.assertEqual(rows[-1]['text'],'A 1199');self.assertEqual(rows[8]['text'],'A 208')
+   self.assertTrue(all('from' not in m for m in board.state()['messages']))  # Addresses stay off the board page.
+ def test_saturated_board_replies_busy_and_recovers(self):
+  with tempfile.TemporaryDirectory() as temp,patch('jarviss.local_board.DATA',Path(temp)):
+   board=LocalBoard();board.concurrency=1
+   try:
+    state=board.start('127.0.0.1');host,port=state['address'][7:].rsplit(':',1)
+    stuck=socket.create_connection((host,int(port)));stuck.sendall(b'GET / HTTP/1.0\r\nX-Half: open')  # never completes its request
+    with self.assertRaises(urllib.error.HTTPError) as failure:urllib.request.urlopen(state['address']+'/')
+    self.assertEqual(failure.exception.code,503);self.assertIn('busy',json.load(failure.exception)['error'])
+    stuck.close()
+    with urllib.request.urlopen(state['address']+'/') as response:self.assertIn(b'Group messages',response.read())
+   finally:board.close()
+ def test_punctuation_only_search_matches_nothing(self):
+  from types import SimpleNamespace
+  with tempfile.TemporaryDirectory() as temp:
+   file=Path(temp)/'map';file.write_text('fixture')
+   index=LocationIndex(SimpleNamespace(path=file),Path(temp))
+   index.records=[{'name':'Springfield','kind':'city','abbreviation':'','population':100,'point':[39.8,-89.65]}]
+   for query in ('...','?!','.., IL',' , '):self.assertEqual(index.search(query),[])
+   self.assertEqual(len(index.search('Spring')),1)
 
 
 class ContextEdgeTests(unittest.TestCase):

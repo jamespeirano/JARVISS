@@ -45,8 +45,7 @@
  }
  window.renderSetupOperation=(active,method,setupRunning)=>{
   running=setupRunning||active&&method==='setup_run';
-  at('setup-pause').hidden=!running;
-  at('setup-pause').disabled=false;
+  syncPause(running,state.setup?.stage===3&&/^US map ·/.test(state.setup?.detail||''));
   at('setup-download').disabled=active||running||!plan||!plan.space_ok||!plan.models.find(m=>m.id===selected)?.fits;
   at('setup-recheck').disabled=active||running;
   for(const input of document.querySelectorAll('[name="setup-model"]'))input.disabled=active||running||!plan.models.find(m=>m.id===input.value).fits;
@@ -58,7 +57,7 @@
  for(const id of ['download-model','view-setup','map-view-setup'])at(id).onclick=window.openSetup;
  at('setup-recheck').onclick=()=>check(selected);
  at('setup-later').onclick=at('setup-done').onclick=()=>page('assistant');
- at('setup-pause').onclick=async()=>{at('setup-pause').disabled=true;at('setup-detail').textContent='Pausing…';try{await call('setup_pause');}catch{}};
+ const syncPause=pauseButton(at('setup-pause'),{onPause:()=>{at('setup-detail').textContent='Pausing…';}});
  at('setup-download').onclick=async()=>{
   if(!plan||running)return;
   at('setup-warning').textContent='';at('setup-activity').hidden=false;at('setup-bar').removeAttribute('value');

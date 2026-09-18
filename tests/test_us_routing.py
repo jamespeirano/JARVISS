@@ -1,10 +1,11 @@
 import io
 import json
+import subprocess
 import tempfile
 import threading
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock,patch
 from jarviss.us_routing import USRouter, segment_name
 from jarviss.map_setup import download_file, select_us_files, prepare_us, prepare_routing
 from jarviss.setup import SetupPaused
@@ -86,6 +87,27 @@ class RoutingTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'250 m'):router.decode(data,(1,1),(.001,.001))
         data['features'][0]['properties']['voicehints']=[[1,12,0,111,90]]
         with self.assertRaisesRegex(ValueError,'unmapped direct'):router.decode(data,(0,0),(.001,.001))
+
+    def test_end_of_track_marker_is_not_a_turn(self):
+        router=USRouter();data={'features':[{'geometry':{'type':'LineString','coordinates':[[0,0],[0,.001],[.001,.001]]},'properties':{'track-length':'222','voicehints':[[2,100,0,0,0]]}}]}
+        result=router.decode(data,(0,0),(.001,.001))
+        self.assertEqual([s['action'] for s in result['steps']],['Head north'])
+        self.assertEqual(result['steps'][0]['distance_m'],222)
+
+    def test_slow_engine_is_stopped_and_close_ends_a_running_calculation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);(root/'segments4').mkdir();(root/'segments4'/'W80_N35.rd5').write_bytes(b'x')
+            router=USRouter(root)
+            process=MagicMock();process.communicate.side_effect=[subprocess.TimeoutExpired('java',120),('','')]
+            with patch.object(USRouter,'status',return_value={'ready':True}),patch('jarviss.us_routing.java_path',return_value=Path('java')), \
+                 patch('jarviss.us_routing.subprocess.Popen',return_value=process):
+                with self.assertRaisesRegex(ValueError,'two minutes'):router.route((39.95,-75.16),(39.96,-75.17))
+            self.assertEqual(process.communicate.call_args_list[0].kwargs['timeout'],120)
+            process.kill.assert_called_once();self.assertIsNone(router.process)
+            running=MagicMock();running.poll.return_value=None
+            router.process=running;router.close()
+            running.kill.assert_called_once();running.wait.assert_called_once()
+            router.process=None;router.close()
 
     @unittest.skipUnless(USRouter().status()['ready'],'Install US maps for real offline route verification')
     def test_real_route_crosses_file_and_state_boundaries(self):

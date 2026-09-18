@@ -13,6 +13,16 @@ from .storage import read_json
 SEARCH_RADIUS_M = 5000
 
 
+def feature_key(name, kind, geom):
+    """Identity for features without an id: the tile clip must not make one lake several places."""
+    c = geom.centroid
+    return hashlib.sha256(f'{normalized(name)}|{kind}|{c.y:.3f}|{c.x:.3f}'.encode()).hexdigest()[:20]
+
+
+def same_feature(a, b):
+    return normalized(a['name']) == normalized(b['name']) and distance(a['point'], b['point']) < 100
+
+
 class TileArchive:
     def __init__(self, path):
         from pmtiles.reader import Reader
@@ -55,7 +65,7 @@ class TileArchive:
                      'osm_timestamp': self.metadata.get('planetiler:osm:osmosisreplicationtime', 'unknown'),
                      'places': [], 'roads': [], 'nodes': {}, 'search_radius_m': SEARCH_RADIUS_M}
 
-    @lru_cache(maxsize=32)
+    @lru_cache(maxsize=8)
     def _read(self, offset, length):
         if length > 32 * 1024 * 1024:
             raise ValueError('Archive entry exceeds the local read limit.')
@@ -81,7 +91,7 @@ class TileArchive:
         return (min(size-1, max(0, int((lon+180)/360*size))),
                 min(size-1, max(0, int((1-math.asinh(math.tan(math.radians(lat)))/math.pi)/2*size))))
 
-    @lru_cache(maxsize=256)
+    @lru_cache(maxsize=64)
     def _features(self, z, x, y):
         from mapbox_vector_tile import decode
         from shapely.geometry import shape
@@ -114,7 +124,7 @@ class TileArchive:
                     kind = 'untreated water'
                 if layer_name == 'roads': kind = 'road'
                 name = props.get('name:en') or props.get('name') or ('Unnamed ' + category.replace('_', ' '))
-                identity = feature.get('id') or hashlib.sha256(geom.wkb).hexdigest()[:20]
+                identity = feature.get('id') or feature_key(name, kind, geom)
                 result.append(({'id': f'tile/{layer_name}/{identity}', 'name': name, 'kind': kind,
                                 'category': category, 'access': 'unknown', 'source': 'offline basemap',
                                 'point_note': 'Nearest mapped geometry; access is not established.'}, geom))
@@ -187,7 +197,7 @@ class MapCatalog:
                 records.setdefault(record['id'], record)
         if self.archive:
             for record in self.archive.nearest(point, query, limit*2):
-                if any(normalized(p['name']) == normalized(record['name']) and distance(p['point'], record['point']) < 40 for p in records.values()):
+                if any(same_feature(p, record) for p in records.values()):
                     continue
                 records[record['id']] = record
         return sorted(records.values(), key=lambda p: p['distance_m'])[:limit]

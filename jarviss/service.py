@@ -2,6 +2,8 @@
 import json
 import sys
 import threading
+import time
+import traceback
 from pathlib import Path
 from .storage import DATA, RESOURCES, MODELS, ROOT, read_json, write_json, model_path, portable_path
 from .model import LocalModel
@@ -11,7 +13,7 @@ from .maps import OfflineMap, coordinate, download_area, route_to_place
 from .atlas import TileArchive, MapCatalog
 from .location_search import LocationIndex
 from .us_routing import USRouter
-from .map_setup import prepare_us
+from .map_setup import prepare_us, basemap_issue
 from . import planner
 from .local_board import LocalBoard
 from .assets import prepare_qwen, prepare_voice, VOICE_NAME
@@ -31,6 +33,14 @@ def emit(value):
         print(json.dumps(value, ensure_ascii=False), flush=True)
 
 
+def chosen_file(args, kind):
+    path = args.get('path')
+    if not isinstance(path, str) or not path.strip(): raise ValueError(f'Choose a {kind} file.')
+    path = Path(path)
+    if not path.is_file(): raise ValueError(f'The {kind} file was not found: {path.name}')
+    return path
+
+
 class Service:
     def __init__(self):
         self.profile = read_json(DATA / 'profile.json', {})
@@ -45,17 +55,21 @@ class Service:
         self.archive = None
         path = model_path(self.settings.get('map_archive', 'local-maps/us-z15.pmtiles'))
         if path.exists():
-            try: self.archive = TileArchive(path)
+            try: self.archive = TileArchive(path); self.archive_error = basemap_issue(path)
             except Exception as error: self.archive_error = str(error)
         self.places_by_id = {}
         self.location_index = LocationIndex(self.archive) if self.archive else None
         self.us_router = USRouter(ROOT / "local-maps" / "routing-us")
         self.route = None
-        self.position_revision = 0
+        self.position_revision = self.map_revision = 0
         self.model = LocalModel()
         self.ready = False
         self.lock = threading.Lock()
         self.setup_lock = threading.Lock()
+        # Position saves, map swaps and route commits run on separate request threads.
+        self.profile_lock = threading.Lock()
+        self.settings_lock = threading.Lock()
+        self.operation_lock = threading.Lock()
         self.operation = None
         self.board = LocalBoard()
         self.voice = Voice(self.heard, lambda text: emit({'event':'voice', 'data':text}),
@@ -90,10 +104,25 @@ class Service:
         return MapCatalog(self.areas, self.archive, self.us_router, self.location_index) if self.areas or self.archive else None
 
     def progress(self, text):
-        if self.operation:
-            self.operation = dict(self.operation, progress=text)
-            emit({'event':'operation', 'data':self.operation})
+        with self.operation_lock:
+            if self.operation:
+                self.operation = dict(self.operation, progress=text)
+                emit({'event':'operation', 'data':self.operation})
         emit({'event':'progress', 'data':text})
+
+    def revision(self):
+        return (self.position_revision, self.map_revision)
+
+    def stale(self, revision):
+        # Directions computed for an old position or map must never be shown as current.
+        if revision == self.revision(): return None
+        return ('Your position' if revision[0] != self.position_revision else 'The map') + ' changed while directions were calculated. Request directions again.'
+
+    def swap_map(self, **fields):
+        with self.profile_lock:
+            for name, value in fields.items(): setattr(self, name, value)
+            self.route, self.places_by_id = None, {}
+            self.map_revision += 1
 
     def setup_progress(self):
         # Map downloads can overlap chat. Never replace its operation or status.
@@ -105,14 +134,16 @@ class Service:
         write_json(DATA / 'maps' / (key + '.json'), area.pack)
         write_json(DATA / 'area.json', area.pack)
         self.areas = [a for a in self.areas if a.pack['bounds'] != area.pack['bounds']] + [area]
-        self.area, self.route, self.example_active = area, None, False
+        self.swap_map(area=area, example_active=False)
 
     def heard(self, text):
         emit({'event':'heard', 'data':text})
         def work():
-            try: self.command('chat', {'text':text})
-            except Exception as error: emit({'event':'error', 'data':str(error)})
-            finally: self.voice.busy.clear()
+            try: self.command('chat', {'text':text, 'spoken':True})
+            except Exception as error:
+                emit({'event':'error', 'data':str(error)})
+                # A refused request must not clear the flag the running typed chat owns.
+                if not self.lock.locked(): self.voice.busy.clear()
         threading.Thread(target=work, daemon=True).start()
 
     def command(self, method, args):
@@ -129,7 +160,8 @@ class Service:
         if method == 'board_send': return self.board.add(args.get('name',''),args.get('text',''))
         if method == 'location_parts':
             text=str(args.get('text',''))[:200]
-            return self.location_index.address_parts(text,self.progress) if self.location_index else {'city':text,'street':''}
+            # Index progress must not overwrite a running download's operation state.
+            return self.location_index.address_parts(text,lambda text: emit({'event':'progress', 'data':text})) if self.location_index else {'city':text,'street':''}
         if method == 'prompt_settings':
             updated = {}
             for key in ('system_prompt', 'voice_prompt'):
@@ -141,7 +173,7 @@ class Service:
                 value = args.get(key)
                 if type(value) is not int or not low <= value <= high: raise ValueError(f'{key} must be between {low} and {high}.')
                 updated[key] = value
-            self.settings.update(updated); write_json(DATA / 'settings.json', self.settings)
+            with self.settings_lock: self.settings.update(updated); write_json(DATA / 'settings.json', self.settings)
             return self.settings
         if method == 'voice':
             if args.get('enabled') and not self.ready: raise RuntimeError('Wait for the model to finish loading before starting voice.')
@@ -155,40 +187,47 @@ class Service:
                 value = args.get(key)
                 if value is None: updated[key] = None
                 else:
-                    device = next((d for d in available if d['id'] == int(value) and d[direction]), None)
+                    try: wanted = int(value)
+                    except (TypeError, ValueError): raise ValueError('Choose an audio device from the list.') from None
+                    device = next((d for d in available if d['id'] == wanted and d[direction]), None)
                     if device is None: raise ValueError('Audio device disconnected. Choose another in Settings → Voice.')
                     updated[key] = {'name':device['name'],'host':device['host']}
             name = args.get('voice_name','bm_george')
             if name not in ('bm_george','bm_lewis','am_michael','af_heart','bf_emma'): raise ValueError('Unknown voice.')
             self.voice.pause()
-            self.settings.update(updated, voice_name=name)
+            with self.settings_lock: self.settings.update(updated, voice_name=name)
             self.voice.configure(self.settings); write_json(DATA / 'settings.json', self.settings)
             return self.settings
         if method == 'test_speaker':
             self.voice.speak('This is my voice.', preview=True)
             return True
         if method == 'stop_speaker':
-            self.voice.pause()
+            # Stopping a preview must not end a voice session.
+            (getattr(self.voice, 'stop_speaking', None) or self.voice.pause)()
             return True
         if method == 'save_profile':
-            profile = {**self.profile, **{k:str(args.get(k, ''))[:2000] for k in ('situation','supplies','location_text')}}
-            if profile['location_text'] != self.profile.get('location_text',''):
-                profile.update(lat='',lon='',position_name='')
-            for key in ('lat','lon'):
-                if key in args: profile[key]=args[key]
-            if profile.get('lat','') or profile.get('lon',''):
-                profile['lat'], profile['lon'] = coordinate(profile['lat'], profile['lon'])
-            self.profile = profile
-            self.position_revision += 1
-            self.route = None
-            write_json(DATA / 'profile.json', profile)
+            if any(not isinstance(args.get(k) or '', str) for k in ('situation','supplies','location_text')):
+                raise ValueError('Situation, supplies and location must be text.')
+            with self.profile_lock:
+                profile = {**self.profile, **{k:(args.get(k) or '')[:2000] for k in ('situation','supplies','location_text')}}
+                if profile['location_text'] != self.profile.get('location_text',''):
+                    profile.update(lat='',lon='',position_name='')
+                for key in ('lat','lon'):
+                    if key in args: profile[key]=args[key]
+                if profile.get('lat','') or profile.get('lon',''):
+                    profile['lat'], profile['lon'] = coordinate(profile['lat'], profile['lon'])
+                self.profile = profile
+                self.position_revision += 1
+                self.route = None
+                write_json(DATA / 'profile.json', profile)
             return profile
         if method == 'set_map_position':
-            lat, lon = coordinate(args['lat'], args['lon'])
-            self.profile = dict(self.profile, lat=lat, lon=lon, position_name=str(args.get('name') or self.profile.get('location_text') or 'Confirmed map position')[:200])
-            self.position_revision += 1
-            self.route = None
-            write_json(DATA / 'profile.json', self.profile)
+            lat, lon = coordinate(args.get('lat'), args.get('lon'))
+            with self.profile_lock:
+                self.profile = dict(self.profile, lat=lat, lon=lon, position_name=str(args.get('name') or self.profile.get('location_text') or 'Confirmed map position')[:200])
+                self.position_revision += 1
+                self.route = None
+                write_json(DATA / 'profile.json', self.profile)
             return self.profile
         if method == 'search_locations':
             query = str(args.get('query', '')).strip()[:200]
@@ -214,54 +253,60 @@ class Service:
             catalog = self.catalog()
             if not catalog: return []
             return catalog.nearest(catalog.pack['center'], query, 20)
-        if method == 'import_document': return import_text(args['path'])
+        if method == 'import_document': return import_text(chosen_file(args, 'document'))
         if method == 'import_note': return import_note(args.get('title',''),args.get('text',''))
         if method == 'nearest':
             catalog, point = self.catalog(), location(self.profile)
             if not catalog or not point: return []
             if not catalog.contains(point): raise ValueError('Your position is outside the downloaded map coverage.')
             rows = catalog.nearest(point, str(args.get('query',''))[:200], 30)
-            self.places_by_id = {p['id']: p for p in rows}
+            # The map re-runs this after every operation; a Directions click may target an earlier list.
+            listed = {p['id']: p for p in rows}
+            self.places_by_id = dict(list({**{k:v for k,v in self.places_by_id.items() if k not in listed}, **listed}.items())[-300:])
             return rows
         if method == 'import_basemap':
-            archive = TileArchive(Path(args['path']).resolve())
-            self.settings['map_archive'] = portable_path(archive.path)
+            archive = TileArchive(chosen_file(args, 'map').resolve())
+            index = LocationIndex(archive)
+            with self.settings_lock: self.settings['map_archive'] = portable_path(archive.path)
+            self.swap_map(archive=archive, archive_error=None, location_index=index, example_active=False)
             write_json(DATA / 'settings.json', self.settings)
-            self.archive, self.archive_error = archive, None
-            self.location_index = LocationIndex(archive)
-            self.example_active, self.route = False, None
             return self.state()
         if method == 'use_basemap':
-            self.example_active, self.route = False, None
-            self.area = self.areas[-1] if self.areas else None
+            self.swap_map(example_active=False, area=self.areas[-1] if self.areas else None)
             return self.state()
         if method == 'import_map' or method == 'example_map':
-            path = Path(args['path']) if method == 'import_map' else RESOURCES / 'example-map.json'
+            path = chosen_file(args, 'map') if method == 'import_map' else RESOURCES / 'example-map.json'
             if path.stat().st_size > 80*1024*1024: raise ValueError('Map is too large.')
             area = OfflineMap(read_json(path, None))
             if method == 'import_map': self.save_area(area)
-            else: self.area, self.route, self.example_active = area, None, True
+            else: self.swap_map(area=area, example_active=True)
             return area.pack
         if self.setup_lock.locked() and method in ('setup_run','start_model','download_model','download_voice','download_us_maps'):
             raise RuntimeError('Setup is running. Open setup to check progress or pause it.')
         if not self.lock.acquire(blocking=False):
-            label = self.operation['label'] if self.operation else 'Another operation is running'
+            operation = self.operation
+            label = operation['label'] if operation else 'Another operation is running'
             raise RuntimeError(label + '. Wait for it to finish before starting another operation.')
         if self.setup_lock.locked() and method in ('setup_run','start_model','download_model','download_voice','download_us_maps'):
             self.lock.release()
             raise RuntimeError('Setup is running. Open setup to check progress or pause it.')
-        self.operation = {'method':method, 'label':OPERATION_LABELS.get(method, 'Working'), 'progress':''}
-        emit({'event':'operation', 'data':self.operation})
         foreground = True
         def release_foreground():
             nonlocal foreground
-            self.voice.busy.clear()
-            self.operation = None
-            emit({'event':'operation', 'data':None})
-            emit({'event':'status','data':'Ready' if self.ready else 'Model not started'})
-            foreground = False
-            self.lock.release()
+            try:
+                self.voice.busy.clear()
+                with self.operation_lock:
+                    self.operation = None
+                    emit({'event':'operation', 'data':None})
+                emit({'event':'status','data':'Ready' if self.ready else 'Model not started'})
+            finally:
+                foreground = False
+                self.lock.release()
         try:
+            # Inside the try: a failed emit must still release the lock.
+            with self.operation_lock:
+                self.operation = {'method':method, 'label':OPERATION_LABELS.get(method, 'Working'), 'progress':''}
+                emit({'event':'operation', 'data':self.operation})
             if method == 'setup_run':
                 # Claim setup while holding the foreground lock, so a second
                 # request cannot start changing model files between phases.
@@ -282,18 +327,19 @@ class Service:
                 else:
                     place = self.places_by_id.get(args.get('id'))
                     if not place: raise ValueError('Search again and select the destination.')
-                revision = self.position_revision
+                revision = self.revision()
                 result = route_to_place(catalog, location(self.profile), place)
-                if revision != self.position_revision:
-                    raise ValueError('Your position changed while directions were calculated. Request directions again from the new position.')
-                self.route = result
+                with self.profile_lock:
+                    if message := self.stale(revision): raise ValueError(message)
+                    self.route = result
                 return result
             if method == 'clear':
                 self.history = []; write_json(DATA / 'conversation.json', []); return True
             if method == 'start_model':
                 layers = args.get('layers', self.settings.get('gpu_layers','auto'))
                 if layers != 'auto':
-                    layers = int(layers)
+                    try: layers = int(layers)
+                    except (TypeError, ValueError): raise ValueError('GPU layers must be a whole number between 0 and 999, or automatic.') from None
                     if not 0 <= layers <= 999: raise ValueError('GPU layers must be between 0 and 999, or automatic.')
                 path = args.get('path') or self.settings.get('model','')
                 if not path:
@@ -305,7 +351,7 @@ class Service:
                 self.ready = False
                 emit({'event':'status','data':'Loading local model'})
                 self.model.stop(); self.model.start(model_path(path), layers, context=self.settings.get('model_context',8192))
-                self.settings.update(model=path, gpu_layers=layers)
+                with self.settings_lock: self.settings.update(model=path, gpu_layers=layers)
                 write_json(DATA / 'settings.json', self.settings)
                 self.ready = True
                 emit({'event':'status','data':'Ready'})
@@ -314,46 +360,59 @@ class Service:
                 text = str(args.get('text','')).strip()[:4000]
                 if not text: raise ValueError('Enter a question.')
                 catalog = self.catalog()
-                revision = self.position_revision
+                revision = self.revision()
                 direct = map_answer(text, self.profile, catalog, self.route)
                 is_map_answer = direct is not None
                 if not direct:
                     calculation = supply_duration(text)
                     if calculation: direct = (calculation, None)
                 if not direct and not self.ready: direct = reference_answer(text)
-                if is_map_answer and revision != self.position_revision:
-                    direct = ('Your position changed while directions were calculated. Request directions again from the new position.', None)
+                if is_map_answer and (message := self.stale(revision)): direct = (message, None)
                 if not direct and not self.ready: raise RuntimeError('Start your model in Settings first.')
                 self.voice.busy.set(); emit({'event':'status','data':'Thinking'})
-                spoken = self.voice.enabled.is_set()
+                # Hands-free budgets apply to what was heard; a typed question keeps text limits even while the mic is on.
+                spoken = bool(args.get('spoken'))
                 preferences = {**PROMPT_DEFAULTS, **self.settings}
                 documents = retrieve(text) if not direct else []
                 references = [{k:d[k] for k in ('id','section','title','heading')} for d in documents if d.get('id')]
                 payload = messages(self.profile, self.history, text, catalog, self.route, preferences, spoken, documents) if not direct else None
+                delivered = []
                 def speak_sentence(sentence):
+                    delivered.append(sentence)
                     if self.voice.enabled.is_set(): self.voice.speak(sentence)
-                answer, route = direct or (self.model.chat(payload, on_sentence=speak_sentence if spoken else None,
-                    max_tokens=preferences['voice_max_tokens' if spoken else 'text_max_tokens'],
-                    max_sentences=preferences['voice_max_sentences'] if spoken else None), None)
-                self.history += [{'role':'user','content':text},{'role':'assistant','content':answer,'references':references}]
-                self.history = self.history[-100:]
-                write_json(DATA / 'conversation.json', self.history)
-                if is_map_answer: self.route = route
+                def commit(answer, truncated=False):
+                    self.history += [{'role':'user','content':text},{'role':'assistant','content':answer,'references':references, **({'truncated':True} if truncated else {})}]
+                    self.history = self.history[-100:]
+                    write_json(DATA / 'conversation.json', self.history)
+                    emit({'event':'answer','data':{'text':answer,'question':text,'route':self.route,'references':references, **({'truncated':True} if truncated else {})}})
+                try:
+                    answer, route = direct or (self.model.chat(payload, on_sentence=speak_sentence if self.voice.enabled.is_set() else None,
+                        max_tokens=preferences['voice_max_tokens' if spoken else 'text_max_tokens'],
+                        max_sentences=preferences['voice_max_sentences'] if spoken else None), None)
+                except Exception:
+                    # What the user already heard must exist in the transcript.
+                    if delivered: commit(' '.join(delivered), truncated=True)
+                    raise
+                if route:
+                    # Only a new successful directions answer replaces the route in use.
+                    with self.profile_lock:
+                        if not self.stale(revision): self.route = route
                 if direct and self.voice.enabled.is_set():
                     # Keep full map records on screen; speak a short orientation only.
                     summary = (f"The recorded destination is {route['destination']}; the mapped walk is {route['distance_m']/1609.344:.2f} miles. " + (route['steps'][0]['instruction'] if route.get('steps') else '') + ' Conditions and access are unverified; full directions are in chat.'
                                if route else ' '.join(answer.splitlines()[:1]))
                     import re
                     self.voice.speak(' '.join(re.split(r'(?<=[.!?])\s+', summary)[:preferences['voice_max_sentences']]))
-                emit({'event':'answer','data':{'text':answer,'question':text,'route':self.route,'references':references}})
+                commit(answer)
                 return answer
             if method in ('download_model','download_voice'):
                 fn = prepare_qwen if method == 'download_model' else prepare_voice
                 fn(self.progress)
-                self.settings = {**PROMPT_DEFAULTS, **read_json(DATA / 'settings.json', {})}
+                with self.settings_lock: self.settings.update(read_json(DATA / 'settings.json', {}))
                 return True
             if method == 'download_us_maps':
-                path = prepare_us(self.progress)
+                self.setup.cancel.clear()
+                path = prepare_us(self.progress, cancel=self.setup.cancel)
                 self.us_router = USRouter(ROOT / "local-maps" / "routing-us")
                 return self.command('import_basemap', {'path':str(path)})
             if method == 'download_map':
@@ -368,6 +427,11 @@ class Service:
 
     def close(self):
         self.setup.cancel.set()
+        # Let a running map download stop its extractor before this process ends.
+        deadline = time.monotonic() + 6
+        for lock in (self.lock, self.setup_lock): lock.acquire(timeout=max(0, deadline - time.monotonic()))
+        stop_router = getattr(self.us_router, 'close', None)
+        if stop_router: stop_router()
         self.board.close(); self.voice.close(); self.model.close()
 
 
@@ -376,10 +440,15 @@ def main():
     service = Service()
     def request(item):
         try: emit({'id':item['id'], 'result':service.command(item['method'], item.get('args',{}))})
-        except Exception as error: emit({'id':item['id'], 'error':str(error)})
+        except (ValueError, RuntimeError, OSError) as error: emit({'id':item['id'], 'error':str(error) or type(error).__name__})
+        except Exception as error:
+            # A KeyError or TypeError is a defect, not advice for the user.
+            traceback.print_exc()
+            emit({'id':item['id'], 'error':f'Unexpected {type(error).__name__} in {item["method"]}. Details are in service.log.'})
     try:
         for line in sys.stdin:
-            item = json.loads(line)
+            try: item = json.loads(line)
+            except ValueError: continue
             if item['method'] == 'shutdown': break
             threading.Thread(target=request, args=(item,), daemon=True).start()
     finally: service.close()
